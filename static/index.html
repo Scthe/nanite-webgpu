@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Nanite WebGPU</title>
+    <meta name="description" content="Nanite proof of concept using WebGPU." />
+
+    <!-- <link rel="stylesheet" type="text/css" href="index.css" /> -->
+    <style>
+      :root {
+        background-color: rgb(39, 39, 39);
+      }
+      :root,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        text-align: center;
+        color: rgb(216, 216, 216);
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      ul,
+      ul li,
+      ul ul li {
+        margin: 0;
+        padding: 0;
+        text-indent: 0;
+        list-style-type: none;
+      }
+      .panel {
+        display: none;
+        position: fixed;
+        background: #383838;
+        padding: 10px;
+        color: aliceblue;
+        font-family: monospace;
+      }
+
+      .profiler-window {
+        bottom: 0;
+        left: 0;
+
+        & h2 {
+          text-align: center;
+          margin: 0 0 10px;
+        }
+      }
+      #stats-window {
+        top: 0;
+        left: 0;
+
+        & p {
+          margin: 0;
+        }
+      }
+      #no-webgpu {
+        color: aliceblue;
+        display: none;
+        width: 100vw;
+        height: 100vh;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gpuCanvas" width="1270" height="720"></canvas>
+
+    <!-- FPS display -->
+    <div id="stats-window" class="panel"></div>
+
+    <!-- Profiler -->
+    <div class="panel profiler-window">
+      <h2>Profiler</h2>
+      <ul id="profiler-results"></ul>
+    </div>
+
+    <!-- No webgpu -->
+    <div id="no-webgpu">
+      <pre id="error-msg">No WebGPU available. Please use Chrome.</pre>
+    </div>
+
+    <script src="index.web.js" defer></script>
+  </body>
+</html>
