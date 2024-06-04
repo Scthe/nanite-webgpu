@@ -1,0 +1,31 @@
+{
+  "name": "gaussian-splatting-webgpu",
+  "description": "WebGPU-based renderer for gaussian splatting",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": "Marcin Matuszczyk <marcin1113C@gmail.com>",
+  "homepage": "https://scthe.github.io/gaussian-splatting-webgpu",
+  "repository": "https://github.com/Scthe/gaussian-splatting-webgpu",
+  "main": "src/index.web.tsx",
+  "packageManager": "yarn@4.2.2",
+  "scripts": {
+    "predev": "yarn clean",
+    "dev": "node esbuild-script.js --dev",
+    "prebuild": "yarn clean",
+    "build": "node esbuild-script.js",
+    "serve": "http-server --ssl -C build/cert.pem -K build/key.pem build",
+    "clean": "rimraf ./build/* || true"
+  },
+  "dependencies": {
+    "dat.gui": "^0.7.9",
+    "webgl-obj-loader": "^2.0.8",
+    "wgpu-matrix": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/dat.gui": "^0.7.9",
+    "esbuild": "^0.21.3",
+    "esbuild-copy-static-files": "^0.1.0",
+    "rimraf": "^5.0.7",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,30 @@
+.DS_Store
+*.log
+*.tsbuildinfo
+*.code-workspace
+node_modules
+
+# yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+yarn-debug.log*
+yarn-error.log*
+
+
+# build
+build
+static/*.pem
+
+
+# custom
+*.code-workspace
+_references
+output.png
+makefile
+scenes
+*.obj

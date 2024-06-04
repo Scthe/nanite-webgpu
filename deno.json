@@ -1,0 +1,17 @@
+{
+  "tasks": {
+    "start": "DENO_NO_PACKAGE_JSON=1 && deno run --allow-read=. --allow-write=. --unstable-webgpu src/index.deno.ts",
+    "test": "DENO_NO_PACKAGE_JSON=1 && deno test --allow-read=. --allow-write=. --unstable-webgpu src"
+  },
+  "imports": {
+    "png": "https://deno.land/x/pngs@0.1.1/mod.ts",
+    "std/webgpu": "jsr:@std/webgpu@^0.224.0",
+    "wgpu-matrix": "npm:wgpu-matrix@2.9.0",
+    "std-path": "https://deno.land/std@0.224.0/path/mod.ts",
+    "assert": "https://deno.land/std@0.224.0/assert/mod.ts",
+    "webgl-obj-loader": "npm:webgl-obj-loader@2.0.8"
+  },
+  "test": {
+    "exclude": ["src/web"]
+  }
+}
