@@ -1,5 +1,5 @@
 import { Mat4, mat4 } from 'wgpu-matrix';
-import { CAMERA_CFG } from '../constants.ts';
+import { CAMERA_CFG, CO_PER_VERTEX } from '../constants.ts';
 import { TypedArray } from './webgpu.ts';
 
 export interface Dimensions {
@@ -51,13 +51,16 @@ export const lerp = (a: number, b: number, fac: number) => {
   return a * (1 - fac) + b * fac;
 };
 
-export function printBoundingBox(vertices: Float32Array) {
+export function printBoundingBox(
+  vertices: Float32Array,
+  coPerVert = CO_PER_VERTEX
+) {
   const maxCo = [vertices[0], vertices[1], vertices[2]];
   const minCo = [vertices[0], vertices[1], vertices[2]];
-  const vertCount = vertices.length / 4;
+  const vertCount = vertices.length / coPerVert;
 
   for (let i = 0; i < vertCount; i++) {
-    const offset = i * 4;
+    const offset = i * coPerVert;
     for (let co = 0; co < 3; co++) {
       maxCo[co] = Math.max(maxCo[co], vertices[offset + co]);
       minCo[co] = Math.min(minCo[co], vertices[offset + co]);

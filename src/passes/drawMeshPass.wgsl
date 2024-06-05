@@ -29,21 +29,17 @@ fn checkIsCulled(projectedPosition: vec4f) -> bool {
 
 @vertex
 fn main_vs(
-  @location(0) inWorldPos : vec4f,
+  @location(0) inWorldPos : vec3f,
   @builtin(vertex_index) inVertexIndex: u32,
 ) -> VertexOutput {
   var result: VertexOutput;
-  var pos = array<vec2f, 3>(
-    vec2(0.0, 0.5),
-    vec2(-0.5, -0.5),
-    vec2(0.5, -0.5)
-  );
 
-  var projectedPosition = _uniforms.mvpMatrix * inWorldPos;
+  var worldPos = vec4<f32>(inWorldPos.xyz, 1.0);
+  var projectedPosition = _uniforms.mvpMatrix * worldPos;
   projectedPosition /= projectedPosition.w;
   result.position = vec4<f32>(projectedPosition.xyz, 1.0);
   result.projPosition = result.position;
-  result.wsPosition = inWorldPos;
+  result.wsPosition = worldPos;
 
   return result;
 }

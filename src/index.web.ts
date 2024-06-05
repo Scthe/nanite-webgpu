@@ -23,6 +23,8 @@ declare global {
 }
 
 const SCENE_FILE = 'bunny.obj';
+// const SCENE_FILE = 'cube.obj';
+// const SCENE_FILE = 'plane.obj';
 
 (async function () {
   // GPUDevice

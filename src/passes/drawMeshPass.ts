@@ -1,4 +1,4 @@
-import { BYTES_VEC4, CONFIG, DEPTH_FORMAT } from '../constants.ts';
+import { BYTES_VEC3, BYTES_VEC4, CONFIG, DEPTH_FORMAT } from '../constants.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
@@ -10,10 +10,10 @@ const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
       {
         shaderLocation: 0, // position
         offset: 0,
-        format: 'float32x4',
+        format: 'float32x3',
       },
     ],
-    arrayStride: BYTES_VEC4,
+    arrayStride: BYTES_VEC3,
     stepMode: 'vertex',
   },
 ];
