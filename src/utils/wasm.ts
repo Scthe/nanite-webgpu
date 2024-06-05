@@ -1,3 +1,5 @@
+// https://stackoverflow.com/questions/41875728/pass-a-javascript-array-as-argument-to-a-webassembly-function
+
 export const wasmPtr = (arr: WasmArray, inout: WasmPtrInout = 'in') => ({
   arr,
   inout,

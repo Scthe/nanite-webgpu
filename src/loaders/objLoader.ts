@@ -4,6 +4,7 @@ import { createGPUBuffer } from '../utils/webgpu.ts';
 import { copyToTypedArray, printBoundingBox } from '../utils/index.ts';
 import { CONFIG, CO_PER_VERTEX } from '../constants.ts';
 import { optimizeMeshBuffers } from '../meshPreprocessing/optimizeMeshBuffers.ts';
+import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 
 const Mesh = objLoader.default?.Mesh || objLoader.Mesh; // deno vs chrome
 
@@ -21,20 +22,26 @@ export async function loadObjFile(
     vertices.map((e: number) => e * CONFIG.meshScale)
   );
   const indexU32 = copyToTypedArray(Uint32Array, indices);
-  const [optVertices, optIndices] = await optimizeMeshBuffers(
+  let [optVertices, optIndices] = await optimizeMeshBuffers(
     vertexF32,
     indexU32
   );
   // const optVertices = vertexF32;
   // const optIndices = indexU32;
+  const simplifiedMesh = await simplifyMesh(optVertices, optIndices, {
+    targetIndexCount: 300,
+    targetError: 0.05,
+  });
+  console.log('SimplifiedMesh result', simplifiedMesh);
+  optIndices = simplifiedMesh.indexBuffer;
 
+  // create GPUBuffers
   const vertexBuffer = createGPUBuffer(
     device,
     'vertices',
     GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     optVertices
   );
-
   const indexBuffer = createGPUBuffer(
     device,
     'indices',
@@ -45,7 +52,7 @@ export async function loadObjFile(
   const vertexCount = optVertices.length / CO_PER_VERTEX;
   const triangleCount = optIndices.length / 3;
   console.log(
-    `Parsed file: ${triangleCount} triangles (${indices.length} indices), ${vertexCount} vertices`,
+    `Parsed file: ${triangleCount} triangles (${optIndices.length} indices), ${vertexCount} vertices`,
     {
       vertexBuffer,
       indexBuffer,

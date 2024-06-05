@@ -1,22 +1,13 @@
-import { BYTES_VEC3, CO_PER_VERTEX } from '../constants.ts';
-import MeshOptModule from '../lib/meshoptimizer';
-import { meshoptCall, wasmPtr } from '../utils/wasm';
+import { CO_PER_VERTEX } from '../constants.ts';
+import {
+  MeshData,
+  getMeshData,
+  getMeshOptimizerModule,
+} from './meshPreprocessUtils.ts';
+import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 
-async function getMeshOptimizerModule() {
-  const MeshOpt = await MeshOptModule({
-    locateFile: (e: string) => e,
-  });
-  const module: WebAssembly.Module = await MeshOpt.ready;
-  return module;
-}
-
-type MeshData = {
-  indexCount: number;
-  vertexCount: number;
-  vertexSize: number;
-};
-
-/** Optimize vertex and index buffer.
+/**
+ * Optimize vertex and index buffer.
  *
  * https://github.com/zeux/meshoptimizer?tab=readme-ov-file#indexing
  */
@@ -25,11 +16,7 @@ export async function optimizeMeshBuffers(
   indices: Uint32Array
 ): Promise<[Float32Array, Uint32Array]> {
   const module = await getMeshOptimizerModule();
-  const meshData: MeshData = {
-    indexCount: indices.length,
-    vertexCount: vertices.length / CO_PER_VERTEX,
-    vertexSize: BYTES_VEC3,
-  };
+  const meshData = getMeshData(vertices, indices);
 
   const [newVertCnt, remap] = generateVertexRemap(
     module,
@@ -40,7 +27,7 @@ export async function optimizeMeshBuffers(
   // console.log('generateVertexRemap res:', newVertCnt);
   // console.log('generateVertexRemap remap:', remap);
 
-  const newIndices = remapIndexBuffer(module, indices, remap);
+  const newIndices = remapIndexBuffer(module, indices, meshData, remap);
   const newVertices = remapVertexBuffer(
     module,
     vertices,
@@ -60,7 +47,7 @@ function generateVertexRemap(
   indices: Uint32Array,
   meshData: MeshData
 ): [number, Uint32Array] {
-  const result = new Uint32Array(indices.length);
+  const result = new Uint32Array(meshData.indexCount);
   const newVertexCount = meshoptCall(
     module,
     'number',
@@ -81,13 +68,14 @@ function generateVertexRemap(
 function remapIndexBuffer(
   module: WebAssembly.Module,
   indices: Uint32Array,
+  meshData: MeshData,
   remap: Uint32Array
 ) {
-  const result = new Uint32Array(indices.length);
+  const result = new Uint32Array(meshData.indexCount);
   meshoptCall(module, 'number', 'meshopt_remapIndexBuffer', [
     wasmPtr(result, 'out'),
     wasmPtr(indices),
-    indices.length,
+    meshData.indexCount,
     wasmPtr(remap),
   ]);
   return result;
