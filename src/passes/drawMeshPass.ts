@@ -1,9 +1,14 @@
+import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
+import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
 import {
-  BYTES_VEC3,
-  CONFIG,
-  DEPTH_FORMAT,
-  VERTS_IN_TRIANGLE,
-} from '../constants.ts';
+  PIPELINE_DEPTH_STENCIL_ON,
+  PIPELINE_PRIMITIVE_TRIANGLE_LIST,
+  assignResourcesToBindings,
+  labelPipeline,
+  labelShader,
+  useColorAttachment,
+  useDepthStencilAttachment,
+} from './_shared.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
@@ -37,10 +42,10 @@ export class DrawMeshPass {
       device,
       outTextureFormat
     );
-    this.uniformsBindings = DrawMeshPass.assignResourcesToBindings(
+    this.uniformsBindings = assignResourcesToBindings(
       device,
-      this.renderPipeline.getBindGroupLayout(0),
-      uniforms
+      this.renderPipeline,
+      [uniforms.createBindingDesc(0)]
     );
   }
 
@@ -49,12 +54,18 @@ export class DrawMeshPass {
     outTextureFormat: GPUTextureFormat
   ) {
     const shaderModule = device.createShaderModule({
-      label: `${DrawMeshPass.NAME}-shaders`,
-      code: DrawMeshPass.SHADER_CODE,
+      label: labelShader(DrawMeshPass),
+      code: `
+${RenderUniformsBuffer.SHADER_SNIPPET(0)}
+${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
+${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
+${SHADER_SNIPPETS.GET_RANDOM_COLOR}
+${DrawMeshPass.SHADER_CODE}
+      `,
     });
 
-    const renderPipeline = device.createRenderPipeline({
-      label: `${DrawMeshPass.NAME}-pipeline`,
+    return device.createRenderPipeline({
+      label: labelPipeline(DrawMeshPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -66,29 +77,8 @@ export class DrawMeshPass {
         entryPoint: 'main_fs',
         targets: [{ format: outTextureFormat }],
       },
-      primitive: {
-        cullMode: 'none',
-        topology: 'triangle-list',
-        stripIndexFormat: undefined,
-      },
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less',
-        format: DEPTH_FORMAT,
-      },
-    });
-
-    return renderPipeline;
-  }
-
-  private static assignResourcesToBindings(
-    device: GPUDevice,
-    uniformsLayout: GPUBindGroupLayout,
-    uniforms: RenderUniformsBuffer
-  ) {
-    return device.createBindGroup({
-      layout: uniformsLayout,
-      entries: [uniforms.createBindingDesc(0)],
+      primitive: PIPELINE_PRIMITIVE_TRIANGLE_LIST,
+      depthStencil: PIPELINE_DEPTH_STENCIL_ON,
     });
   }
 
@@ -99,24 +89,9 @@ export class DrawMeshPass {
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawMeshPass.NAME,
       colorAttachments: [
-        {
-          view: targetTexture.createView(),
-          loadOp,
-          storeOp: 'store',
-          clearValue: [
-            CONFIG.clearColor[0],
-            CONFIG.clearColor[1],
-            CONFIG.clearColor[2],
-            1,
-          ],
-        },
+        useColorAttachment(targetTexture, loadOp, CONFIG.clearColor),
       ],
-      depthStencilAttachment: {
-        view: depthTexture.createView(),
-        depthClearValue: 1.0,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
-      },
+      depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(DrawMeshPass.NAME),
     });
 

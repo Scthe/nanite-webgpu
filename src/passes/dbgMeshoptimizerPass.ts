@@ -1,9 +1,18 @@
-import { CONFIG, DEPTH_FORMAT, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
+import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
+import {
+  PIPELINE_DEPTH_STENCIL_ON,
+  PIPELINE_PRIMITIVE_TRIANGLE_LIST,
+  assignResourcesToBindings,
+  labelPipeline,
+  labelShader,
+  useColorAttachment,
+  useDepthStencilAttachment,
+} from './_shared.ts';
 import { VERTEX_ATTRIBUTES } from './drawMeshPass.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
-// TODO tons of duplicate code from DrawMeshPass
 export class DbgMeshoptimizerPass {
   public static NAME: string = DbgMeshoptimizerPass.name;
   public static SHADER_CODE: string;
@@ -20,10 +29,10 @@ export class DbgMeshoptimizerPass {
       device,
       outTextureFormat
     );
-    this.uniformsBindings = DbgMeshoptimizerPass.assignResourcesToBindings(
+    this.uniformsBindings = assignResourcesToBindings(
       device,
-      this.renderPipeline.getBindGroupLayout(0),
-      uniforms
+      this.renderPipeline,
+      [uniforms.createBindingDesc(0)]
     );
   }
 
@@ -32,12 +41,17 @@ export class DbgMeshoptimizerPass {
     outTextureFormat: GPUTextureFormat
   ) {
     const shaderModule = device.createShaderModule({
-      label: `${DbgMeshoptimizerPass.NAME}-shaders`,
-      code: DbgMeshoptimizerPass.SHADER_CODE,
+      label: labelShader(DbgMeshoptimizerPass),
+      code: `
+${RenderUniformsBuffer.SHADER_SNIPPET(0)}
+${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
+${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
+${DbgMeshoptimizerPass.SHADER_CODE}
+      `,
     });
 
-    const renderPipeline = device.createRenderPipeline({
-      label: `${DbgMeshoptimizerPass.NAME}-pipeline`,
+    return device.createRenderPipeline({
+      label: labelPipeline(DbgMeshoptimizerPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -49,29 +63,8 @@ export class DbgMeshoptimizerPass {
         entryPoint: 'main_fs',
         targets: [{ format: outTextureFormat }],
       },
-      primitive: {
-        cullMode: 'none',
-        topology: 'triangle-list',
-        stripIndexFormat: undefined,
-      },
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less-equal',
-        format: DEPTH_FORMAT,
-      },
-    });
-
-    return renderPipeline;
-  }
-
-  private static assignResourcesToBindings(
-    device: GPUDevice,
-    uniformsLayout: GPUBindGroupLayout,
-    uniforms: RenderUniformsBuffer
-  ) {
-    return device.createBindGroup({
-      layout: uniformsLayout,
-      entries: [uniforms.createBindingDesc(0)],
+      primitive: PIPELINE_PRIMITIVE_TRIANGLE_LIST,
+      depthStencil: PIPELINE_DEPTH_STENCIL_ON,
     });
   }
 
@@ -82,24 +75,9 @@ export class DbgMeshoptimizerPass {
     const renderPass = cmdBuf.beginRenderPass({
       label: DbgMeshoptimizerPass.NAME,
       colorAttachments: [
-        {
-          view: targetTexture.createView(),
-          loadOp,
-          storeOp: 'store',
-          clearValue: [
-            CONFIG.clearColor[0],
-            CONFIG.clearColor[1],
-            CONFIG.clearColor[2],
-            1,
-          ],
-        },
+        useColorAttachment(targetTexture, loadOp, CONFIG.clearColor),
       ],
-      depthStencilAttachment: {
-        view: depthTexture.createView(),
-        depthClearValue: 1.0,
-        depthLoadOp: 'clear',
-        depthStoreOp: 'store',
-      },
+      depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(DbgMeshoptimizerPass.NAME),
     });
 

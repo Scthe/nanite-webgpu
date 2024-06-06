@@ -1,3 +1,4 @@
+// @deno-types="npm:@types/dat.gui@0.7.9"
 import * as dat from 'dat.gui';
 import { CONFIG } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
@@ -91,26 +92,32 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
   }
 }
 
-function getController(gui: any, name: string) {
+function getController(gui: dat.GUI, name: string) {
   let controller = null;
   const controllers = gui.__controllers;
 
   for (let i = 0; i < controllers.length; i++) {
     const c = controllers[i];
-    if (c.property == name || c.name == name) {
+    if (c.property == name) {
       controller = c;
-      //console.log(c);
       break;
     }
   }
   return controller;
 }
 
-function setVisible(gui: any, name: string, isVisible: boolean) {
+function setVisible(gui: dat.GUI, name: string, isVisible: boolean) {
+  // deno-lint-ignore no-explicit-any
+  const ctrl = getController(gui, name) as any; // uses non public API
+  if (!ctrl) {
+    console.error(`Not controller for '${name}' found`);
+    return;
+  }
+
   if (isVisible) {
-    getController(gui, name).__li.style.display = '';
+    ctrl.__li.style.display = '';
   } else {
-    getController(gui, name).__li.style.display = 'none';
+    ctrl.__li.style.display = 'none';
   }
 }
 
@@ -124,7 +131,7 @@ const createDummy = <V extends Object, K extends keyof V>(
   obj: V,
   key: K,
   opts: UiOpts<V[K]>[]
-) => {
+): { values: string[] } & Record<K, string> => {
   const dummy = {
     values: opts.map((o) => o.label),
   };
@@ -142,7 +149,9 @@ const createDummy = <V extends Object, K extends keyof V>(
     },
   });
 
-  return dummy;
+  // TS ignores Object.defineProperty and thinks we have not complete object
+  // deno-lint-ignore no-explicit-any
+  return dummy as any;
 };
 
 export function onGpuProfilerResult(result: GpuProfilerResult) {
