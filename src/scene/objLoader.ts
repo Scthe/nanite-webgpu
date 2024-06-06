@@ -10,8 +10,6 @@ export async function loadObjFile(
 ): Promise<[Float32Array, Uint32Array]> {
   const mesh = new Mesh(objText);
   const { vertices, indices } = mesh;
-  // console.log('unique vertices (may incl. normals)', vertices.length / CO_PER_VERTEX);
-  // console.log('indices', indices.length);
 
   const vertexF32 = copyToTypedArray(
     Float32Array,

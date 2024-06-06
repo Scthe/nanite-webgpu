@@ -1,28 +1,11 @@
-import {
-  BYTES_VEC3,
-  CONFIG,
-  DEPTH_FORMAT,
-  VERTS_IN_TRIANGLE,
-} from '../constants.ts';
+import { CONFIG, DEPTH_FORMAT, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { VERTEX_ATTRIBUTES } from './drawMeshPass.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
-export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
-  {
-    attributes: [
-      {
-        shaderLocation: 0, // position
-        offset: 0,
-        format: 'float32x3',
-      },
-    ],
-    arrayStride: BYTES_VEC3,
-    stepMode: 'vertex',
-  },
-];
-
-export class DrawMeshPass {
-  public static NAME: string = DrawMeshPass.name;
+// TODO tons of duplicate code from DrawMeshPass
+export class DbgMeshoptimizerPass {
+  public static NAME: string = DbgMeshoptimizerPass.name;
   public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
@@ -33,11 +16,11 @@ export class DrawMeshPass {
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer
   ) {
-    this.renderPipeline = DrawMeshPass.createRenderPipeline(
+    this.renderPipeline = DbgMeshoptimizerPass.createRenderPipeline(
       device,
       outTextureFormat
     );
-    this.uniformsBindings = DrawMeshPass.assignResourcesToBindings(
+    this.uniformsBindings = DbgMeshoptimizerPass.assignResourcesToBindings(
       device,
       this.renderPipeline.getBindGroupLayout(0),
       uniforms
@@ -49,12 +32,12 @@ export class DrawMeshPass {
     outTextureFormat: GPUTextureFormat
   ) {
     const shaderModule = device.createShaderModule({
-      label: `${DrawMeshPass.NAME}-shaders`,
-      code: DrawMeshPass.SHADER_CODE,
+      label: `${DbgMeshoptimizerPass.NAME}-shaders`,
+      code: DbgMeshoptimizerPass.SHADER_CODE,
     });
 
     const renderPipeline = device.createRenderPipeline({
-      label: `${DrawMeshPass.NAME}-pipeline`,
+      label: `${DbgMeshoptimizerPass.NAME}-pipeline`,
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -73,7 +56,7 @@ export class DrawMeshPass {
       },
       depthStencil: {
         depthWriteEnabled: true,
-        depthCompare: 'less',
+        depthCompare: 'less-equal',
         format: DEPTH_FORMAT,
       },
     });
@@ -97,7 +80,7 @@ export class DrawMeshPass {
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
-      label: DrawMeshPass.NAME,
+      label: DbgMeshoptimizerPass.NAME,
       colorAttachments: [
         {
           view: targetTexture.createView(),
@@ -117,31 +100,19 @@ export class DrawMeshPass {
         depthLoadOp: 'clear',
         depthStoreOp: 'store',
       },
-      timestampWrites: profiler?.createScopeGpu(DrawMeshPass.NAME),
+      timestampWrites: profiler?.createScopeGpu(DbgMeshoptimizerPass.NAME),
     });
 
     // set render pass data
     renderPass.setPipeline(this.renderPipeline);
     renderPass.setBindGroup(0, this.uniformsBindings);
-    /*
+
+    // draw
+    const mesh = scene.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
-    // draw
-    const vertexCount = mesh.triangleCount * 3;
+    const vertexCount = mesh.triangleCount * VERTS_IN_TRIANGLE;
     renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
-    */
-
-    // meshlets test
-    const ms = scene.meshlets;
-    renderPass.setVertexBuffer(0, ms.vertexBuffer);
-    renderPass.setIndexBuffer(ms.indexBuffer, 'uint32');
-    let nextIdx = 0;
-    ms.meshlets.forEach((m, firstInstance) => {
-      const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
-      const firstIndex = nextIdx;
-      renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
-      nextIdx += vertexCount;
-    });
 
     // fin
     renderPass.end();

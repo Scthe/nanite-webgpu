@@ -1,10 +1,12 @@
 import * as dat from 'dat.gui';
 import { CONFIG } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
+import { Scene } from '../scene/types.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
+// https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
-export function initializeGUI(profiler: GpuProfiler) {
+export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
   const gui = new dat.GUI();
 
   const dummyObject = {
@@ -24,6 +26,39 @@ export function initializeGUI(profiler: GpuProfiler) {
 
   // profiler
   gui.add(dummyObject, 'profile').name('Profile');
+
+  addDbgFolder();
+
+  //////////////
+  /// subdirs
+
+  function addDbgFolder() {
+    const dir = gui.addFolder('DEBUG');
+    dir.open();
+
+    // sorting method
+    const modeDummy = createDummy(CONFIG, 'displayMode', [
+      { label: 'nanite', value: 'nanite' },
+      { label: 'dbg-lod', value: 'dbg-lod' },
+    ]);
+    const modeCtrl = dir
+      .add(modeDummy, 'displayMode', modeDummy.values)
+      .name('Display mode');
+
+    const maxLod = scene.meshoptimizerLODs.length - 1;
+    dir
+      .add(CONFIG, 'dbgMeshoptimizerLodLevel', 0, maxLod)
+      .step(1)
+      .name('LOD level');
+    const toggleLodCtrl = () =>
+      setVisible(
+        dir,
+        'dbgMeshoptimizerLodLevel',
+        CONFIG.displayMode === 'dbg-lod'
+      );
+    toggleLodCtrl(); // set initial visibility
+    modeCtrl.onFinishChange(toggleLodCtrl);
+  }
 
   //////////////
   /// utils
@@ -55,6 +90,60 @@ export function initializeGUI(profiler: GpuProfiler) {
     gui.addColor(dummy, 'value').name(name);
   }
 }
+
+function getController(gui: any, name: string) {
+  let controller = null;
+  const controllers = gui.__controllers;
+
+  for (let i = 0; i < controllers.length; i++) {
+    const c = controllers[i];
+    if (c.property == name || c.name == name) {
+      controller = c;
+      //console.log(c);
+      break;
+    }
+  }
+  return controller;
+}
+
+function setVisible(gui: any, name: string, isVisible: boolean) {
+  if (isVisible) {
+    getController(gui, name).__li.style.display = '';
+  } else {
+    getController(gui, name).__li.style.display = 'none';
+  }
+}
+
+interface UiOpts<T> {
+  label: string;
+  value: T;
+}
+
+// deno-lint-ignore ban-types
+const createDummy = <V extends Object, K extends keyof V>(
+  obj: V,
+  key: K,
+  opts: UiOpts<V[K]>[]
+) => {
+  const dummy = {
+    values: opts.map((o) => o.label),
+  };
+
+  Object.defineProperty(dummy, key, {
+    enumerable: true,
+    get: () => {
+      const v = obj[key];
+      const opt = opts.find((e) => e.value === v) || opts[0];
+      return opt.label;
+    },
+    set: (selectedLabel: string) => {
+      const opt = opts.find((e) => e.label === selectedLabel) || opts[0];
+      obj[key] = opt.value;
+    },
+  });
+
+  return dummy;
+};
 
 export function onGpuProfilerResult(result: GpuProfilerResult) {
   console.log('Profiler:', result);

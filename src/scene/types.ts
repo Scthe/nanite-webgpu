@@ -3,6 +3,7 @@ import { meshopt_Meshlets } from '../meshPreprocessing/createMeshlets.ts';
 export interface Scene {
   mesh: Mesh;
   meshlets: MeshletRenderPckg;
+  meshoptimizerLODs: Mesh[];
 }
 
 export interface Mesh {

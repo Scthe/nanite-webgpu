@@ -32,9 +32,13 @@ export const SCENES = {
 };
 export type SceneFile = keyof typeof SCENES;
 
+type DisplayMode = 'nanite' | 'dbg-lod';
+
 export const CONFIG = {
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   clearColor: [0, 0, 0.2],
   rotationSpeed: 1,
   movementSpeed: 2,
+  displayMode: 'dbg-lod' as DisplayMode,
+  dbgMeshoptimizerLodLevel: 0,
 };

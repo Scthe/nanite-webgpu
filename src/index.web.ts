@@ -10,6 +10,8 @@ import { loadScene } from './scene/index.ts';
 
 //@ts-ignore it works OK
 import drawMeshShader from './passes/drawMeshPass.wgsl';
+//@ts-ignore it works OK
+import dbgMeshoptimizerShader from './passes/dbgMeshoptimizerPass.wgsl';
 
 // fix some warnings if VSCode is in deno mode
 declare global {
@@ -56,6 +58,7 @@ const SCENE_FILE = 'bunny';
   const profiler = new GpuProfiler(device);
   injectShaderTexts({
     drawMeshShader,
+    dbgMeshoptimizerShader,
   });
   const renderer = new Renderer(
     device,
@@ -64,7 +67,7 @@ const SCENE_FILE = 'bunny';
   );
   canvasSize.addListener(renderer.onCanvasResize);
 
-  initializeGUI(profiler);
+  initializeGUI(profiler, scene);
   const [fpsOnFrameStart, fpsOnFrameEnd] = initFPSCounter();
   let lastFrameMS = Date.now();
   let done = false;
@@ -155,7 +158,7 @@ async function loadSceneFile(device: GPUDevice, sceneName: SceneFile) {
     throw `Could not download mesh file '${scene.file}'`;
   }
   const fileStr = await objFileResp.text();
-  return loadScene(device, fileStr, scene.scale);
+  return loadScene(device, sceneName, fileStr, scene.scale);
 }
 
 function showErrorMessage(msg?: string) {

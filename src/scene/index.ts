@@ -1,5 +1,6 @@
-import { CO_PER_VERTEX, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { CO_PER_VERTEX, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
+import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import { copyToTypedArray, printBoundingBox } from '../utils/index.ts';
 import {
   createGPU_VertexBuffer,
@@ -9,20 +10,32 @@ import {
 import { loadObjFile } from './objLoader.ts';
 import { Mesh, MeshletRenderPckg, Scene } from './types.ts';
 
+const getTriangleCount = (indices: Uint32Array | number) =>
+  typeof indices === 'number'
+    ? indices / VERTS_IN_TRIANGLE
+    : indices.length / VERTS_IN_TRIANGLE;
+const getVertexCount = (verts: Float32Array | number) =>
+  typeof verts === 'number'
+    ? verts / CO_PER_VERTEX
+    : verts.length / CO_PER_VERTEX;
+
 const getTriangleAndVertCounts = (
   vertices: Float32Array,
   indices: Uint32Array
 ): Pick<Mesh, 'triangleCount' | 'vertexCount'> => ({
-  triangleCount: indices.length / 3,
-  vertexCount: vertices.length / CO_PER_VERTEX,
+  vertexCount: getVertexCount(vertices),
+  triangleCount: getTriangleCount(indices),
 });
 
 export async function loadScene(
   device: GPUDevice,
+  sceneName: SceneFile,
   objText: string,
   scale: number
 ): Promise<Scene> {
   const [originalVertices, originalIndices] = await loadObjFile(objText, scale);
+  // prettier-ignore
+  console.log(`Scene '${sceneName}': ${getVertexCount(originalVertices)} vertices, ${getTriangleCount(originalIndices)} triangles`);
   printBoundingBox(originalVertices);
 
   const originalMesh = createOriginalMesh(
@@ -36,8 +49,14 @@ export async function loadScene(
     originalVertices,
     originalIndices
   );
+  const meshoptimizerLODs = await createMeshLODs(
+    device,
+    originalMesh,
+    originalVertices,
+    originalIndices
+  );
 
-  return { mesh: originalMesh, meshlets: meshletsObj };
+  return { mesh: originalMesh, meshlets: meshletsObj, meshoptimizerLODs };
 }
 
 function createOriginalMesh(
@@ -52,6 +71,53 @@ function createOriginalMesh(
     vertexBuffer,
     ...getTriangleAndVertCounts(vertices, indices),
   };
+}
+
+async function createMeshLODs(
+  device: GPUDevice,
+  originalMesh: Mesh,
+  vertices: Float32Array,
+  originalIndices: Uint32Array
+): Promise<Mesh[]> {
+  const MAX_LODS = 10;
+  const originalTriangleCount = getTriangleCount(originalIndices);
+  const finalTargetTriangleCount = originalTriangleCount / 10;
+  let triangleCount = originalTriangleCount;
+  const meshLODs = [originalMesh];
+
+  while (
+    triangleCount > finalTargetTriangleCount &&
+    meshLODs.length < MAX_LODS
+  ) {
+    const level = meshLODs.length;
+
+    // TODO use last indices instead of original mesh
+    const targetIndexCount = (triangleCount * VERTS_IN_TRIANGLE) / 2;
+    const simplifiedMesh = await simplifyMesh(vertices, originalIndices, {
+      targetIndexCount,
+      targetError: 0.05,
+    });
+    const newTriangleCount = getTriangleCount(simplifiedMesh.indexBuffer);
+    if (newTriangleCount === originalTriangleCount) break; // cannot be simplified
+    console.log(
+      `LOD [${level}] (${triangleCount}->${newTriangleCount})`,
+      simplifiedMesh
+    );
+    triangleCount = newTriangleCount;
+
+    const indexBuffer = createGPU_IndexBuffer(
+      device,
+      `lod-test-index-buffer-${level}`,
+      simplifiedMesh.indexBuffer
+    );
+    meshLODs.push({
+      vertexBuffer: originalMesh.vertexBuffer,
+      indexBuffer,
+      ...getTriangleAndVertCounts(vertices, simplifiedMesh.indexBuffer),
+    });
+  }
+
+  return meshLODs;
 }
 
 async function createMeshletsMesh(

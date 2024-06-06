@@ -7,18 +7,21 @@ import {
   getModelViewProjectionMatrix,
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
-import { CAMERA_CFG, DEPTH_FORMAT } from './constants.ts';
+import { CAMERA_CFG, CONFIG, DEPTH_FORMAT } from './constants.ts';
 import { DrawMeshPass } from './passes/drawMeshPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
+import { DbgMeshoptimizerPass } from './passes/dbgMeshoptimizerPass.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
+  dbgMeshoptimizerShader: string;
 }
 
 /** Web and Deno handle files differently. A bit awkward but good enough. */
 export function injectShaderTexts(texts: ShadersTexts) {
   DrawMeshPass.SHADER_CODE = texts.drawMeshShader;
+  DbgMeshoptimizerPass.SHADER_CODE = texts.dbgMeshoptimizerShader;
 }
 
 export class Renderer {
@@ -29,6 +32,7 @@ export class Renderer {
 
   // passes
   private readonly drawMeshPass: DrawMeshPass;
+  private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
 
   constructor(
     private readonly device: GPUDevice,
@@ -38,6 +42,11 @@ export class Renderer {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
     this.drawMeshPass = new DrawMeshPass(
+      device,
+      preferredCanvasFormat,
+      this.renderUniformBuffer
+    );
+    this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
       preferredCanvasFormat,
       this.renderUniformBuffer
@@ -83,7 +92,12 @@ export class Renderer {
     };
 
     this.renderUniformBuffer.update(ctx);
-    this.drawMeshPass.draw(ctx, targetTexture, 'load');
+
+    if (CONFIG.displayMode === 'dbg-lod') {
+      this.dbgMeshoptimizerPass.draw(ctx, targetTexture, 'load');
+    } else {
+      this.drawMeshPass.draw(ctx, targetTexture, 'load');
+    }
   }
 
   private createDepthDexture = (viewportSize: Dimensions) =>
