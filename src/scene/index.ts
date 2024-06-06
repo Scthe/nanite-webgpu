@@ -1,5 +1,8 @@
 import { CO_PER_VERTEX, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
-import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
+import {
+  createMeshlets,
+  meshletIndicesWithOriginalVertexBuffer,
+} from '../meshPreprocessing/createMeshlets.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import { printBoundingBox } from '../utils/index.ts';
 import {
@@ -45,6 +48,7 @@ export async function loadScene(
 
   const meshletsObj = await createMeshletsMesh(
     device,
+    originalMesh,
     originalVertices,
     originalIndices
   );
@@ -121,45 +125,14 @@ async function createMeshLODs(
 
 async function createMeshletsMesh(
   device: GPUDevice,
+  originalMesh: Mesh,
   vertices: Float32Array,
   indices: Uint32Array
 ): Promise<MeshletRenderPckg> {
   const meshlets = await createMeshlets(vertices, indices, {});
 
-  const meshletVertices: number[] = [];
-  const meshletIndices: number[] = [];
-  for (let i = 0; i < meshlets.meshlets.length; i++) {
-    const meshlet = meshlets.meshlets[i];
-    const prevVertsCount = meshletVertices.length / CO_PER_VERTEX;
+  const meshletIndices = meshletIndicesWithOriginalVertexBuffer(meshlets);
 
-    for (let v = 0; v < meshlet.vertexCount; v++) {
-      const o =
-        CO_PER_VERTEX * meshlets.meshletVertices[meshlet.vertexOffset + v];
-      meshletVertices.push(vertices[o]);
-      meshletVertices.push(vertices[o + 1]);
-      meshletVertices.push(vertices[o + 2]);
-    }
-    for (let t = 0; t < meshlet.triangleCount * VERTS_IN_TRIANGLE; t++) {
-      const o = meshlet.triangleOffset + t;
-      const idxInsideMeshlet = meshlets.meshletTriangles[o]; // 0-63
-      meshletIndices.push(prevVertsCount + idxInsideMeshlet);
-    }
-    /* Reuse old vertex buffer (draft)
-    for (let t = 0; t < meshlet.triangleCount * VERTS_IN_TRIANGLE; t++) {
-      const o = meshlet.triangleOffset + t;
-      const idxInsideMeshlet = meshlets.meshletTriangles[o]; // 0-63
-      const globalVertexIdx = prevVertsCount + idxInsideMeshlet;
-      const vertIdx =
-        meshlets.meshletVertices[meshlet.vertexOffset + globalVertexIdx];
-      meshlet_indices.push(vertIdx);
-    }*/
-  }
-
-  const meshletVertexBuffer = createGPU_VertexBuffer(
-    device,
-    'meshlets-vertices',
-    meshletVertices
-  );
   const meshletIndexBuffer = createGPU_IndexBuffer(
     device,
     'meshlets-indices',
@@ -168,7 +141,7 @@ async function createMeshletsMesh(
 
   return {
     ...meshlets,
-    vertexBuffer: meshletVertexBuffer,
+    vertexBuffer: originalMesh.vertexBuffer, // reuse <3
     indexBuffer: meshletIndexBuffer,
   };
 }

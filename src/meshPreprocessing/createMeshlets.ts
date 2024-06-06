@@ -1,3 +1,4 @@
+import { VERTS_IN_TRIANGLE } from '../constants.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 import {
   getMeshOptimizerModule,
@@ -149,4 +150,24 @@ function buildMeshletsBound(
     opts.maxVertices!,
     opts.maxTriangles!,
   ]);
+}
+
+/** Rewrite meshlet indices to point to the original vertex buffer */
+export function meshletIndicesWithOriginalVertexBuffer(
+  meshlets: meshopt_Meshlets
+) {
+  const meshletIndices: number[] = [];
+  for (let i = 0; i < meshlets.meshlets.length; i++) {
+    const meshlet = meshlets.meshlets[i];
+
+    for (let j = 0; j < meshlet.triangleCount * VERTS_IN_TRIANGLE; j++) {
+      const o = meshlet.triangleOffset + j;
+      const vertexIdxInsideMeshlet = meshlets.meshletTriangles[o]; // 0-63
+      const vertIdx =
+        meshlets.meshletVertices[meshlet.vertexOffset + vertexIdxInsideMeshlet];
+      meshletIndices.push(vertIdx);
+    }
+  }
+
+  return meshletIndices;
 }
