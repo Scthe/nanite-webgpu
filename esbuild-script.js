@@ -43,6 +43,9 @@ async function startDev() {
   defineProductionFlag(false);
 
   console.log(`Using entry points:`, config.entryPoints);
+  config.logOverride = {
+    'empty-import-meta': 'silent', // meshoptimizer.js
+  };
   const ctx = await esbuild.context(config);
   await ctx.watch();
   console.log(`Done. Watching for code changes...`);

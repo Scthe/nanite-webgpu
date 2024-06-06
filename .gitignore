@@ -28,3 +28,6 @@ output.png
 makefile
 scenes
 *.obj
+static/metis
+static/*.wasm
+src/lib/meshoptimizer.js
