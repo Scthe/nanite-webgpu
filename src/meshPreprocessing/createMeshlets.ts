@@ -3,7 +3,7 @@ import {
   getMeshOptimizerModule,
   getMeshData,
   MeshData,
-} from './meshPreprocessUtils.ts';
+} from './meshoptimizerUtils.ts';
 
 export interface meshopt_Meshlet {
   /* offsets within meshletVertices */

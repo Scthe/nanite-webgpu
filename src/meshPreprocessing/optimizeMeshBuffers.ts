@@ -3,7 +3,7 @@ import {
   MeshData,
   getMeshData,
   getMeshOptimizerModule,
-} from './meshPreprocessUtils.ts';
+} from './meshoptimizerUtils.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 
 /**

@@ -1,10 +1,4 @@
-import { meshopt_Meshlets } from './meshPreprocessing/createMeshlets.ts';
-
-export type MeshletRenderPckg = meshopt_Meshlets & {
-  // GPU buffers
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
-};
+import { meshopt_Meshlets } from '../meshPreprocessing/createMeshlets.ts';
 
 export interface Scene {
   mesh: Mesh;
@@ -19,3 +13,9 @@ export interface Mesh {
   vertexBuffer: GPUBuffer;
   indexBuffer: GPUBuffer;
 }
+
+export type MeshletRenderPckg = meshopt_Meshlets & {
+  // GPU buffers
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+};

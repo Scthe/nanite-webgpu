@@ -1,4 +1,5 @@
 import { Mat4 } from 'wgpu-matrix';
+import { ensureTypedArray } from './index.ts';
 
 export type TypedArray = Float32Array | Uint8Array | Uint32Array;
 
@@ -57,6 +58,34 @@ export function createGPUBuffer<T extends TypedArray>(
   });*/
   device.queue.writeBuffer(gpuBuffer, 0, data);
   return gpuBuffer;
+}
+
+export function createGPU_VertexBuffer(
+  device: GPUDevice,
+  label: string,
+  data: Float32Array | number[]
+) {
+  const dataTypedArr = ensureTypedArray(Float32Array, data);
+  return createGPUBuffer(
+    device,
+    label,
+    GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    dataTypedArr
+  );
+}
+
+export function createGPU_IndexBuffer(
+  device: GPUDevice,
+  label: string,
+  data: Uint32Array | number[]
+) {
+  const dataTypedArr = ensureTypedArray(Uint32Array, data);
+  return createGPUBuffer(
+    device,
+    label,
+    GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    dataTypedArr
+  );
 }
 
 export function writeMatrixToGPUBuffer(

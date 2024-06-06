@@ -5,11 +5,11 @@ import { initFPSCounter } from './sys_web/fpsStats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
+import { SCENES, SceneFile } from './constants.ts';
+import { loadScene } from './scene/index.ts';
 
 //@ts-ignore it works OK
 import drawMeshShader from './passes/drawMeshPass.wgsl';
-import { loadObjFile } from './loaders/objLoader.ts';
-import { SCENES, SceneFile } from './constants.ts';
 
 // fix some warnings if VSCode is in deno mode
 declare global {
@@ -50,7 +50,7 @@ const SCENE_FILE = 'bunny';
   const getInputState = createInputHandler(window, canvas);
 
   // file load
-  const scene = await loadScene(device, SCENE_FILE);
+  const scene = await loadSceneFile(device, SCENE_FILE);
 
   // renderer setup
   const profiler = new GpuProfiler(device);
@@ -148,14 +148,14 @@ function getCanvasContext(
   return [canvas, context];
 }
 
-async function loadScene(device: GPUDevice, sceneName: SceneFile) {
+async function loadSceneFile(device: GPUDevice, sceneName: SceneFile) {
   const scene = SCENES[sceneName];
   const objFileResp = await fetch(scene.file);
   if (!objFileResp.ok) {
     throw `Could not download mesh file '${scene.file}'`;
   }
   const fileStr = await objFileResp.text();
-  return loadObjFile(device, fileStr, scene.scale);
+  return loadScene(device, fileStr, scene.scale);
 }
 
 function showErrorMessage(msg?: string) {

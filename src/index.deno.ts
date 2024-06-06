@@ -3,7 +3,7 @@ import * as png from 'png';
 
 import { Dimensions, createGpuDevice } from './utils/index.ts';
 import { Renderer, ShadersTexts, injectShaderTexts } from './renderer.ts';
-import { loadObjFile } from './loaders/objLoader.ts';
+import { loadObjFile } from './scene/objLoader.ts';
 
 // https://deno.land/std@0.209.0/webgpu/mod.ts
 // createTextureWithData: https://deno.land/std@0.209.0/webgpu/texture_with_data.ts?s=createTextureWithData

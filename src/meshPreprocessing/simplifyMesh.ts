@@ -3,7 +3,7 @@ import {
   getMeshOptimizerModule,
   getMeshData,
   MeshData,
-} from './meshPreprocessUtils.ts';
+} from './meshoptimizerUtils.ts';
 
 /**
  * Do not move vertices that are located on the topological border
