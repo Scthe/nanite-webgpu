@@ -55,7 +55,11 @@ export async function simplifyMesh(
   };
 }
 
-/** https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L201 */
+/**
+ * Reduces the number of triangles in the mesh, attempting to preserve mesh appearance as much as possible.
+ *
+ * https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L201
+ */
 function simplify(
   module: WebAssembly.Module,
   vertices: Float32Array,

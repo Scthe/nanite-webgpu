@@ -1,7 +1,7 @@
 import { Mat4 } from 'wgpu-matrix';
 import { GpuProfiler } from '../gpuProfiler.ts';
 import { Dimensions } from '../utils/index.ts';
-import { Mesh } from '../mesh.ts';
+import { Scene } from '../scene.ts';
 
 export interface PassCtx {
   device: GPUDevice;
@@ -11,6 +11,6 @@ export interface PassCtx {
   projMatrix: Mat4;
   profiler: GpuProfiler | undefined;
   viewport: Dimensions;
-  mesh: Mesh;
+  scene: Scene;
   depthTexture: GPUTexture;
 }

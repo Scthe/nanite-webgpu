@@ -13,6 +13,7 @@ struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) projPosition: vec4f,
   @location(1) wsPosition: vec4f,
+  @location(2) @interpolate(flat) instanceIndex: u32,
 };
 
 fn checkIsCulled(projectedPosition: vec4f) -> bool {
@@ -31,6 +32,7 @@ fn checkIsCulled(projectedPosition: vec4f) -> bool {
 fn main_vs(
   @location(0) inWorldPos : vec3f,
   @builtin(vertex_index) inVertexIndex: u32,
+  @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
   var result: VertexOutput;
 
@@ -40,12 +42,24 @@ fn main_vs(
   result.position = vec4<f32>(projectedPosition.xyz, 1.0);
   result.projPosition = result.position;
   result.wsPosition = worldPos;
+  result.instanceIndex = inInstanceIndex;
 
   return result;
 }
 
 const AMBIENT_LIGHT = 0.1;
 const LIGHT_DIR = vec3(5., 5., 0.);
+
+const COLOR_COUNT = 7u;
+const COLORS = array<vec3f, COLOR_COUNT>(
+    vec3f(1., 1., 1.),
+    vec3f(1., 0., 0.),
+    vec3f(0., 1., 0.),
+    vec3f(0., 0., 1.),
+    vec3f(1., 1., 0.),
+    vec3f(0., 1., 1.),
+    vec3f(1., 0., 1.),
+);
 
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
@@ -59,7 +73,10 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let normal = normalize(cross(posWsDy.xyz, posWsDx.xyz));
   let lightDir = normalize(LIGHT_DIR);
   let NdotL = max(0.0, dot(normal.xyz, lightDir));
+  
+  var color = COLORS[fragIn.instanceIndex % COLOR_COUNT];
 
   let c = mix(AMBIENT_LIGHT, 1.0, NdotL);
-  return vec4(c, c, c, 1.0);
+  color = color * c;
+  return vec4(color.xyz, 1.0);
 }

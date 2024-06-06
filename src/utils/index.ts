@@ -71,3 +71,7 @@ export function printBoundingBox(
   console.log(`Bounding box min:`, p(minCo));
   console.log(`Bounding box max:`, p(maxCo));
 }
+
+export function printMinMax(name: string, arr: TypedArray | number[]) {
+  console.log(name, `min(${Math.min(...arr)})`, `max(${Math.max(...arr)})`);
+}

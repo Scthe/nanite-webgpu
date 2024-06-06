@@ -63,7 +63,10 @@ export class Renderer {
   };
 
   cmdRender(
-    _ctx: Pick<PassCtx, 'device' | 'cmdBuf' | 'profiler' | 'viewport' | 'mesh'>,
+    _ctx: Pick<
+      PassCtx,
+      'device' | 'cmdBuf' | 'profiler' | 'viewport' | 'scene'
+    >,
     targetTexture: GPUTexture
   ) {
     const viewMatrix = this.cameraCtrl.viewMatrix;

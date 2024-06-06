@@ -76,4 +76,31 @@ declare namespace meshoptimizer {
     vertex_count: SizeT, // size_t vertex_count,
     vertex_positions_stride: SizeT // size_t vertex_positions_stride
   ): number;
+
+  /**
+   * Splits the mesh into a set of meshlets where each meshlet has a micro index buffer indexing into meshlet vertices that refer to the original vertex buffer
+   *
+   * https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/meshoptimizer.h#L493
+   * https://github.com/zeux/meshoptimizer/blob/5bc5ed0b6f64d20f29342da9acaa27648fb45500/src/clusterizer.cpp#L535
+   */
+  export function meshopt_buildMeshlets(
+    meshlets: U32Ptr, // meshopt_Meshlet* meshlets,
+    meshlet_vertices: U32Ptr, // unsigned int* meshlet_vertices,
+    meshlet_triangles: U8Ptr, // unsigned char* meshlet_triangles,
+    indices: U32Ptr, // const unsigned int* indices,
+    index_count: SizeT, // size_t index_count,
+    vertices: F32Ptr, // const float* vertex_positions,
+    vertex_count: SizeT, // size_t vertex_count,
+    vertex_positions_stride: SizeT, // size_t vertex_positions_stride
+    max_vertices: SizeT, // size_t max_vertices,
+    max_triangles: SizeT, // size_t max_triangles,
+    cone_weight: number // float cone_weight
+  ): SizeT;
+
+  /** https://github.com/zeux/meshoptimizer/blob/5bc5ed0b6f64d20f29342da9acaa27648fb45500/src/clusterizer.cpp#L513 */
+  export function meshopt_buildMeshletsBound(
+    index_count: SizeT, // size_t index_count,
+    max_vertices: SizeT, // size_t max_vertices,
+    max_triangles: SizeT // size_t max_triangles,
+  ): SizeT;
 }

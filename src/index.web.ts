@@ -9,6 +9,7 @@ import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
 //@ts-ignore it works OK
 import drawMeshShader from './passes/drawMeshPass.wgsl';
 import { loadObjFile } from './loaders/objLoader.ts';
+import { SCENES, SceneFile } from './constants.ts';
 
 // fix some warnings if VSCode is in deno mode
 declare global {
@@ -22,9 +23,9 @@ declare global {
   const document: any;
 }
 
-const SCENE_FILE = 'bunny.obj';
-// const SCENE_FILE = 'cube.obj';
-// const SCENE_FILE = 'plane.obj';
+const SCENE_FILE = 'bunny';
+// const SCENE_FILE = 'cube';
+// const SCENE_FILE = 'plane';
 
 (async function () {
   // GPUDevice
@@ -49,7 +50,7 @@ const SCENE_FILE = 'bunny.obj';
   const getInputState = createInputHandler(window, canvas);
 
   // file load
-  const mesh = await loadScene(device, SCENE_FILE);
+  const scene = await loadScene(device, SCENE_FILE);
 
   // renderer setup
   const profiler = new GpuProfiler(device);
@@ -99,7 +100,7 @@ const SCENE_FILE = 'bunny.obj';
         cmdBuf,
         device,
         profiler,
-        mesh,
+        scene,
         viewport: canvasSize.getViewportSize(),
       },
       canvasContext.getCurrentTexture()
@@ -147,13 +148,14 @@ function getCanvasContext(
   return [canvas, context];
 }
 
-async function loadScene(device: GPUDevice, path: string) {
-  const objFileResp = await fetch(path);
+async function loadScene(device: GPUDevice, sceneName: SceneFile) {
+  const scene = SCENES[sceneName];
+  const objFileResp = await fetch(scene.file);
   if (!objFileResp.ok) {
-    throw `Could not download mesh file '${path}'`;
+    throw `Could not download mesh file '${scene.file}'`;
   }
   const fileStr = await objFileResp.text();
-  return loadObjFile(device, fileStr);
+  return loadObjFile(device, fileStr, scene.scale);
 }
 
 function showErrorMessage(msg?: string) {

@@ -22,11 +22,19 @@ export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
 
 /** 4 for Vec4, 3 for Vec3. ATM using Vec3  */
 export const CO_PER_VERTEX: number = 3;
+/** Give a name to a random magic value '3'  */
+export const VERTS_IN_TRIANGLE: number = 3;
+
+export const SCENES = {
+  bunny: { file: 'bunny.obj', scale: 8 },
+  cube: { file: 'cube.obj', scale: 1 },
+  plane: { file: 'plane.obj', scale: 1 },
+};
+export type SceneFile = keyof typeof SCENES;
 
 export const CONFIG = {
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   clearColor: [0, 0, 0.2],
   rotationSpeed: 1,
   movementSpeed: 2,
-  meshScale: 8,
 };

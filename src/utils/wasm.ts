@@ -1,5 +1,13 @@
 // https://stackoverflow.com/questions/41875728/pass-a-javascript-array-as-argument-to-a-webassembly-function
 
+import {
+  WasmHeap,
+  WasmArray,
+  WasmPtrInout,
+  WasmBasicType,
+  WasmBasicTypeName,
+} from './wasm.ts';
+
 export const wasmPtr = (arr: WasmArray, inout: WasmPtrInout = 'in') => ({
   arr,
   inout,
@@ -18,6 +26,7 @@ function copyToWasmHeap<T extends WasmArray>(
 function getMemoryHeapForJsArray(arr: WasmArray): WasmHeap | undefined {
   if (arr instanceof Float32Array) return 'HEAPF32';
   if (arr instanceof Uint32Array) return 'HEAPU32';
+  if (arr instanceof Uint8Array) return 'HEAPU8';
   return undefined;
 }
 

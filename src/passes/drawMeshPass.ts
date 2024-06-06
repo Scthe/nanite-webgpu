@@ -1,8 +1,6 @@
-import { BYTES_VEC3, BYTES_VEC4, CONFIG, DEPTH_FORMAT } from '../constants.ts';
+import { BYTES_VEC3, CONFIG, DEPTH_FORMAT } from '../constants.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
-
-// TODO zbuffer
 
 const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   {
@@ -70,7 +68,7 @@ export class DrawMeshPass {
       },
       depthStencil: {
         depthWriteEnabled: true,
-        depthCompare: 'less',
+        depthCompare: 'less-equal',
         format: DEPTH_FORMAT,
       },
     });
@@ -90,7 +88,7 @@ export class DrawMeshPass {
   }
 
   draw(ctx: PassCtx, targetTexture: GPUTexture, loadOp: GPULoadOp) {
-    const { cmdBuf, profiler, mesh, depthTexture } = ctx;
+    const { cmdBuf, profiler, depthTexture, scene } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
@@ -120,11 +118,26 @@ export class DrawMeshPass {
     // set render pass data
     renderPass.setPipeline(this.renderPipeline);
     renderPass.setBindGroup(0, this.uniformsBindings);
+    /*
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
     // draw
     const vertexCount = mesh.triangleCount * 3;
     renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
+    */
+
+    // meshlets test
+    const ms = scene.meshlets;
+    renderPass.setVertexBuffer(0, ms.vertexBuffer);
+    renderPass.setIndexBuffer(ms.indexBuffer, 'uint32');
+    let nextIdx = 0;
+    ms.meshlets.forEach((m, firstInstance) => {
+      const vertexCount = m.triangleCount * 3;
+      const firstIndex = nextIdx;
+      renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
+      nextIdx += vertexCount;
+    });
+
     // fin
     renderPass.end();
   }
