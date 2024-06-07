@@ -58,8 +58,14 @@ export async function loadScene(
   );
 
   const meshoptimizerMeshletLODsAsync = meshoptimizerLODs.map(
-    ([lodMesh, indices]) => {
-      return createMeshletsMesh(device, lodMesh, originalVertices, indices);
+    ([lodMesh, indices], level) => {
+      return createMeshletsMesh(
+        device,
+        lodMesh,
+        originalVertices,
+        indices,
+        `-lod${level}`
+      );
     }
   );
   const meshoptimizerMeshletLODs = await Promise.all(
@@ -79,8 +85,16 @@ function createOriginalMesh(
   vertices: Float32Array,
   indices: Uint32Array
 ): Mesh {
-  const vertexBuffer = createGPU_VertexBuffer(device, 'vertices', vertices);
-  const indexBuffer = createGPU_IndexBuffer(device, 'indices', indices);
+  const vertexBuffer = createGPU_VertexBuffer(
+    device,
+    'original-vertices',
+    vertices
+  );
+  const indexBuffer = createGPU_IndexBuffer(
+    device,
+    'original-indices',
+    indices
+  );
   return {
     indexBuffer,
     vertexBuffer,
@@ -127,7 +141,7 @@ async function createMeshLODs(
 
     const indexBuffer = createGPU_IndexBuffer(
       device,
-      `lod-test-index-buffer-${level}`,
+      `dbg-lod-test-index-buffer-${level}`,
       simplifiedMesh.indexBuffer
     );
     const meshLod = {
@@ -145,13 +159,14 @@ async function createMeshletsMesh(
   device: GPUDevice,
   originalMesh: Mesh,
   vertices: Float32Array,
-  indices: Uint32Array
+  indices: Uint32Array,
+  labelSuffix: string = ''
 ): Promise<MeshletRenderPckg> {
   const meshlets = await createMeshlets(vertices, indices, {});
 
   const meshletIndexBuffer = createGPU_IndexBuffer(
     device,
-    'meshlets-indices',
+    `dbg-meshlets-indices${labelSuffix}`,
     meshlets.meshletTriangles
   );
 

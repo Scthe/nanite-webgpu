@@ -25,7 +25,7 @@ export class RenderUniformsBuffer {
 
   constructor(device: GPUDevice) {
     this.gpuBuffer = device.createBuffer({
-      label: 'GlobalUniformBuffer',
+      label: 'render-uniforms-buffer',
       size: RenderUniformsBuffer.BUFFER_SIZE,
       usage: GPU_BUFFER_USAGE_UNIFORM,
     });

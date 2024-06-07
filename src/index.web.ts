@@ -48,7 +48,7 @@ const SCENE_FILE = 'bunny';
     device,
     PREFERRED_CANVAS_FORMAT
   );
-  const canvasSize = initCanvasResizeSystem(canvas);
+  const canvasResizeSystem = initCanvasResizeSystem(canvas, canvasContext);
 
   // input
   const getInputState = createInputHandler(window, canvas);
@@ -65,10 +65,10 @@ const SCENE_FILE = 'bunny';
   });
   const renderer = new Renderer(
     device,
-    canvasSize.getViewportSize(),
+    canvasResizeSystem.getViewportSize(),
     PREFERRED_CANVAS_FORMAT
   );
-  canvasSize.addListener(renderer.onCanvasResize);
+  canvasResizeSystem.addListener(renderer.onCanvasResize);
 
   initializeGUI(profiler, scene);
   const [fpsOnFrameStart, fpsOnFrameEnd] = initFPSCounter();
@@ -92,7 +92,7 @@ const SCENE_FILE = 'bunny';
     const deltaTime = (now - lastFrameMS) / 1000;
     lastFrameMS = now;
 
-    canvasSize.revalidateCanvasSize();
+    canvasResizeSystem.revalidateCanvasSize();
 
     const inputState = getInputState();
     renderer.updateCamera(deltaTime, inputState);
@@ -101,16 +101,14 @@ const SCENE_FILE = 'bunny';
     const cmdBuf = device.createCommandEncoder({
       label: 'main-frame-cmd-buffer',
     });
-    renderer.cmdRender(
-      {
-        cmdBuf,
-        device,
-        profiler,
-        scene,
-        viewport: canvasSize.getViewportSize(),
-      },
-      canvasContext.getCurrentTexture()
-    );
+    renderer.cmdRender({
+      cmdBuf,
+      device,
+      profiler,
+      scene,
+      viewport: canvasResizeSystem.getViewportSize(),
+      screenTexture: canvasResizeSystem.getScreenTextureView(),
+    });
 
     // submit commands
     profiler.endFrame(cmdBuf);

@@ -12,5 +12,6 @@ export interface PassCtx {
   profiler: GpuProfiler | undefined;
   viewport: Dimensions;
   scene: Scene;
-  depthTexture: GPUTexture;
+  depthTexture: GPUTextureView;
+  screenTexture: GPUTextureView;
 }

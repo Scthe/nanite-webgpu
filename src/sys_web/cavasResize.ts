@@ -2,19 +2,28 @@ import { Dimensions } from '../utils/index.ts';
 
 export type ResizeHandler = (viewportSize: Dimensions) => void;
 
-export function initCanvasResizeSystem(canvas: HTMLCanvasElement) {
+export function initCanvasResizeSystem(
+  canvas: HTMLCanvasElement,
+  canvasContext: CanvasRenderingContext2D
+) {
   const sizeNow = getViewportSize();
   canvas.width = sizeNow.width;
   canvas.height = sizeNow.height;
   console.log('Init canvas size:', sizeNow);
 
   const listeners: ResizeHandler[] = [];
+  const addListener = (f: ResizeHandler) => listeners.push(f);
 
-  return { revalidateCanvasSize, addListener, getViewportSize };
+  // Has nothing to do with resize actually.
+  const getScreenTextureView = (): GPUTextureView =>
+    canvasContext.getCurrentTexture().createView();
 
-  function addListener(f: ResizeHandler) {
-    listeners.push(f);
-  }
+  return {
+    revalidateCanvasSize,
+    addListener,
+    getViewportSize,
+    getScreenTextureView,
+  };
 
   function revalidateCanvasSize() {
     const sizeNow = getViewportSize();

@@ -31,6 +31,7 @@ export class DbgMeshoptimizerMeshletsPass {
       outTextureFormat
     );
     this.uniformsBindings = assignResourcesToBindings(
+      DbgMeshoptimizerMeshletsPass,
       device,
       this.renderPipeline,
       [uniforms.createBindingDesc(0)]
@@ -71,14 +72,14 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
     });
   }
 
-  draw(ctx: PassCtx, targetTexture: GPUTexture, loadOp: GPULoadOp) {
-    const { cmdBuf, profiler, depthTexture, scene } = ctx;
+  draw(ctx: PassCtx, loadOp: GPULoadOp) {
+    const { cmdBuf, profiler, depthTexture, screenTexture, scene } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DbgMeshoptimizerMeshletsPass.NAME,
       colorAttachments: [
-        useColorAttachment(targetTexture, loadOp, CONFIG.clearColor),
+        useColorAttachment(screenTexture, loadOp, CONFIG.clearColor),
       ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(

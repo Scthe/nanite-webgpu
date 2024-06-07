@@ -32,7 +32,8 @@ export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
   private readonly cameraCtrl: Camera;
   private projectionMat: Mat4;
-  private depthTexture: GPUTexture;
+  private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
+  private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
 
   // passes
   private readonly drawMeshPass: DrawMeshPass;
@@ -65,7 +66,7 @@ export class Renderer {
     this.cameraCtrl = new Camera(CAMERA_CFG);
     this.projectionMat = createCameraProjectionMat(viewportSize);
 
-    this.depthTexture = this.createDepthDexture(viewportSize);
+    this.recreateDepthDexture(viewportSize);
   }
 
   updateCamera(deltaTime: number, input: Input): Mat4 {
@@ -78,15 +79,14 @@ export class Renderer {
     if (this.depthTexture) {
       this.depthTexture.destroy();
     }
-    this.depthTexture = this.createDepthDexture(viewportSize);
+    this.recreateDepthDexture(viewportSize);
   };
 
   cmdRender(
     _ctx: Pick<
       PassCtx,
-      'device' | 'cmdBuf' | 'profiler' | 'viewport' | 'scene'
-    >,
-    targetTexture: GPUTexture
+      'device' | 'cmdBuf' | 'profiler' | 'viewport' | 'scene' | 'screenTexture'
+    >
   ) {
     const viewMatrix = this.cameraCtrl.viewMatrix;
     const mvpMatrix = getModelViewProjectionMatrix(
@@ -98,24 +98,31 @@ export class Renderer {
       viewMatrix,
       mvpMatrix,
       projMatrix: this.projectionMat,
-      depthTexture: this.depthTexture,
+      depthTexture: this.depthTextureView,
     };
 
     this.renderUniformBuffer.update(ctx);
 
     if (CONFIG.displayMode === 'dbg-lod') {
-      this.dbgMeshoptimizerPass.draw(ctx, targetTexture, 'load');
+      this.dbgMeshoptimizerPass.draw(ctx, 'load');
     } else if (CONFIG.displayMode === 'dbg-lod-meshlets') {
-      this.dbgMeshoptimizerMeshletsPass.draw(ctx, targetTexture, 'load');
+      this.dbgMeshoptimizerMeshletsPass.draw(ctx, 'load');
     } else {
-      this.drawMeshPass.draw(ctx, targetTexture, 'load');
+      this.drawMeshPass.draw(ctx, 'load');
     }
   }
 
-  private createDepthDexture = (viewportSize: Dimensions) =>
-    this.device.createTexture({
+  private recreateDepthDexture = (viewportSize: Dimensions) => {
+    if (this.depthTexture) {
+      this.depthTexture.destroy();
+    }
+
+    this.depthTexture = this.device.createTexture({
+      label: 'depth-texture',
       size: [viewportSize.width, viewportSize.height],
       format: DEPTH_FORMAT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
+    this.depthTextureView = this.depthTexture.createView();
+  };
 }
