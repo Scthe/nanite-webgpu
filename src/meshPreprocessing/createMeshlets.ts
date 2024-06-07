@@ -1,4 +1,5 @@
 import { VERTS_IN_TRIANGLE } from '../constants.ts';
+import { copyToTypedArray } from '../utils/index.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 import {
   getMeshOptimizerModule,
@@ -42,6 +43,12 @@ interface Opts {
   maxTriangles?: number;
   /** cone_weight should be set to 0 when cone culling is not used, and a value between 0 and 1 otherwise to balance between cluster size and cone culling efficiency*/
   coneWeight?: number;
+  /**
+   * DO NOT ASK, ALWAYS LEAVE THIS ON.
+   * THIS OPTION EXISTS ONLY TO INFORM YOU THAT SOMETHING SO IMPORTANT EXISTS.
+   * IT'S NOT MEANT TO BE TOGGLED.
+   */
+  rewriteIndicesToReferenceOriginalVertexBuffer?: boolean;
 }
 
 /**
@@ -64,7 +71,9 @@ export async function createMeshlets(
   opts.maxVertices = opts.maxVertices || 64;
   opts.maxTriangles = opts.maxTriangles || 124; // or 126
   opts.coneWeight = opts.coneWeight === undefined ? 0 : opts.coneWeight;
-  console.log('createMeshlets', opts);
+  opts.rewriteIndicesToReferenceOriginalVertexBuffer =
+    opts.rewriteIndicesToReferenceOriginalVertexBuffer !== false;
+  // console.log('createMeshlets', opts);
 
   const maxMeshlets = buildMeshletsBound(module, meshData, opts);
 
@@ -86,17 +95,31 @@ export async function createMeshlets(
   const lastVertexIdx = lastMeshlet.vertexOffset + lastMeshlet.vertexCount;
   const lastTriangleIdx =
     lastMeshlet.triangleOffset + ((lastMeshlet.triangleCount * 3 + 3) & ~3);
-  const meshletTrianglesU32 = new Uint32Array(lastTriangleIdx);
+
+  // indices: convert  U8->U32
+  let meshletTrianglesU32 = new Uint32Array(lastTriangleIdx);
   for (let i = 0; i < lastTriangleIdx; i++) {
     meshletTrianglesU32[i] = meshletTriangles[i];
   }
-  // meshlets.meshletTriangles.forEach((e, idx) => (result[idx] = e));
+
+  // indices: reuse original vertex buffer. ALWAYS ON PLEASE!
+  if (opts.rewriteIndicesToReferenceOriginalVertexBuffer) {
+    const rewriteIdxs = meshletIndicesWithOriginalVertexBuffer(
+      meshlets,
+      meshletVertices,
+      meshletTrianglesU32
+    );
+    meshletTrianglesU32 = copyToTypedArray(Uint32Array, rewriteIdxs);
+  } else {
+    console.warn(
+      "'rewriteIndicesToReferenceOriginalVertexBuffer' is OFF. You are stupid. I will not crash the app. I will enjoy watching you fail."
+    );
+  }
+
   return {
     meshlets,
-    // meshletVertices,
-    // meshletTriangles,
     meshletVertices: meshletVertices.slice(0, lastVertexIdx),
-    meshletTriangles: meshletTrianglesU32, // meshletTriangles.slice(0, lastTriangleIdx),
+    meshletTriangles: meshletTrianglesU32,
   };
 }
 
@@ -153,18 +176,20 @@ function buildMeshletsBound(
 }
 
 /** Rewrite meshlet indices to point to the original vertex buffer */
-export function meshletIndicesWithOriginalVertexBuffer(
-  meshlets: meshopt_Meshlets
+function meshletIndicesWithOriginalVertexBuffer(
+  meshlets: meshopt_Meshlet[],
+  meshletVertices: Uint32Array,
+  meshletTriangles: Uint32Array
 ) {
   const meshletIndices: number[] = [];
-  for (let i = 0; i < meshlets.meshlets.length; i++) {
-    const meshlet = meshlets.meshlets[i];
+  for (let i = 0; i < meshlets.length; i++) {
+    const meshlet = meshlets[i];
 
     for (let j = 0; j < meshlet.triangleCount * VERTS_IN_TRIANGLE; j++) {
       const o = meshlet.triangleOffset + j;
-      const vertexIdxInsideMeshlet = meshlets.meshletTriangles[o]; // 0-63
+      const vertexIdxInsideMeshlet = meshletTriangles[o]; // 0-63
       const vertIdx =
-        meshlets.meshletVertices[meshlet.vertexOffset + vertexIdxInsideMeshlet];
+        meshletVertices[meshlet.vertexOffset + vertexIdxInsideMeshlet];
       meshletIndices.push(vertIdx);
     }
   }

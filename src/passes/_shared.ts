@@ -11,7 +11,7 @@ export const assertHasShaderCode = (pass: PassClass) => {
 };
 
 export const PIPELINE_PRIMITIVE_TRIANGLE_LIST: GPUPrimitiveState = {
-  cullMode: 'none',
+  cullMode: 'none', // TODO culling?
   topology: 'triangle-list',
   stripIndexFormat: undefined,
 };

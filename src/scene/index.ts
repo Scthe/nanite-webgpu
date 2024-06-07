@@ -1,8 +1,5 @@
 import { CO_PER_VERTEX, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
-import {
-  createMeshlets,
-  meshletIndicesWithOriginalVertexBuffer,
-} from '../meshPreprocessing/createMeshlets.ts';
+import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import { printBoundingBox } from '../utils/index.ts';
 import {
@@ -152,12 +149,10 @@ async function createMeshletsMesh(
 ): Promise<MeshletRenderPckg> {
   const meshlets = await createMeshlets(vertices, indices, {});
 
-  const meshletIndices = meshletIndicesWithOriginalVertexBuffer(meshlets);
-
   const meshletIndexBuffer = createGPU_IndexBuffer(
     device,
     'meshlets-indices',
-    meshletIndices
+    meshlets.meshletTriangles
   );
 
   return {
