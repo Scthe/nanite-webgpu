@@ -28,6 +28,7 @@ output.png
 makefile
 scenes
 *.obj
-static/metis
 static/*.wasm
 src/lib/meshoptimizer.js
+src/lib/metis.js
+src/lib/metis2.js

@@ -2,13 +2,15 @@ import { Mat4, mat4 } from 'wgpu-matrix';
 import { CAMERA_CFG, CO_PER_VERTEX } from '../constants.ts';
 import { TypedArray } from './webgpu.ts';
 
+export * from './errors.ts';
+export * from './webgpu.ts';
+
 export interface Dimensions {
   width: number;
   height: number;
 }
 
-export * from './errors.ts';
-export * from './webgpu.ts';
+export type ValueOf<T> = T[keyof T];
 
 export const dgr2rad = (dgr: number) => (dgr * Math.PI) / 180;
 

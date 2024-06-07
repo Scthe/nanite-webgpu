@@ -47,14 +47,11 @@ function transformIntoWasmArg(
   );
 }
 
-export const meshoptCall = <
-  FnName extends keyof typeof meshoptimizer,
-  RetType extends ReturnType<(typeof meshoptimizer)[FnName]>
->(
+export const wasmCall = <RetType>(
   module: WebAssembly.Module,
   returnTypeName: WasmBasicTypeName,
-  fnName: FnName,
-  argsJS: Parameters<(typeof meshoptimizer)[FnName]>
+  fnName: string,
+  argsJS: WasmBasicType[]
 ): RetType => {
   const argsWasm = argsJS.map((arg) =>
     transformIntoWasmArg(module, fnName, arg)
@@ -84,4 +81,28 @@ export const meshoptCall = <
   });
 
   return result;
+};
+
+export const meshoptCall = <
+  FnName extends keyof typeof meshoptimizer,
+  RetType extends ReturnType<(typeof meshoptimizer)[FnName]>
+>(
+  module: WebAssembly.Module,
+  returnTypeName: WasmBasicTypeName,
+  fnName: FnName,
+  argsJS: Parameters<(typeof meshoptimizer)[FnName]>
+): RetType => {
+  return wasmCall(module, returnTypeName, fnName, argsJS);
+};
+
+export const metisCall = <
+  FnName extends keyof typeof metis,
+  RetType extends ReturnType<(typeof metis)[FnName]>
+>(
+  module: WebAssembly.Module,
+  returnTypeName: WasmBasicTypeName,
+  fnName: FnName,
+  argsJS: Parameters<(typeof metis)[FnName]>
+): RetType => {
+  return wasmCall(module, returnTypeName, fnName, argsJS);
 };

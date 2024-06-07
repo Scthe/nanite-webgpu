@@ -18,6 +18,7 @@ const config = {
       errorOnExist: false,
       recursive: true,
     }),
+    replaceNodeBuiltIns(),
   ],
 };
 
@@ -61,4 +62,26 @@ if (isDev) {
   startDev();
 } else {
   buildProd();
+}
+
+/**
+ * 'metis' wants to import 'path', 'fs' at compile time.
+ *
+ * https://github.com/evanw/esbuild/issues/85#issuecomment-1086620079
+ */
+function replaceNodeBuiltIns() {
+  const dummy = './src/lib/dummy.js';
+  const replace = {
+    path: require.resolve(dummy),
+    fs: require.resolve(dummy),
+  };
+  const filter = RegExp(`^(${Object.keys(replace).join('|')})$`);
+  return {
+    name: 'replaceNodeBuiltIns',
+    setup(build) {
+      build.onResolve({ filter }, (arg) => ({
+        path: replace[arg.path],
+      }));
+    },
+  };
 }
