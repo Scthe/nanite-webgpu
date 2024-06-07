@@ -40,7 +40,8 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
     // sorting method
     const modeDummy = createDummy(CONFIG, 'displayMode', [
       { label: 'nanite', value: 'nanite' },
-      { label: 'dbg-lod', value: 'dbg-lod' },
+      { label: 'DBG: lod', value: 'dbg-lod' },
+      { label: 'DBG: lod meshlets', value: 'dbg-lod-meshlets' },
     ]);
     const modeCtrl = dir
       .add(modeDummy, 'displayMode', modeDummy.values)
@@ -55,7 +56,8 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
       setVisible(
         dir,
         'dbgMeshoptimizerLodLevel',
-        CONFIG.displayMode === 'dbg-lod'
+        CONFIG.displayMode === 'dbg-lod' ||
+          CONFIG.displayMode === 'dbg-lod-meshlets'
       );
     toggleLodCtrl(); // set initial visibility
     modeCtrl.onFinishChange(toggleLodCtrl);

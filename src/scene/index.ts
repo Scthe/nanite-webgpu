@@ -46,12 +46,13 @@ export async function loadScene(
     originalIndices
   );
 
-  const meshletsObj = await createMeshletsMesh(
+  const meshlets = await createMeshletsMesh(
     device,
     originalMesh,
     originalVertices,
     originalIndices
   );
+
   const meshoptimizerLODs = await createMeshLODs(
     device,
     originalMesh,
@@ -59,7 +60,21 @@ export async function loadScene(
     originalIndices
   );
 
-  return { mesh: originalMesh, meshlets: meshletsObj, meshoptimizerLODs };
+  const meshoptimizerMeshletLODsAsync = meshoptimizerLODs.map(
+    ([lodMesh, indices]) => {
+      return createMeshletsMesh(device, lodMesh, originalVertices, indices);
+    }
+  );
+  const meshoptimizerMeshletLODs = await Promise.all(
+    meshoptimizerMeshletLODsAsync
+  );
+
+  return {
+    mesh: originalMesh,
+    meshlets,
+    meshoptimizerLODs: meshoptimizerLODs.map((e) => e[0]),
+    meshoptimizerMeshletLODs,
+  };
 }
 
 function createOriginalMesh(
@@ -81,12 +96,17 @@ async function createMeshLODs(
   originalMesh: Mesh,
   vertices: Float32Array,
   originalIndices: Uint32Array
-): Promise<Mesh[]> {
+): Promise<Array<[Mesh, Uint32Array]>> {
   const MAX_LODS = 10;
   const originalTriangleCount = getTriangleCount(originalIndices);
   const finalTargetTriangleCount = originalTriangleCount / 10;
   let triangleCount = originalTriangleCount;
-  const meshLODs = [originalMesh];
+  const meshLODs: Array<[Mesh, Uint32Array]> = [];
+
+  const addMeshLod = (mesh: Mesh, indexData: Uint32Array) => {
+    meshLODs.push([mesh, indexData]);
+  };
+  addMeshLod(originalMesh, originalIndices);
 
   while (
     triangleCount > finalTargetTriangleCount &&
@@ -113,11 +133,12 @@ async function createMeshLODs(
       `lod-test-index-buffer-${level}`,
       simplifiedMesh.indexBuffer
     );
-    meshLODs.push({
+    const meshLod = {
       vertexBuffer: originalMesh.vertexBuffer,
       indexBuffer,
       ...getTriangleAndVertCounts(vertices, simplifiedMesh.indexBuffer),
-    });
+    };
+    addMeshLod(meshLod, simplifiedMesh.indexBuffer);
   }
 
   return meshLODs;

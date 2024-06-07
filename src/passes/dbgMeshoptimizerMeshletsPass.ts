@@ -14,8 +14,8 @@ import { VERTEX_ATTRIBUTES } from './drawMeshPass.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
-export class DbgMeshoptimizerPass {
-  public static NAME: string = DbgMeshoptimizerPass.name;
+export class DbgMeshoptimizerMeshletsPass {
+  public static NAME: string = DbgMeshoptimizerMeshletsPass.name;
   public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
@@ -26,7 +26,7 @@ export class DbgMeshoptimizerPass {
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer
   ) {
-    this.renderPipeline = DbgMeshoptimizerPass.createRenderPipeline(
+    this.renderPipeline = DbgMeshoptimizerMeshletsPass.createRenderPipeline(
       device,
       outTextureFormat
     );
@@ -41,19 +41,20 @@ export class DbgMeshoptimizerPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    assertHasShaderCode(DbgMeshoptimizerPass);
+    assertHasShaderCode(DbgMeshoptimizerMeshletsPass);
     const shaderModule = device.createShaderModule({
-      label: labelShader(DbgMeshoptimizerPass),
+      label: labelShader(DbgMeshoptimizerMeshletsPass),
       code: `
 ${RenderUniformsBuffer.SHADER_SNIPPET(0)}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
-${DbgMeshoptimizerPass.SHADER_CODE}
+${SHADER_SNIPPETS.GET_RANDOM_COLOR}
+${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
       `,
     });
 
     return device.createRenderPipeline({
-      label: labelPipeline(DbgMeshoptimizerPass),
+      label: labelPipeline(DbgMeshoptimizerMeshletsPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -75,12 +76,14 @@ ${DbgMeshoptimizerPass.SHADER_CODE}
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
-      label: DbgMeshoptimizerPass.NAME,
+      label: DbgMeshoptimizerMeshletsPass.NAME,
       colorAttachments: [
         useColorAttachment(targetTexture, loadOp, CONFIG.clearColor),
       ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
-      timestampWrites: profiler?.createScopeGpu(DbgMeshoptimizerPass.NAME),
+      timestampWrites: profiler?.createScopeGpu(
+        DbgMeshoptimizerMeshletsPass.NAME
+      ),
     });
 
     // set render pass data
@@ -88,11 +91,17 @@ ${DbgMeshoptimizerPass.SHADER_CODE}
     renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
-    const mesh = scene.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
-    renderPass.setVertexBuffer(0, mesh.vertexBuffer);
-    renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
-    const vertexCount = mesh.triangleCount * VERTS_IN_TRIANGLE;
-    renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
+    const meshlets =
+      scene.meshoptimizerMeshletLODs[CONFIG.dbgMeshoptimizerLodLevel];
+    renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
+    renderPass.setIndexBuffer(meshlets.indexBuffer, 'uint32');
+    let nextIdx = 0;
+    meshlets.meshlets.forEach((m, firstInstance) => {
+      const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
+      const firstIndex = nextIdx;
+      renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
+      nextIdx += vertexCount;
+    });
 
     // fin
     renderPass.end();

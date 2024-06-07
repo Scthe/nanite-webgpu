@@ -12,6 +12,8 @@ import { loadScene } from './scene/index.ts';
 import drawMeshShader from './passes/drawMeshPass.wgsl';
 //@ts-ignore it works OK
 import dbgMeshoptimizerShader from './passes/dbgMeshoptimizerPass.wgsl';
+//@ts-ignore it works OK
+import dbgMeshoptimizerMeshletsShader from './passes/dbgMeshoptimizerMeshletsPass.wgsl';
 
 // fix some warnings if VSCode is in deno mode
 declare global {
@@ -59,6 +61,7 @@ const SCENE_FILE = 'bunny';
   injectShaderTexts({
     drawMeshShader,
     dbgMeshoptimizerShader,
+    dbgMeshoptimizerMeshletsShader,
   });
   const renderer = new Renderer(
     device,

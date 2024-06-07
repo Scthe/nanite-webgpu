@@ -12,16 +12,20 @@ import { DrawMeshPass } from './passes/drawMeshPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
 import { DbgMeshoptimizerPass } from './passes/dbgMeshoptimizerPass.ts';
+import { DbgMeshoptimizerMeshletsPass } from './passes/dbgMeshoptimizerMeshletsPass.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
   dbgMeshoptimizerShader: string;
+  dbgMeshoptimizerMeshletsShader: string;
 }
 
 /** Web and Deno handle files differently. A bit awkward but good enough. */
 export function injectShaderTexts(texts: ShadersTexts) {
   DrawMeshPass.SHADER_CODE = texts.drawMeshShader;
   DbgMeshoptimizerPass.SHADER_CODE = texts.dbgMeshoptimizerShader;
+  DbgMeshoptimizerMeshletsPass.SHADER_CODE =
+    texts.dbgMeshoptimizerMeshletsShader;
 }
 
 export class Renderer {
@@ -33,6 +37,7 @@ export class Renderer {
   // passes
   private readonly drawMeshPass: DrawMeshPass;
   private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
+  private readonly dbgMeshoptimizerMeshletsPass: DbgMeshoptimizerMeshletsPass;
 
   constructor(
     private readonly device: GPUDevice,
@@ -47,6 +52,11 @@ export class Renderer {
       this.renderUniformBuffer
     );
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
+      device,
+      preferredCanvasFormat,
+      this.renderUniformBuffer
+    );
+    this.dbgMeshoptimizerMeshletsPass = new DbgMeshoptimizerMeshletsPass(
       device,
       preferredCanvasFormat,
       this.renderUniformBuffer
@@ -95,6 +105,8 @@ export class Renderer {
 
     if (CONFIG.displayMode === 'dbg-lod') {
       this.dbgMeshoptimizerPass.draw(ctx, targetTexture, 'load');
+    } else if (CONFIG.displayMode === 'dbg-lod-meshlets') {
+      this.dbgMeshoptimizerMeshletsPass.draw(ctx, targetTexture, 'load');
     } else {
       this.drawMeshPass.draw(ctx, targetTexture, 'load');
     }

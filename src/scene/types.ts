@@ -4,6 +4,7 @@ export interface Scene {
   mesh: Mesh;
   meshlets: MeshletRenderPckg;
   meshoptimizerLODs: Mesh[];
+  meshoptimizerMeshletLODs: MeshletRenderPckg[];
 }
 
 export interface Mesh {

@@ -1,9 +1,14 @@
 import { DEPTH_FORMAT } from '../constants.ts';
 
-type Pass = { NAME: string };
+type PassClass = { NAME: string; SHADER_CODE: string };
 
-export const labelShader = (pass: Pass) => `${pass.NAME}-shaders`;
-export const labelPipeline = (pass: Pass) => `${pass.NAME}-pipeline`;
+export const labelShader = (pass: PassClass) => `${pass.NAME}-shaders`;
+export const labelPipeline = (pass: PassClass) => `${pass.NAME}-pipeline`;
+
+export const assertHasShaderCode = (pass: PassClass) => {
+  if (!pass.SHADER_CODE || pass.SHADER_CODE.length === 0)
+    throw new Error(`Pass '${pass.NAME}' does not contain SHADER_CODE`);
+};
 
 export const PIPELINE_PRIMITIVE_TRIANGLE_LIST: GPUPrimitiveState = {
   cullMode: 'none',

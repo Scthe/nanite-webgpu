@@ -3,6 +3,7 @@ import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
+  assertHasShaderCode,
   assignResourcesToBindings,
   labelPipeline,
   labelShader,
@@ -53,6 +54,7 @@ export class DrawMeshPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
+    assertHasShaderCode(DrawMeshPass);
     const shaderModule = device.createShaderModule({
       label: labelShader(DrawMeshPass),
       code: `
