@@ -1,4 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { Scene } from '../scene/types.ts';
 import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -92,6 +93,20 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
     renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
+    if (CONFIG.displayMode === 'dbg-nanite-meshlets') {
+      this.drawNaniteDbg(renderPass, scene);
+    } else {
+      this.drawMeshoptimizerMeshletLODs(renderPass, scene);
+    }
+
+    // fin
+    renderPass.end();
+  }
+
+  private drawMeshoptimizerMeshletLODs(
+    renderPass: GPURenderPassEncoder,
+    scene: Scene
+  ) {
     const meshlets =
       scene.meshoptimizerMeshletLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
@@ -103,8 +118,17 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
       renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
       nextIdx += vertexCount;
     });
+  }
 
-    // fin
-    renderPass.end();
+  private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
+    const nani = scene.naniteDbgLODs;
+    renderPass.setVertexBuffer(0, nani.vertexBuffer);
+
+    const meshlets = nani.naniteDbgLODs[CONFIG.dbgNaniteLodLevel];
+    meshlets.forEach((m, firstInstance) => {
+      renderPass.setIndexBuffer(m.indexBuffer, 'uint32');
+      const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
+      renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
+    });
   }
 }

@@ -1,6 +1,6 @@
 // @deno-types="npm:@types/dat.gui@0.7.9"
 import * as dat from 'dat.gui';
-import { CONFIG } from '../constants.ts';
+import { CONFIG, DisplayMode } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
 import { Scene } from '../scene/types.ts';
 
@@ -42,25 +42,33 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
       { label: 'nanite', value: 'nanite' },
       { label: 'DBG: lod', value: 'dbg-lod' },
       { label: 'DBG: lod meshlets', value: 'dbg-lod-meshlets' },
+      { label: 'DBG: nanite meshlets', value: 'dbg-nanite-meshlets' },
     ]);
     const modeCtrl = dir
       .add(modeDummy, 'displayMode', modeDummy.values)
       .name('Display mode');
 
-    const maxLod = scene.meshoptimizerLODs.length - 1;
-    dir
-      .add(CONFIG, 'dbgMeshoptimizerLodLevel', 0, maxLod)
-      .step(1)
-      .name('LOD level');
-    const toggleLodCtrl = () =>
-      setVisible(
-        dir,
-        'dbgMeshoptimizerLodLevel',
-        CONFIG.displayMode === 'dbg-lod' ||
-          CONFIG.displayMode === 'dbg-lod-meshlets'
-      );
-    toggleLodCtrl(); // set initial visibility
-    modeCtrl.onFinishChange(toggleLodCtrl);
+    let maxLod = scene.meshoptimizerLODs.length - 1;
+    const toggleLodCtrl = addLODController(
+      dir,
+      'dbgMeshoptimizerLodLevel',
+      'LOD level',
+      maxLod,
+      ['dbg-lod', 'dbg-lod-meshlets']
+    );
+
+    maxLod = scene.naniteDbgLODs.naniteDbgLODs.length - 1;
+    const naniteLodToggle = addLODController(
+      dir,
+      'dbgNaniteLodLevel',
+      'Nanite LOD',
+      maxLod,
+      ['dbg-nanite-meshlets']
+    );
+    modeCtrl.onFinishChange(() => {
+      toggleLodCtrl();
+      naniteLodToggle();
+    });
   }
 
   //////////////
@@ -92,6 +100,21 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
 
     gui.addColor(dummy, 'value').name(name);
   }
+}
+
+function addLODController(
+  gui: dat.GUI,
+  propName: keyof typeof CONFIG,
+  name: string,
+  maxLod: number,
+  visibility: DisplayMode[]
+) {
+  gui.add(CONFIG, propName, 0, maxLod).step(1).name(name);
+  const toggleLodCtrl = () => {
+    setVisible(gui, propName, visibility.includes(CONFIG.displayMode));
+  };
+  toggleLodCtrl(); // set initial visibility
+  return toggleLodCtrl;
 }
 
 function getController(gui: dat.GUI, name: string) {

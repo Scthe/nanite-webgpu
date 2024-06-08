@@ -105,7 +105,10 @@ export class Renderer {
 
     if (CONFIG.displayMode === 'dbg-lod') {
       this.dbgMeshoptimizerPass.draw(ctx, 'load');
-    } else if (CONFIG.displayMode === 'dbg-lod-meshlets') {
+    } else if (
+      CONFIG.displayMode === 'dbg-lod-meshlets' ||
+      CONFIG.displayMode === 'dbg-nanite-meshlets'
+    ) {
       this.dbgMeshoptimizerMeshletsPass.draw(ctx, 'load');
     } else {
       this.drawMeshPass.draw(ctx, 'load');

@@ -1,3 +1,5 @@
+import { NaniteLODTree, NaniteMeshletTreeNode } from '../scene/types.ts';
+import { createGPU_IndexBuffer, getTriangleCount } from '../utils/index.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
@@ -12,28 +14,29 @@ import { simplifyMesh } from './simplifyMesh.ts';
  * $2^{MAX_LODS}*124$. E.g. MAX_LODS=15 gives 4M. Vertices above would
  * lead to many top-level tree nodes. Suboptimal, but not incorrect.
  */
-const MAX_LODS = 1; // TODO set higher
+const MAX_LODS = 15;
 
 /** Reduce triangle count per each level. */
 const DECIMATE_FACTOR = 2;
 const TARGET_SIMPLIFY_ERROR = 0.05;
 
 /** Meshlet when constructing the tree */
-interface MeshletWIP {
+export interface MeshletWIP {
   /** parent is the simplified version */
   // lodParent: MeshletWIP | undefined;
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
+  /** Infinity for top tree level */
   parentError: number;
   maxSiblingsError: number;
   children: MeshletWIP[];
 }
 
-export async function createNaniteMesh(
+export async function createNaniteMeshlets(
   vertices: Float32Array,
   indices: Uint32Array
-) {
+): Promise<MeshletWIP[]> {
   const allMeshlets: MeshletWIP[] = [];
   let lodLevel = 0;
   const bottomMeshlets = await splitIntoMeshlets(indices, 0.0);
@@ -92,13 +95,18 @@ export async function createNaniteMesh(
     if (currentMeshlets.length < 2) break;
   }
 
-  console.log('all meshlets:', allMeshlets);
-  console.log('roots:', currentMeshlets);
-  console.log(
-    'lodLevel',
-    lodLevel,
-    Math.max(...allMeshlets.map((m) => m.lodLevel))
-  );
+  console.log('[Nanite] All meshlets:', allMeshlets);
+  console.log('[Nanite] Top level meshlets:', currentMeshlets);
+  console.log(`[Nanite] Created LOD levels: ${lodLevel}`);
+
+  if (currentMeshlets.length !== 1) {
+    // It's ok to increase $MAX_LODS, just make sure you know what you are doing.
+    throw new Error(
+      `Nanite created ${lodLevel} LOD levels and would still require more? How big is your mesh?! Increase MAX_LODS (currrently ${MAX_LODS}) or reconsider mesh.`
+    );
+  }
+
+  return allMeshlets;
 
   /////////////
   /// Utils
@@ -144,4 +152,32 @@ function mergeMeshlets(...meshletGroup: MeshletWIP[]): Uint32Array {
   });
 
   return result;
+}
+
+export function createNaniteLODTree(
+  device: GPUDevice,
+  vertexBuffer: GPUBuffer,
+  allMeshlets: MeshletWIP[]
+): NaniteLODTree {
+  const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel));
+  const naniteDbgLODs: Array<NaniteMeshletTreeNode[]> = [];
+
+  for (let i = 0; i < lodLevels; i++) {
+    const nodes: NaniteMeshletTreeNode[] = [];
+    naniteDbgLODs.push(nodes);
+    const meshlets = allMeshlets.filter((m) => m.lodLevel === i);
+    meshlets.forEach((m, j) => {
+      const indexBuffer = createGPU_IndexBuffer(
+        device,
+        `nanite-lod-${i}-meshlet-${j}`,
+        m.indices
+      );
+      nodes.push({
+        triangleCount: getTriangleCount(m.indices),
+        indexBuffer,
+      });
+    });
+  }
+
+  return { vertexBuffer, naniteDbgLODs };
 }

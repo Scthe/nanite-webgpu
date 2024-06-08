@@ -1,5 +1,9 @@
 import { SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
+import {
+  createNaniteLODTree,
+  createNaniteMeshlets,
+} from '../meshPreprocessing/index.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import {
   getTriangleCount,
@@ -67,11 +71,22 @@ export async function loadScene(
     meshoptimizerMeshletLODsAsync
   );
 
+  const naniteMeshlets = await createNaniteMeshlets(
+    originalVertices,
+    originalIndices
+  );
+  const naniteDbgLODs = createNaniteLODTree(
+    device,
+    originalMesh.vertexBuffer,
+    naniteMeshlets
+  );
+
   return {
     mesh: originalMesh,
     meshlets,
     meshoptimizerLODs: meshoptimizerLODs.map((e) => e[0]),
     meshoptimizerMeshletLODs,
+    naniteDbgLODs,
   };
 }
 
