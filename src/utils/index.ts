@@ -1,6 +1,5 @@
 import { Mat4, mat4 } from 'wgpu-matrix';
 import { CAMERA_CFG, CO_PER_VERTEX, VERTS_IN_TRIANGLE } from '../constants.ts';
-import { TypedArray } from './webgpu.ts';
 
 export * from './errors.ts';
 export * from './webgpu.ts';

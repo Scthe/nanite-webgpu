@@ -5,11 +5,16 @@ import { metisCall, wasmPtr } from '../utils/wasm.ts';
 
 let METIS_MODULE: WasmModule | undefined = undefined;
 
+/** Used in tests to point to local .wasm file */
+export const OVERRIDE_METIS_WASM_PATH = {
+  value: undefined as string | undefined,
+};
+
 export async function getMetisModule() {
   if (METIS_MODULE !== undefined) return METIS_MODULE;
 
   const module: WasmModule = await MetisModule.default({
-    locateFile: (e: string) => e,
+    locateFile: (e: string) => OVERRIDE_METIS_WASM_PATH.value || e,
   });
   METIS_MODULE = module;
   return module;
@@ -68,27 +73,39 @@ const METIS_ERROR = -4; // Some other errors
  * @param opts
  * @returns array of size `nparts`, each contains vertex ids
  */
-export async function partitionGraph(
+export function partitionGraph(
   adjacency: number[][],
   nparts: number,
   opts: MetisOptions = {}
 ) {
+  const [xadj, adjncy] = createAdjacencyData(adjacency);
+  return partitionGraphImpl(xadj, adjncy, nparts, opts);
+}
+
+/** Internal/test use mostly. Call `partitionGraph()` instead. */
+export async function partitionGraphImpl(
+  xadj: number[],
+  adjncy: number[],
+  nparts: number,
+  opts: MetisOptions = {}
+) {
   const module = await getMetisModule();
-  console.log('MetisModule', module);
 
   const i32Arr = (a: number[]) => wasmPtr(new Int32Array(a));
-  const i32 = (a: number) => wasmPtr(new Int32Array([a]));
+  const i32 = (a: number) => i32Arr([a]);
 
-  const [adjncy, xadj] = createAdjacencyData(adjacency);
-  const vertexCount = adjncy.length - 1;
+  const vertexCount = xadj.length - 1;
+  const constraintsCount = 1;
+  nparts = Math.ceil(nparts);
+  // console.log({ vertexCount, constraintsCount, nparts });
+
   const objval = new Int32Array(1);
-  const parts = new Int32Array(xadj.length - 1);
-  // const fakeWeights = i32Arr(createArray(vertexCount).fill(1));
+  const parts = new Int32Array(vertexCount);
   const options = createOptions(opts);
 
   const returnCode = metisCall(module, 'number', 'METIS_PartGraphKway', [
     i32(vertexCount), // idx_t *nvtxs,
-    i32(1), // idx_t *ncon,
+    i32(constraintsCount), // idx_t *ncon,
     i32Arr(xadj), // idx_t *xadj,
     i32Arr(adjncy), // idx_t *adjncy,
     null, // idx_t *vwgt,
@@ -96,7 +113,7 @@ export async function partitionGraph(
     // TODO UE5 adjwgt: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L63
     // https://youtu.be/eviSykqSUUw?si=GttgyFXof02ENUa4&t=1095
     null, // idx_t *adjwgt,
-    i32(Math.ceil(nparts)), // idx_t *nparts,
+    i32(nparts), // idx_t *nparts,
     null, // real_t *tpwgts,
     null, // real_t *ubvec,
     // TODO UE5 options: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L50
@@ -105,8 +122,7 @@ export async function partitionGraph(
     wasmPtr(parts, 'out'), // idx_t *part
   ]);
   checkErrCode(returnCode);
-
-  console.log('partitionGraph result', parts);
+  // console.log('partitionGraph result', parts);
 
   const result: number[][] = createArray(nparts).map((_) => []);
   parts.forEach((partitionIdx, vertIdx) => {
@@ -154,7 +170,7 @@ function checkErrCode(code: number) {
  *
  * That is, for each vertex i, its adjacency list is stored in consecutive locations in the array `adjncy`, and the array `xadj` is used to point to where it begins and where it ends.
  */
-function createAdjacencyData(adjacency: number[][]) {
+export function createAdjacencyData(adjacency: number[][]) {
   const adjncy: number[] = [];
   const xadj: number[] = [0];
 

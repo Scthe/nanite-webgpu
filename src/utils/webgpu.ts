@@ -1,8 +1,6 @@
 import { Mat4 } from 'wgpu-matrix';
 import { ensureTypedArray } from './index.ts';
 
-export type TypedArray = Float32Array | Uint8Array | Uint32Array;
-
 export async function createGpuDevice() {
   try {
     const adapter = await navigator.gpu.requestAdapter({

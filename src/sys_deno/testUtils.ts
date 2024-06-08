@@ -1,17 +1,18 @@
 import * as path from 'std-path';
+import { assertEquals } from 'assert';
 import {
-  Dimensions,
   copyToTypedArray,
   createArray,
-  createCameraProjectionMat,
   createErrorSystem,
   createGpuDevice,
   getClassName,
-  getModelViewProjectionMatrix,
   rethrowWebGPUError,
 } from '../utils/index.ts';
-import { PassCtx } from '../passes/passCtx.ts';
-import { Camera } from '../camera.ts';
+
+export function absPathFromRepoRoot(filePath: string) {
+  const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
+  return path.resolve(__dirname, '..', '..', filePath);
+}
 
 export function injectDenoShader(
   PassClass: { SHADER_CODE: string },
@@ -26,7 +27,7 @@ export function injectDenoShader(
 
 type ValidateWebGPUCallsFn = () => Promise<void>;
 
-export async function assertGpuDevice(): Promise<
+export async function createGpuDevice_TESTS(): Promise<
   [GPUDevice, ValidateWebGPUCallsFn]
 > {
   const device = await createGpuDevice();
@@ -41,6 +42,7 @@ export async function assertGpuDevice(): Promise<
   return [device, validateFn];
 }
 
+/*
 export const createMockPassCtx = (
   device: GPUDevice,
   cmdBuf: GPUCommandEncoder
@@ -68,6 +70,11 @@ export const createMockPassCtx = (
     mesh: undefined!,
     depthTexture: undefined!,
   };
+};*/
+
+export const assertSameArray = (actual: number[], expected: number[]) => {
+  assertEquals(actual.length, expected.length);
+  assertEquals(actual, expected);
 };
 
 // deno-lint-ignore no-explicit-any

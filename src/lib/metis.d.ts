@@ -1,3 +1,6 @@
+// DO NOT ADD IMPORTS TO '*.d.ts' files!
+// https://stackoverflow.com/a/51114250
+
 declare namespace metis {
   type IdxPtr = WasmPtr; // Int32Array;
   type RealPtr = WasmPtr; // Float32Array;

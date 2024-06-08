@@ -1,3 +1,6 @@
+// DO NOT ADD IMPORTS TO '*.d.ts' files!
+// https://stackoverflow.com/a/51114250
+
 declare namespace meshoptimizer {
   type U32Ptr = WasmPtr;
   type F32Ptr = WasmPtr;

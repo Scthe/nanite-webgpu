@@ -1,4 +1,7 @@
-import { TypedArray } from './webgpu.ts';
+// DO NOT ADD IMPORTS TO '*.d.ts' files!
+// https://stackoverflow.com/a/51114250
+
+type TypedArray = Float32Array | Uint8Array | Uint32Array;
 
 type WasmPtrInout = 'in' | 'out';
 
