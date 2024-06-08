@@ -197,3 +197,17 @@ function meshletIndicesWithOriginalVertexBuffer(
 
   return meshletIndices;
 }
+
+export function splitIndicesPerMeshlets(meshlets: meshopt_Meshlets) {
+  let nextIdx = 0;
+  return meshlets.meshlets.map((m) => {
+    const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
+    const firstIndex = nextIdx;
+    const res = meshlets.meshletTriangles.slice(
+      firstIndex,
+      firstIndex + vertexCount
+    );
+    nextIdx += vertexCount;
+    return res;
+  });
+}
