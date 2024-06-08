@@ -13,7 +13,7 @@ declare namespace metis {
    * UE5:
    * https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L56
    */
-  export function metis_part_graph_kway(
+  export function METIS_PartGraphKway(
     // The number of vertices in the graph.
     nvtxs: IdxPtr, // idx_t *nvtxs,
     // The number of balancing constraints. It should be at least 1.

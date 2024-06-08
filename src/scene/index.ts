@@ -1,22 +1,17 @@
-import { CO_PER_VERTEX, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
-import { printBoundingBox } from '../utils/index.ts';
+import {
+  getTriangleCount,
+  getVertexCount,
+  printBoundingBox,
+} from '../utils/index.ts';
 import {
   createGPU_VertexBuffer,
   createGPU_IndexBuffer,
 } from '../utils/webgpu.ts';
 import { loadObjFile } from './objLoader.ts';
 import { Mesh, MeshletRenderPckg, Scene } from './types.ts';
-
-const getTriangleCount = (indices: Uint32Array | number) =>
-  typeof indices === 'number'
-    ? indices / VERTS_IN_TRIANGLE
-    : indices.length / VERTS_IN_TRIANGLE;
-const getVertexCount = (verts: Float32Array | number) =>
-  typeof verts === 'number'
-    ? verts / CO_PER_VERTEX
-    : verts.length / CO_PER_VERTEX;
 
 const getTriangleAndVertCounts = (
   vertices: Float32Array,

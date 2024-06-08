@@ -1,7 +1,8 @@
 import { CO_PER_VERTEX, BYTES_VEC3 } from '../constants.ts';
-import MeshOptModule from '../lib/meshoptimizer';
+import MeshOptModule from '../lib/meshoptimizer.js';
+import { WasmModule } from '../utils/wasm-types.d.ts';
 
-let MESHOPTIMIZER_MODULE: WebAssembly.Module | undefined = undefined;
+let MESHOPTIMIZER_MODULE: WasmModule | undefined = undefined;
 
 export async function getMeshOptimizerModule() {
   if (MESHOPTIMIZER_MODULE !== undefined) return MESHOPTIMIZER_MODULE;
@@ -9,7 +10,7 @@ export async function getMeshOptimizerModule() {
   const MeshOpt = await MeshOptModule({
     locateFile: (e: string) => e,
   });
-  const module: WebAssembly.Module = await MeshOpt.ready;
+  const module: WasmModule = await MeshOpt.ready;
   MESHOPTIMIZER_MODULE = module;
   return module;
 }

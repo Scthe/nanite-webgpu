@@ -1,3 +1,4 @@
+import { WasmModule } from '../utils/wasm-types.d.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 import {
   getMeshOptimizerModule,
@@ -61,7 +62,7 @@ export async function simplifyMesh(
  * https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L201
  */
 function simplify(
-  module: WebAssembly.Module,
+  module: WasmModule,
   vertices: Float32Array,
   indices: Uint32Array,
   meshData: MeshData,
@@ -90,7 +91,7 @@ function simplify(
 
 /** https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/simplifier.cpp#L1903 */
 function simplifyScale(
-  module: WebAssembly.Module,
+  module: WasmModule,
   vertices: Float32Array,
   meshData: MeshData
 ): number {

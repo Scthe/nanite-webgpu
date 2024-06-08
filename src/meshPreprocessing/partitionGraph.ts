@@ -1,6 +1,19 @@
-import * as MetisModule from '../lib/metis2.js';
+import * as MetisModule from '../lib/metis3-1.js';
 import { ValueOf, createArray } from '../utils/index.ts';
+import { WasmModule } from '../utils/wasm-types.d.ts';
 import { metisCall, wasmPtr } from '../utils/wasm.ts';
+
+let METIS_MODULE: WasmModule | undefined = undefined;
+
+export async function getMetisModule() {
+  if (METIS_MODULE !== undefined) return METIS_MODULE;
+
+  const module: WasmModule = await MetisModule.default({
+    locateFile: (e: string) => e,
+  });
+  METIS_MODULE = module;
+  return module;
+}
 
 /**
  * Metis manual section 5.4
@@ -55,30 +68,33 @@ const METIS_ERROR = -4; // Some other errors
  * @param opts
  * @returns array of size `nparts`, each contains vertex ids
  */
-export function partitionGraph(
+export async function partitionGraph(
   adjacency: number[][],
   nparts: number,
   opts: MetisOptions = {}
 ) {
-  const module = MetisModule.default;
-  // console.log('MetisModule', MetisModule.default);
+  const module = await getMetisModule();
+  console.log('MetisModule', module);
 
   const i32Arr = (a: number[]) => wasmPtr(new Int32Array(a));
   const i32 = (a: number) => wasmPtr(new Int32Array([a]));
 
   const [adjncy, xadj] = createAdjacencyData(adjacency);
-  const objval = new Uint32Array(1);
-  const parts = new Uint32Array(xadj.length - 1);
+  const vertexCount = adjncy.length - 1;
+  const objval = new Int32Array(1);
+  const parts = new Int32Array(xadj.length - 1);
+  // const fakeWeights = i32Arr(createArray(vertexCount).fill(1));
   const options = createOptions(opts);
 
-  const returnCode = metisCall(module, '', 'metis_part_graph_kway', [
-    i32(adjncy.length - 1), // idx_t *nvtxs,
+  const returnCode = metisCall(module, 'number', 'METIS_PartGraphKway', [
+    i32(vertexCount), // idx_t *nvtxs,
     i32(1), // idx_t *ncon,
     i32Arr(xadj), // idx_t *xadj,
     i32Arr(adjncy), // idx_t *adjncy,
     null, // idx_t *vwgt,
     null, // idx_t *vsize,
     // TODO UE5 adjwgt: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L63
+    // https://youtu.be/eviSykqSUUw?si=GttgyFXof02ENUa4&t=1095
     null, // idx_t *adjwgt,
     i32(Math.ceil(nparts)), // idx_t *nparts,
     null, // real_t *tpwgts,

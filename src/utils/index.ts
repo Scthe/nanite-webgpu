@@ -1,5 +1,5 @@
 import { Mat4, mat4 } from 'wgpu-matrix';
-import { CAMERA_CFG, CO_PER_VERTEX } from '../constants.ts';
+import { CAMERA_CFG, CO_PER_VERTEX, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { TypedArray } from './webgpu.ts';
 
 export * from './errors.ts';
@@ -87,6 +87,16 @@ export function printBoundingBox(
   console.log(`Bounding box min:`, p(minCo));
   console.log(`Bounding box max:`, p(maxCo));
 }
+
+export const getTriangleCount = (indices: Uint32Array | number) =>
+  typeof indices === 'number'
+    ? indices / VERTS_IN_TRIANGLE
+    : indices.length / VERTS_IN_TRIANGLE;
+
+export const getVertexCount = (verts: Float32Array | number) =>
+  typeof verts === 'number'
+    ? verts / CO_PER_VERTEX
+    : verts.length / CO_PER_VERTEX;
 
 export function printMinMax(name: string, arr: TypedArray | number[]) {
   console.log(name, `min(${Math.min(...arr)})`, `max(${Math.max(...arr)})`);

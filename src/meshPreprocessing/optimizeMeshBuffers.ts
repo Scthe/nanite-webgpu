@@ -5,6 +5,7 @@ import {
   getMeshOptimizerModule,
 } from './meshoptimizerUtils.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
+import { WasmModule } from '../utils/wasm-types.d.ts';
 
 /**
  * Optimize vertex and index buffer.
@@ -42,7 +43,7 @@ export async function optimizeMeshBuffers(
 
 /** https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L201 */
 function generateVertexRemap(
-  module: WebAssembly.Module,
+  module: WasmModule,
   vertices: Float32Array,
   indices: Uint32Array,
   meshData: MeshData
@@ -66,7 +67,7 @@ function generateVertexRemap(
 
 /** https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L341 */
 function remapIndexBuffer(
-  module: WebAssembly.Module,
+  module: WasmModule,
   indices: Uint32Array,
   meshData: MeshData,
   remap: Uint32Array
@@ -83,7 +84,7 @@ function remapIndexBuffer(
 
 /** https://github.com/zeux/meshoptimizer/blob/3c3e56d312cbe7d5929c78401de2124c7be3bc07/src/indexgenerator.cpp#L305 */
 function remapVertexBuffer(
-  module: WebAssembly.Module,
+  module: WasmModule,
   vertices: Float32Array,
   newVertCnt: number,
   meshData: MeshData,
