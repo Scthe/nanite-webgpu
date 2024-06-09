@@ -56,6 +56,7 @@ interface Opts {
  * Split mesh into meshlets.
  *
  * https://github.com/zeux/meshoptimizer?tab=readme-ov-file#mesh-shading
+ * https://github.com/zeux/meshoptimizer/issues/531
  */
 export async function createMeshlets(
   vertices: Float32Array,

@@ -22,15 +22,13 @@ const TARGET_SIMPLIFY_ERROR = 0.05;
 
 /** Meshlet when constructing the tree */
 export interface MeshletWIP {
-  /** parent is the simplified version */
-  // lodParent: MeshletWIP | undefined;
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
   /** Infinity for top tree level */
   parentError: number;
   maxSiblingsError: number;
-  children: MeshletWIP[];
+  createdFrom: MeshletWIP[];
 }
 
 export async function createNaniteMeshlets(
@@ -44,10 +42,15 @@ export async function createNaniteMeshlets(
   lodLevel += 1;
 
   for (; lodLevel < MAX_LODS + 1; lodLevel++) {
+    // prettier-ignore
+    // console.log(`LOD ${lodLevel}: Starting with ${currentMeshlets.length} meshlets`);
+
     // 1. group meshlets into groups of 4
-    const nparts = Math.ceil(currentMeshlets.length / 4);
+    // e.g. 33 meshlets is 9 groups (last one is 1 meshlet)
+    const GROUP_SIZE = 4;
+    const nparts = Math.ceil(currentMeshlets.length / GROUP_SIZE);
     let partitioned = [currentMeshlets];
-    if (nparts > 1) {
+    if (currentMeshlets.length > GROUP_SIZE) {
       const adjacency = findAdjacentMeshlets(
         currentMeshlets.map((m) => m.boundaryEdges)
       );
@@ -69,6 +72,7 @@ export async function createNaniteMeshlets(
       const simplifiedMesh = await simplifyMesh(vertices, megaMeshlet, {
         targetIndexCount,
         targetError: TARGET_SIMPLIFY_ERROR,
+        lockBorders: true, // important!
       });
       const errorNow = simplifiedMesh.error * simplifiedMesh.errorScale;
       const childrenError = Math.max(
@@ -77,27 +81,39 @@ export async function createNaniteMeshlets(
       const totalError = errorNow + childrenError;
 
       // 2.3 split into new meshlets
-      const newMeshlets = await splitIntoMeshlets(
-        simplifiedMesh.indexBuffer,
-        totalError
-      );
+      let newMeshlets: MeshletWIP[];
+      if (partitioned.length === 1) {
+        // this happens on last iteration, when < 4 meshlets
+        // prettier-ignore
+        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError);
+        newMeshlets = [rootMeshlet];
+      } else {
+        // prettier-ignore
+        newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError);
+      }
+
       meshletGroup.forEach((m) => {
         m.parentError = totalError;
         m.maxSiblingsError = childrenError;
         newMeshlets.forEach((m2) => {
-          m2.children.push(m);
+          m2.createdFrom.push(m);
         });
       });
       newlyCreatedMeshlets.push(...newMeshlets);
     }
 
     currentMeshlets = newlyCreatedMeshlets;
-    if (currentMeshlets.length < 2) break;
+    if (currentMeshlets.length < 2) {
+      console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
+      break;
+    }
   }
 
   console.log('[Nanite] All meshlets:', allMeshlets);
   console.log('[Nanite] Top level meshlets:', currentMeshlets);
-  console.log(`[Nanite] Created LOD levels: ${lodLevel}`);
+  console.log(
+    `[Nanite] Created LOD levels: ${lodLevel} (total ${allMeshlets.length} meshlets from ${bottomMeshlets.length} bottom level meshlets)`
+  );
 
   if (currentMeshlets.length !== 1) {
     // It's ok to increase $MAX_LODS, just make sure you know what you are doing.
@@ -111,30 +127,39 @@ export async function createNaniteMeshlets(
   /////////////
   /// Utils
 
-  async function splitIntoMeshlets(indices: Uint32Array, error: number) {
+  async function splitIntoMeshlets(
+    indices: Uint32Array,
+    simplificationError: number
+  ) {
     const meshletsOpt = await createMeshlets(vertices, indices, {});
     // during init: create tons of small meshlets
     // during iter: split simplified mesh into 2 meshlets
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
 
-    const meshlets: MeshletWIP[] = meshletsIndices.map((indices) => {
-      const edges = listAllEdges(indices);
-      const boundaryEdges = findBoundaryEdges(edges);
-      return {
-        indices,
-        boundaryEdges,
-        lodParent: undefined,
-        // maxSiblingsError will temporarly hold the error till
-        // we determine siblings in next iter
-        maxSiblingsError: error,
-        parentError: Infinity,
-        lodLevel,
-        children: [],
-      };
-    });
+    const meshlets: MeshletWIP[] = meshletsIndices.map((indices) =>
+      createMeshletWip(indices, simplificationError)
+    );
 
     allMeshlets.push(...meshlets);
     return meshlets;
+  }
+
+  function createMeshletWip(
+    indices: Uint32Array,
+    simplificationError: number
+  ): MeshletWIP {
+    const edges = listAllEdges(indices);
+    const boundaryEdges = findBoundaryEdges(edges);
+    return {
+      indices,
+      boundaryEdges,
+      // maxSiblingsError will temporarly hold the error till
+      // we determine siblings in next iter
+      maxSiblingsError: simplificationError,
+      parentError: Infinity,
+      lodLevel,
+      createdFrom: [],
+    };
   }
 }
 

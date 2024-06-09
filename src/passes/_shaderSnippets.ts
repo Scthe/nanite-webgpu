@@ -1,3 +1,4 @@
+// TODO finish culling
 /** Fragment shader snippet for discard. Mostly for Z-axis. */
 export const FS_CHECK_IS_CULLED = `
 fn checkIsCulled(projectedPosition: vec4f) -> bool {
@@ -16,7 +17,7 @@ fn checkIsCulled(projectedPosition: vec4f) -> bool {
 export const FS_FAKE_LIGHTING = `
 fn fakeLighting(wsPosition: vec4f) -> f32{
   let AMBIENT_LIGHT = 0.1;
-  let LIGHT_DIR = vec3(5., 5., 0.);
+  let LIGHT_DIR = vec3(5., 5., 5.);
 
   let posWsDx = dpdxFine(wsPosition);
   let posWsDy = dpdyFine(wsPosition);
@@ -29,7 +30,7 @@ fn fakeLighting(wsPosition: vec4f) -> f32{
 
 /** Get random color based on index. Same index == same color every frame. */
 export const GET_RANDOM_COLOR = `
-const COLOR_COUNT = 7u;
+const COLOR_COUNT = 14u;
 const COLORS = array<vec3f, COLOR_COUNT>(
     vec3f(1., 1., 1.),
     vec3f(1., 0., 0.),
@@ -38,8 +39,25 @@ const COLORS = array<vec3f, COLOR_COUNT>(
     vec3f(1., 1., 0.),
     vec3f(0., 1., 1.),
     vec3f(1., 0., 1.),
+
+    vec3f(.5, .5, .5),
+    vec3f(.5, 0., 0.),
+    vec3f(.5, .5, 0.),
+    vec3f(0., 0., .5),
+    vec3f(.5, .5, 0.),
+    vec3f(0., .5, .5),
+    vec3f(.5, 0., .5),
 );
 fn getRandomColor(idx: u32) -> vec3f {
+  /*let start = 2u; // color only subset, rest is default purple
+  let end = start + 1u;
+  if(
+    idx < COLOR_COUNT * start ||
+    idx > COLOR_COUNT * end
+  ){
+    return vec3f(.5, .2, 1.);
+  }*/
+
   return COLORS[idx % COLOR_COUNT];
 }
 `;

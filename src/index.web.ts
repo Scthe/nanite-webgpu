@@ -27,9 +27,10 @@ declare global {
   const document: any;
 }
 
-const SCENE_FILE = 'bunny';
-// const SCENE_FILE = 'cube';
-// const SCENE_FILE = 'plane';
+const SCENE_FILE: keyof typeof SCENES = 'bunny';
+// const SCENE_FILE: keyof typeof SCENES = 'displacedPlane';
+// const SCENE_FILE: keyof typeof SCENES = 'cube';
+// const SCENE_FILE: keyof typeof SCENES = 'plane';
 
 (async function () {
   // GPUDevice

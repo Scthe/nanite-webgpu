@@ -29,6 +29,7 @@ export const SCENES = {
   bunny: { file: 'bunny.obj', scale: 8 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1 },
+  displacedPlane: { file: 'displaced-plane.obj', scale: 0.2 },
 };
 export type SceneFile = keyof typeof SCENES;
 
@@ -45,5 +46,5 @@ export const CONFIG = {
   movementSpeed: 2,
   displayMode: 'dbg-nanite-meshlets' as DisplayMode,
   dbgMeshoptimizerLodLevel: 0,
-  dbgNaniteLodLevel: 6,
+  dbgNaniteLodLevel: 1,
 };
