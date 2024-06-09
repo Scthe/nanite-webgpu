@@ -37,7 +37,7 @@ export async function simplifyMesh(
 
   opts.targetIndexCount = Math.ceil(opts.targetIndexCount);
   opts.targetError = opts.targetError || 0.01;
-  opts.lockBorders = opts.lockBorders === undefined ? false : opts.lockBorders;
+  opts.lockBorders = opts.lockBorders != false;
 
   const [error, newIndexCount, result] = simplify(
     module,
