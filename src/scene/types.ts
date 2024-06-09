@@ -1,4 +1,5 @@
 import { meshopt_Meshlets } from '../meshPreprocessing/createMeshlets.ts';
+import { MeshletWIP } from '../meshPreprocessing/index.ts';
 
 export interface Scene {
   // meshes for debug
@@ -24,12 +25,17 @@ export type MeshletRenderPckg = meshopt_Meshlets & {
   indexBuffer: GPUBuffer;
 };
 
-export type NaniteMeshletTreeNode = {
-  indexBuffer: GPUBuffer;
-  triangleCount: number;
-};
+// export type NaniteMeshletTreeNode = { // TODO restore?
+// indexBuffer: GPUBuffer;
+// triangleCount: number;
+// };
+export type NaniteMeshletTreeNode = MeshletWIP;
 
 export type NaniteLODTree = {
   vertexBuffer: GPUBuffer;
-  naniteDbgLODs: Array<NaniteMeshletTreeNode[]>;
+  // naniteDbgLODs: Array<NaniteMeshletTreeNode[]>;
+  naniteDbgLODs: Array<NaniteMeshletTreeNode>;
 };
+
+export const getMaxNaniteLODLevel = (t: NaniteLODTree) =>
+  Math.max(...t.naniteDbgLODs.map((m) => m.lodLevel));

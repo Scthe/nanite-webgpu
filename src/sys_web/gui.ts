@@ -2,7 +2,7 @@
 import * as dat from 'dat.gui';
 import { CONFIG, DisplayMode } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
-import { Scene } from '../scene/types.ts';
+import { Scene, getMaxNaniteLODLevel } from '../scene/types.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
@@ -57,7 +57,8 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
       ['dbg-lod', 'dbg-lod-meshlets']
     );
 
-    maxLod = scene.naniteDbgLODs.naniteDbgLODs.length - 1;
+    maxLod = getMaxNaniteLODLevel(scene.naniteDbgLODs);
+
     const naniteLodToggle = addLODController(
       dir,
       'dbgNaniteLodLevel',

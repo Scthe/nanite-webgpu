@@ -1,5 +1,5 @@
-import { NaniteLODTree, NaniteMeshletTreeNode } from '../scene/types.ts';
-import { createGPU_IndexBuffer, getTriangleCount } from '../utils/index.ts';
+import { NaniteLODTree } from '../scene/types.ts';
+import { createGPU_IndexBuffer } from '../utils/index.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
@@ -29,6 +29,7 @@ export interface MeshletWIP {
   parentError: number;
   maxSiblingsError: number;
   createdFrom: MeshletWIP[];
+  indexBuffer: GPUBuffer | undefined; // TODO remove?
 }
 
 export async function createNaniteMeshlets(
@@ -159,6 +160,7 @@ export async function createNaniteMeshlets(
       parentError: Infinity,
       lodLevel,
       createdFrom: [],
+      indexBuffer: undefined,
     };
   }
 }
@@ -184,9 +186,10 @@ export function createNaniteLODTree(
   vertexBuffer: GPUBuffer,
   allMeshlets: MeshletWIP[]
 ): NaniteLODTree {
-  const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel));
-  const naniteDbgLODs: Array<NaniteMeshletTreeNode[]> = [];
+  // const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel));
+  // const naniteDbgLODs: Array<NaniteMeshletTreeNode[]> = [];
 
+  /* // Code below used with optimized NaniteTreeNode
   for (let i = 0; i < lodLevels; i++) {
     const nodes: NaniteMeshletTreeNode[] = [];
     naniteDbgLODs.push(nodes);
@@ -203,6 +206,15 @@ export function createNaniteLODTree(
       });
     });
   }
+  */
+  allMeshlets.forEach((m, j) => {
+    const indexBuffer = createGPU_IndexBuffer(
+      device,
+      `nanite-meshlet-${j}`,
+      m.indices
+    );
+    m.indexBuffer = indexBuffer;
+  });
 
-  return { vertexBuffer, naniteDbgLODs };
+  return { vertexBuffer, naniteDbgLODs: allMeshlets };
 }
