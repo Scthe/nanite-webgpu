@@ -129,7 +129,7 @@ ${DrawMeshPass.SHADER_CODE}
       renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
       totalTriangleCount += triangleCount;
     });
-    STATS['Nanite meshlets: '] = drawnMeshlets.length;
-    STATS['Nanite triangles: '] = totalTriangleCount;
+    STATS['Nanite meshlets:'] = drawnMeshlets.length;
+    STATS['Nanite triangles:'] = totalTriangleCount;
   }
 }

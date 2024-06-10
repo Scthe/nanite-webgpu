@@ -28,10 +28,20 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
   // profiler
   gui.add(dummyObject, 'profile').name('Profile');
 
+  addNaniteFolder();
   addDbgFolder();
 
   //////////////
   /// subdirs
+
+  function addNaniteFolder() {
+    const dir = gui.addFolder('Nanite');
+    dir.open();
+
+    dir
+      .add(CONFIG.nanite.render, 'pixelThreshold', 0, 100)
+      .name('Pixel threshold');
+  }
 
   function addDbgFolder() {
     const dir = gui.addFolder('DEBUG');

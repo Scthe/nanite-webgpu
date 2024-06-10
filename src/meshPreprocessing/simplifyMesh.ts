@@ -17,7 +17,7 @@ const MESHOPT_SIMPLIFY_LOCK_BORDER = 1 << 0;
 
 interface Opts {
   targetIndexCount: number;
-  /** [0-1], where 0.01 means 1%. TODO or 0.05 increase if simplify stops too soon? */
+  /** [0-1], where 0.01 means 1%. */
   targetError?: number;
   lockBorders?: boolean;
 }

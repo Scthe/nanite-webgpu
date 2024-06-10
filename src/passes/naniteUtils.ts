@@ -1,7 +1,7 @@
 import { Mat4, vec3 } from 'wgpu-matrix';
 import { PassCtx } from './passCtx.ts';
 import { BoundingSphere, dgr2rad, projectPoint } from '../utils/index.ts';
-import { CAMERA_CFG } from '../constants.ts';
+import { CAMERA_CFG, CONFIG } from '../constants.ts';
 import {
   NaniteLODTree,
   NaniteMeshletTreeNode,
@@ -19,15 +19,19 @@ export function calcNaniteMeshletsVisibility(
   naniteLOD: NaniteLODTree
 ) {
   const root = naniteLOD.root;
-  const meshletsToCheck = [...root.createdFrom];
+  const meshletsToCheck = [root];
   const visitedMeshlets: Set<number> = new Set();
   const renderedMeshlets: NaniteMeshletTreeNode[] = [];
+  const getProjectedError = createErrorMetric(
+    ctx.mvpMatrix,
+    ctx.viewport.height
+  );
 
   while (meshletsToCheck.length > 0) {
     const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
     visitedMeshlets.add(meshlet.id);
 
-    const status = getVisibilityStatus(ctx, meshlet);
+    const status = getVisibilityStatus(getProjectedError, meshlet);
 
     if (status === 'rendered') {
       // skip children - we are at the correct cut-off level
@@ -43,11 +47,7 @@ export function calcNaniteMeshletsVisibility(
     }
   }
 
-  // root has no .parentError, so we cannot project it
-  if (renderedMeshlets.length === 0) {
-    renderedMeshlets.push(root);
-  }
-
+  // console.log({ visitedMeshlets }); // debug how far the tree we went
   return renderedMeshlets;
 }
 
@@ -66,41 +66,35 @@ export function calcNaniteMeshletsVisibility(
  * TODO use the meshoptimizer's cone setting for culling
  */
 function getVisibilityStatus(
-  ctx: PassCtx,
+  getProjectedError: ReturnType<typeof createErrorMetric>,
   meshlet: NaniteMeshletTreeNode
 ): NaniteVisibilityStatus {
-  // WARNING: .parentError is INFINITY at top level
-  if (meshlet.parentBounds == undefined || meshlet.parentError === undefined) {
-    return 'check-children';
-  }
-
-  const viewH = ctx.viewport.height;
-  const mvpMat = ctx.mvpMatrix;
   // prettier-ignore
-  const clusterError = getProjectedError(mvpMat, viewH, meshlet.bounds, meshlet.maxSiblingsError);
+  const clusterError = getProjectedError(meshlet.bounds, meshlet.maxSiblingsError);
   // prettier-ignore
-  const parentError = getProjectedError(mvpMat, viewH, meshlet.parentBounds, meshlet.parentError);
-  const threshold = 1; // in pixels TODO move to config/UI
+  const parentError = getProjectedError(meshlet.parentBounds, meshlet.parentError);
 
+  const threshold = CONFIG.nanite.render.pixelThreshold; // in pixels
   const shouldRenderThisExactMeshlet =
     parentError > threshold && clusterError <= threshold;
   return shouldRenderThisExactMeshlet ? 'rendered' : 'check-children';
 }
 
 /** Projected error in pixels. https://stackoverflow.com/a/21649403 */
-function getProjectedError(
-  mvpMatrix: Mat4,
-  screenHeight: number,
-  bounds: BoundingSphere,
-  errorWorldSpace: number
-) {
-  if (errorWorldSpace === Infinity) return errorWorldSpace;
-
-  const center = projectPoint(mvpMatrix, bounds.center);
+function createErrorMetric(mvpMatrix: Mat4, screenHeight: number) {
   const fovRad = dgr2rad(CAMERA_CFG.fovDgr);
-  const cotHalfFov = 1.0 / Math.tan(fovRad / 2.0); // TODO do not recalc every time: createErrorMetric() with closure
-  const d2 = vec3.dot(center, center);
-  const r = errorWorldSpace;
-  const pr = (cotHalfFov * r) / Math.sqrt(d2 - r * r);
-  return (pr * screenHeight) / 2.0;
+  const cotHalfFov = 1.0 / Math.tan(fovRad / 2.0);
+
+  return (bounds: BoundingSphere | undefined, errorWorldSpace: number) => {
+    // WARNING: .parentError is INFINITY at top level
+    if (errorWorldSpace === Infinity || bounds == undefined) {
+      return Infinity;
+    }
+
+    const center = projectPoint(mvpMatrix, bounds.center);
+    const d2 = vec3.dot(center, center);
+    const r = errorWorldSpace;
+    const pr = (cotHalfFov * r) / Math.sqrt(d2 - r * r);
+    return (pr * screenHeight) / 2.0;
+  };
 }

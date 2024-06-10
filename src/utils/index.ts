@@ -154,3 +154,14 @@ export function pluckVertices(
   });
   return new Float32Array(data);
 }
+
+export function formatBytes(bytes: number, decimals = 2) {
+  if (bytes <= 0) return '0 Bytes';
+
+  // prettier-ignore
+  const units = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const v = (bytes / Math.pow(k, i)).toFixed(decimals);
+  return `${v} ${units[i]}`;
+}

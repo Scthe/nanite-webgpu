@@ -47,6 +47,17 @@ export const CONFIG = {
   displayMode: 'nanite' as DisplayMode,
   dbgMeshoptimizerLodLevel: 0,
   dbgNaniteLodLevel: 1,
+  nanite: {
+    render: {
+      /**
+       * If projected error of the LOD is lower then this, then the LOD is rendered.
+       * High value -> high acceptable error -> coarse LOD.
+       *
+       * In pixels.
+       */
+      pixelThreshold: 1.0,
+    },
+  },
 };
 
 // TODO add vertex/index buffer size

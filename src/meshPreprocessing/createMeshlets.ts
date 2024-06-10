@@ -136,7 +136,7 @@ function buildMeshlets(
 ): [number, Uint32Array, Uint32Array, Uint8Array] {
   // meshlets must contain enough space for all meshlets,
   // worst case size can be computed with meshopt_buildMeshletsBound
-  const meshlets = new Uint32Array(maxMeshlets * U32_IN_MESHOPT_MESHLET); // TODO *4?
+  const meshlets = new Uint32Array(maxMeshlets * U32_IN_MESHOPT_MESHLET);
   // meshlet_vertices must contain enough space for all meshlets,
   // worst case size is equal to max_meshlets * max_vertices
   const meshletVertices = new Uint32Array(maxMeshlets * opts.maxVertices!);

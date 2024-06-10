@@ -58,7 +58,7 @@ export function initFPSCounter() {
         el.setAttribute(STATS_ATTR, k);
         parentEl.appendChild(el);
       }
-      el.innerHTML = `${k}${v}`;
+      el.innerHTML = `${k} ${v}`;
     });
   }
 }
