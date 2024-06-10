@@ -1,7 +1,6 @@
 import { VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { getTriangleCount } from '../utils/index.ts';
-import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
 
 export type MeshletId = number;
 
@@ -14,15 +13,18 @@ export type NaniteMeshletTreeNode = Pick<
   | 'parentBounds'
   | 'parentError'
 > & {
-  indexBuffer: GPUBuffer;
   triangleCount: number;
+  firstIndexOffset: number;
   createdFrom: NaniteMeshletTreeNode[];
 };
 
 export class NaniteLODTree {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
 
-  constructor(public readonly vertexBuffer: GPUBuffer) {}
+  constructor(
+    public readonly vertexBuffer: GPUBuffer,
+    public readonly indexBuffer: GPUBuffer
+  ) {}
 
   find = (id: MeshletId) => this.allMeshlets.find((m) => m.id === id);
 
@@ -45,26 +47,25 @@ export class NaniteLODTree {
   }
 
   /** Used only during construction */
-  addMeshlet(device: GPUDevice, m: MeshletWIP) {
-    if (this.contains(m.id)) {
-      return;
+  addMeshlet(m: MeshletWIP, firstIndexOffset: number) {
+    const existing = this.find(m.id);
+    if (existing) {
+      return existing;
     }
 
-    const indexBuffer = createGPU_IndexBuffer(
-      device,
-      `nanite-meshlet-${m.id}`,
-      m.indices
-    );
-    this.allMeshlets.push({
+    const node: NaniteMeshletTreeNode = {
       id: m.id,
       lodLevel: m.lodLevel,
       bounds: m.bounds,
       maxSiblingsError: m.maxSiblingsError,
       parentBounds: m.parentBounds,
       parentError: m.parentError,
-      indexBuffer,
+      firstIndexOffset,
       triangleCount: getTriangleCount(m.indices),
       createdFrom: [], // filled once all nodes created in the tree
-    });
+    };
+
+    this.allMeshlets.push(node);
+    return node;
   }
 }

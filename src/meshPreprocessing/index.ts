@@ -4,6 +4,8 @@ import {
   BoundingSphere,
   calcBoundingSphere,
   formatBytes,
+  getBytesForTriangles,
+  getTriangleCount,
   pluckVertices,
 } from '../utils/index.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
@@ -217,7 +219,6 @@ export function createNaniteLODTree(
   vertexBuffer: GPUBuffer,
   allMeshlets: MeshletWIP[]
 ): NaniteLODTree {
-  // TODO use SINGLE Index buffer (offsets+sizes per meshlet).
   const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel)); // includes LOD level 0
   const roots = allMeshlets.filter((m) => m.lodLevel === lodLevels - 1);
   if (roots.length !== 1) {
@@ -225,17 +226,50 @@ export function createNaniteLODTree(
     throw new Error(`Expected 1 Nanite LOD tree root, found ${roots.length}. Searched for LOD level ${lodLevels - 1}`);
   }
 
-  const naniteLODTree = new NaniteLODTree(vertexBuffer);
+  // allocate single shared index buffer. Meshlets will use slices of it
+  const totalTriangleCount = getMeshletTriangleCount(allMeshlets);
+  const indexBuffer = device.createBuffer({
+    label: 'nanite-index-buffer',
+    size: getBytesForTriangles(totalTriangleCount),
+    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+  });
 
+  const naniteLODTree = new NaniteLODTree(vertexBuffer, indexBuffer);
+
+  // write meshlets to the LOD tree
+  let indexBufferOffsetBytes = 0;
   const meshletsToCheck: MeshletWIP[] = [roots[0]];
   while (meshletsToCheck.length > 0) {
     const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
-    naniteLODTree.addMeshlet(device, meshlet);
+    if (naniteLODTree.contains(meshlet.id)) {
+      continue;
+    }
+    const node = naniteLODTree.addMeshlet(
+      meshlet,
+      indexBufferOffsetBytes / BYTES_U32
+    );
+
+    // write index buffer slice
+    device.queue.writeBuffer(
+      indexBuffer,
+      indexBufferOffsetBytes,
+      meshlet.indices,
+      0
+    );
+    indexBufferOffsetBytes += getBytesForTriangles(node.triangleCount);
+
+    // schedule child nodes processing
     meshlet.createdFrom.forEach((m) => {
       if (m) {
         meshletsToCheck.push(m);
       }
     });
+  }
+
+  // assert all added OK
+  if (allMeshlets.length !== naniteLODTree.allMeshlets.length) {
+    // prettier-ignore
+    throw new Error(`Created ${allMeshlets.length} meshlets, but only ${naniteLODTree.allMeshlets.length} were added to the LOD tree?`);
   }
 
   // fill `createdFrom`
@@ -246,21 +280,18 @@ export function createNaniteLODTree(
       if (chNode !== undefined && node !== undefined) {
         node.createdFrom.push(chNode);
       } else {
+        // Node not found?!
         const missing = chNode === undefined ? mChild.id : m.id;
-        // prettier-ignore
-        throw new Error(`Error finalizing nanite LOD tree. Could not find meshlet ${missing}`);
+        throw new Error(`Error finalizing nanite LOD tree. Could not find meshlet ${missing}`); // prettier-ignore
       }
     });
   });
 
-  if (allMeshlets.length !== naniteLODTree.allMeshlets.length) {
-    // prettier-ignore
-    throw new Error(`Created ${allMeshlets.length} meshlets, but only ${naniteLODTree.allMeshlets.length} were added to the LOD tree?`);
-  }
-
   STATS['Vertex buffer:'] = formatBytes(vertexBuffer.size);
-  STATS['Index buffer:'] = formatBytes(
-    BYTES_U32 * naniteLODTree.totalIndicesCount
-  );
+  STATS['Index buffer:'] = formatBytes(indexBuffer.size);
   return naniteLODTree;
+}
+
+function getMeshletTriangleCount(meshlets: MeshletWIP[]) {
+  return meshlets.reduce((acc, m) => acc + getTriangleCount(m.indices), 0);
 }

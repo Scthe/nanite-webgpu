@@ -1,5 +1,10 @@
 import { Mat4, mat4, vec3, vec4 } from 'wgpu-matrix';
-import { CAMERA_CFG, CO_PER_VERTEX, VERTS_IN_TRIANGLE } from '../constants.ts';
+import {
+  BYTES_U32,
+  CAMERA_CFG,
+  CO_PER_VERTEX,
+  VERTS_IN_TRIANGLE,
+} from '../constants.ts';
 
 export * from './errors.ts';
 export * from './webgpu.ts';
@@ -137,6 +142,9 @@ export const getVertexCount = (verts: Float32Array | number) =>
   typeof verts === 'number'
     ? verts / CO_PER_VERTEX
     : verts.length / CO_PER_VERTEX;
+
+export const getBytesForTriangles = (triCnt: number) =>
+  triCnt * VERTS_IN_TRIANGLE * BYTES_U32;
 
 export function printMinMax(name: string, arr: TypedArray | number[]) {
   console.log(name, `min(${Math.min(...arr)})`, `max(${Math.max(...arr)})`);

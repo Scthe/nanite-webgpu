@@ -119,14 +119,20 @@ ${DrawMeshPass.SHADER_CODE}
     nanite: NaniteLODTree
   ) {
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
+    renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
 
     const drawnMeshlets = calcNaniteMeshletsVisibility(ctx, nanite);
     let totalTriangleCount = 0;
     drawnMeshlets.forEach((m, firstInstance) => {
-      renderPass.setIndexBuffer(m.indexBuffer!, 'uint32');
       const triangleCount = m.triangleCount;
       const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
-      renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
+      renderPass.drawIndexed(
+        vertexCount,
+        1, // instance count
+        m.firstIndexOffset, // first index
+        0, // base vertex
+        firstInstance // first instance
+      );
       totalTriangleCount += triangleCount;
     });
     STATS['Nanite meshlets:'] = drawnMeshlets.length;
