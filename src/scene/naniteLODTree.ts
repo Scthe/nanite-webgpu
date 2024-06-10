@@ -46,6 +46,19 @@ export class NaniteLODTree {
     return VERTS_IN_TRIANGLE * this.totalTriangleCount;
   }
 
+  /** Bottom meshlet LOD level is pre-nanite */
+  get preNaniteStats() {
+    let triangleCount = 0;
+    let meshletCount = 0;
+    this.allMeshlets.forEach((m) => {
+      if (m.lodLevel === 0) {
+        triangleCount += m.triangleCount;
+        meshletCount += 1;
+      }
+    });
+    return [meshletCount, triangleCount];
+  }
+
   /** Used only during construction */
   addMeshlet(m: MeshletWIP, firstIndexOffset: number) {
     const existing = this.find(m.id);

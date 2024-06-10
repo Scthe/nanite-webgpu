@@ -1,6 +1,11 @@
-import { Mat4, vec3 } from 'wgpu-matrix';
+import { mat4, vec3 } from 'wgpu-matrix';
 import { PassCtx } from './passCtx.ts';
-import { BoundingSphere, dgr2rad, projectPoint } from '../utils/index.ts';
+import {
+  BoundingSphere,
+  dgr2rad,
+  getModelViewProjectionMatrix,
+  projectPoint,
+} from '../utils/index.ts';
 import { CAMERA_CFG, CONFIG } from '../constants.ts';
 import {
   NaniteLODTree,
@@ -16,16 +21,14 @@ type NaniteVisibilityStatus = 'hidden' | 'rendered' | 'check-children';
 
 export function calcNaniteMeshletsVisibility(
   ctx: PassCtx,
+  modelMat: mat4.Mat4,
   naniteLOD: NaniteLODTree
 ) {
   const root = naniteLOD.root;
   const meshletsToCheck = [root];
   const visitedMeshlets: Set<number> = new Set();
   const renderedMeshlets: NaniteMeshletTreeNode[] = [];
-  const getProjectedError = createErrorMetric(
-    ctx.mvpMatrix,
-    ctx.viewport.height
-  );
+  const getProjectedError = createErrorMetric(ctx, modelMat);
 
   while (meshletsToCheck.length > 0) {
     const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
@@ -81,7 +84,14 @@ function getVisibilityStatus(
 }
 
 /** Projected error in pixels. https://stackoverflow.com/a/21649403 */
-function createErrorMetric(mvpMatrix: Mat4, screenHeight: number) {
+function createErrorMetric(ctx: PassCtx, modelMat: mat4.Mat4) {
+  const mvpMatrix = getModelViewProjectionMatrix(
+    modelMat,
+    ctx.viewMatrix,
+    ctx.projMatrix
+  );
+  const screenHeight = ctx.viewport.height;
+
   const fovRad = dgr2rad(CAMERA_CFG.fovDgr);
   const cotHalfFov = 1.0 / Math.tan(fovRad / 2.0);
 

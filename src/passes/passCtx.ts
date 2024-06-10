@@ -6,7 +6,7 @@ import { Scene } from '../scene/types.ts';
 export interface PassCtx {
   device: GPUDevice;
   cmdBuf: GPUCommandEncoder;
-  mvpMatrix: Mat4;
+  vpMatrix: Mat4;
   viewMatrix: Mat4;
   projMatrix: Mat4;
   profiler: GpuProfiler | undefined;

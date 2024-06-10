@@ -8,8 +8,9 @@ import { PassCtx } from './passCtx.ts';
 export class RenderUniformsBuffer {
   public static SHADER_SNIPPET = (group: number) => `
     struct Uniforms {
-      mvpMatrix: mat4x4<f32>,
+      vpMatrix: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
+      projMatrix: mat4x4<f32>,
       viewport: vec4f,
     };
     @binding(0) @group(${group})
@@ -17,8 +18,9 @@ export class RenderUniformsBuffer {
   `;
 
   public static BUFFER_SIZE =
-    BYTES_MAT4 + // mvpMatrix
+    BYTES_MAT4 + // vpMatrix
     BYTES_MAT4 + // viewMatrix
+    BYTES_MAT4 + // projMatrix
     BYTES_VEC4; // viewportAndFocals
 
   private readonly gpuBuffer: GPUBuffer;
@@ -37,14 +39,17 @@ export class RenderUniformsBuffer {
   });
 
   update(ctx: PassCtx) {
-    const { device, mvpMatrix, viewMatrix, viewport } = ctx;
+    const { device, vpMatrix, viewMatrix, projMatrix, viewport } = ctx;
     let offsetBytes = 0;
 
     // TODO single write to GPU instead many tiny ones
-    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, mvpMatrix);
+    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, vpMatrix);
     offsetBytes += BYTES_MAT4;
 
     writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, viewMatrix);
+    offsetBytes += BYTES_MAT4;
+
+    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, projMatrix);
     offsetBytes += BYTES_MAT4;
 
     // viewport as vec4

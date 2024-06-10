@@ -1,3 +1,5 @@
+import { ValueOf } from './utils/index.ts';
+
 const camDist = 1.5;
 
 export const CAMERA_CFG = {
@@ -25,13 +27,28 @@ export const CO_PER_VERTEX: number = 3;
 /** Give a name to a random magic value '3'  */
 export const VERTS_IN_TRIANGLE: number = 3;
 
+const createGrid = (
+  xCnt: number = 10,
+  yCnt: number = 10,
+  offset: number = 1
+) => ({
+  xCnt,
+  yCnt,
+  offset,
+});
+
 export const SCENES = {
-  bunny: { file: 'bunny.obj', scale: 8 },
-  cube: { file: 'cube.obj', scale: 1 },
-  plane: { file: 'plane.obj', scale: 1 },
-  displacedPlane: { file: 'displaced-plane.obj', scale: 0.2 },
+  bunny: { file: 'bunny.obj', scale: 8, grid: createGrid() },
+  cube: { file: 'cube.obj', scale: 1, grid: createGrid() },
+  plane: { file: 'plane.obj', scale: 1, grid: createGrid() },
+  displacedPlane: {
+    file: 'displaced-plane.obj',
+    scale: 0.2,
+    grid: createGrid(),
+  },
 };
 export type SceneFile = keyof typeof SCENES;
+export type SceneDesc = ValueOf<typeof SCENES>;
 
 export type DisplayMode =
   | 'nanite'

@@ -15,7 +15,7 @@ fn main_vs(
   var result: VertexOutput;
 
   var worldPos = vec4<f32>(inWorldPos.xyz, 1.0);
-  var projectedPosition = _uniforms.mvpMatrix * worldPos;
+  var projectedPosition = _uniforms.vpMatrix * worldPos;
   projectedPosition /= projectedPosition.w;
   result.position = vec4<f32>(projectedPosition.xyz, 1.0);
   result.projPosition = result.position;

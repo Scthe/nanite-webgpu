@@ -13,9 +13,12 @@ import {
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
-import { NaniteLODTree } from '../scene/naniteLODTree.ts';
+import { Scene } from '../scene/types.ts';
 
 // TODO rename drawNanitesPass()?
+
+const BINDINGS_RENDER_UNIFORMS = 0;
+const BINDINGS_INSTANCES_TRANSFORMS = 1;
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   {
@@ -41,17 +44,25 @@ export class DrawMeshPass {
   constructor(
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat,
-    uniforms: RenderUniformsBuffer
+    uniforms: RenderUniformsBuffer,
+    scene: Scene
   ) {
     this.renderPipeline = DrawMeshPass.createRenderPipeline(
       device,
       outTextureFormat
     );
+
     this.uniformsBindings = assignResourcesToBindings(
       DrawMeshPass,
       device,
       this.renderPipeline,
-      [uniforms.createBindingDesc(0)]
+      [
+        uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
+        {
+          binding: BINDINGS_INSTANCES_TRANSFORMS,
+          resource: { buffer: scene.naniteInstances.transformsBuffer },
+        },
+      ]
     );
   }
 
@@ -63,7 +74,8 @@ export class DrawMeshPass {
     const shaderModule = device.createShaderModule({
       label: labelShader(DrawMeshPass),
       code: `
-${RenderUniformsBuffer.SHADER_SNIPPET(0)}
+${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
+${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
@@ -90,7 +102,7 @@ ${DrawMeshPass.SHADER_CODE}
   }
 
   draw(ctx: PassCtx, loadOp: GPULoadOp) {
-    const { cmdBuf, profiler, depthTexture, screenTexture, scene } = ctx;
+    const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
@@ -107,35 +119,48 @@ ${DrawMeshPass.SHADER_CODE}
     renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
-    this.renderNaniteObject(ctx, renderPass, scene.naniteObject);
+    this.renderNaniteObjects(ctx, renderPass);
 
     // fin
     renderPass.end();
   }
 
-  private renderNaniteObject(
-    ctx: PassCtx,
-    renderPass: GPURenderPassEncoder,
-    nanite: NaniteLODTree
-  ) {
+  private renderNaniteObjects(ctx: PassCtx, renderPass: GPURenderPassEncoder) {
+    const instances = ctx.scene.naniteInstances.transforms;
+    const nanite = ctx.scene.naniteObject;
+
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
     renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
 
-    const drawnMeshlets = calcNaniteMeshletsVisibility(ctx, nanite);
     let totalTriangleCount = 0;
-    drawnMeshlets.forEach((m, firstInstance) => {
-      const triangleCount = m.triangleCount;
-      const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
-      renderPass.drawIndexed(
-        vertexCount,
-        1, // instance count
-        m.firstIndexOffset, // first index
-        0, // base vertex
-        firstInstance // first instance
+    let totalDrawnMeshlets = 0;
+
+    instances.forEach((instanceModelMat, instanceIdx) => {
+      const drawnMeshlets = calcNaniteMeshletsVisibility(
+        ctx,
+        instanceModelMat,
+        nanite
       );
-      totalTriangleCount += triangleCount;
+
+      drawnMeshlets.forEach((m, meshletId) => {
+        const triangleCount = m.triangleCount;
+        const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
+        renderPass.drawIndexed(
+          vertexCount,
+          1, // instance count
+          m.firstIndexOffset, // first index
+          0, // base vertex
+          instanceIdx // meshletId // first instance TODO encode [meshletId+objectId]?
+        );
+        totalTriangleCount += triangleCount;
+      });
+      totalDrawnMeshlets += drawnMeshlets.length;
     });
-    STATS['Nanite meshlets:'] = drawnMeshlets.length;
+
+    const [rawMeshletCount, rawTriangleCount] = nanite.preNaniteStats;
+    STATS['Pre-Nanite meshlets:'] = rawMeshletCount * instances.length;
+    STATS['Pre-Nanite triangles:'] = rawTriangleCount * instances.length;
+    STATS['Nanite meshlets:'] = totalDrawnMeshlets;
     STATS['Nanite triangles:'] = totalTriangleCount;
   }
 }

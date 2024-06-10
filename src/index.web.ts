@@ -67,7 +67,8 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
   const renderer = new Renderer(
     device,
     canvasResizeSystem.getViewportSize(),
-    PREFERRED_CANVAS_FORMAT
+    PREFERRED_CANVAS_FORMAT,
+    scene
   );
   canvasResizeSystem.addListener(renderer.onCanvasResize);
 

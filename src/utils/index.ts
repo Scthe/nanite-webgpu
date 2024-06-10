@@ -29,11 +29,19 @@ export function createCameraProjectionMat(viewportSize: Dimensions): Mat4 {
   );
 }
 
+export function getViewProjectionMatrix(viewMat: Mat4, projMat: Mat4): Mat4 {
+  return mat4.multiply(projMat, viewMat);
+}
+
 export function getModelViewProjectionMatrix(
+  modelMat: Mat4,
   viewMat: Mat4,
   projMat: Mat4
 ): Mat4 {
-  return mat4.multiply(projMat, viewMat);
+  let result = mat4.create();
+  result = mat4.multiply(viewMat, modelMat, result);
+  mat4.multiply(projMat, result, result);
+  return result;
 }
 
 export function projectPoint(mvpMatrix: mat4.Mat4, p: vec4.Vec4 | vec3.Vec3) {

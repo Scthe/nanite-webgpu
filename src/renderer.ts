@@ -4,7 +4,7 @@ import { RenderUniformsBuffer } from './passes/renderUniformsBuffer.ts';
 import {
   Dimensions,
   createCameraProjectionMat,
-  getModelViewProjectionMatrix,
+  getViewProjectionMatrix,
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG, DEPTH_FORMAT } from './constants.ts';
@@ -13,6 +13,7 @@ import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
 import { DbgMeshoptimizerPass } from './passes/dbgMeshoptimizerPass.ts';
 import { DbgMeshoptimizerMeshletsPass } from './passes/dbgMeshoptimizerMeshletsPass.ts';
+import { Scene } from './scene/types.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
@@ -43,14 +44,16 @@ export class Renderer {
   constructor(
     private readonly device: GPUDevice,
     viewportSize: Dimensions,
-    preferredCanvasFormat: GPUTextureFormat
+    preferredCanvasFormat: GPUTextureFormat,
+    scene: Scene
   ) {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
     this.drawMeshPass = new DrawMeshPass(
       device,
       preferredCanvasFormat,
-      this.renderUniformBuffer
+      this.renderUniformBuffer,
+      scene
     );
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
@@ -89,14 +92,11 @@ export class Renderer {
     >
   ) {
     const viewMatrix = this.cameraCtrl.viewMatrix;
-    const mvpMatrix = getModelViewProjectionMatrix(
-      viewMatrix,
-      this.projectionMat
-    );
+    const vpMatrix = getViewProjectionMatrix(viewMatrix, this.projectionMat);
     const ctx: PassCtx = {
       ..._ctx,
       viewMatrix,
-      mvpMatrix,
+      vpMatrix,
       projMatrix: this.projectionMat,
       depthTexture: this.depthTextureView,
     };

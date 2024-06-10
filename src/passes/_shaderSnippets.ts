@@ -1,3 +1,13 @@
+const MAT4 = 'mat4x4<f32>';
+
+/** Fragment shader snippet for discard. Mostly for Z-axis. */
+export const GET_MVP_MAT = `
+fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} {
+  let a = viewMat * modelMat;
+  return projMat * a;
+}
+`;
+
 // TODO finish culling
 /** Fragment shader snippet for discard. Mostly for Z-axis. */
 export const FS_CHECK_IS_CULLED = `
