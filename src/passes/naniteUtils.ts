@@ -1,8 +1,11 @@
 import { Mat4, vec3 } from 'wgpu-matrix';
-import { NaniteMeshletTreeNode } from '../scene/types.ts';
 import { PassCtx } from './passCtx.ts';
 import { BoundingSphere, dgr2rad, projectPoint } from '../utils/index.ts';
 import { CAMERA_CFG } from '../constants.ts';
+import {
+  NaniteLODTree,
+  NaniteMeshletTreeNode,
+} from '../scene/naniteLODTree.ts';
 
 /**
  * 'hidden' - skip subtree
@@ -11,9 +14,11 @@ import { CAMERA_CFG } from '../constants.ts';
  */
 type NaniteVisibilityStatus = 'hidden' | 'rendered' | 'check-children';
 
-export function calcNaniteMeshletsVisibility(ctx: PassCtx) {
-  const { scene } = ctx;
-  const root = scene.naniteDbgLODs.root;
+export function calcNaniteMeshletsVisibility(
+  ctx: PassCtx,
+  naniteLOD: NaniteLODTree
+) {
+  const root = naniteLOD.root;
   const meshletsToCheck = [...root.createdFrom];
   const visitedMeshlets: Set<number> = new Set();
   const renderedMeshlets: NaniteMeshletTreeNode[] = [];

@@ -75,7 +75,7 @@ export async function loadScene(
     originalVertices,
     originalIndices
   );
-  const naniteDbgLODs = createNaniteLODTree(
+  const naniteObject = createNaniteLODTree(
     device,
     originalMesh.vertexBuffer,
     naniteMeshlets
@@ -86,7 +86,7 @@ export async function loadScene(
     meshlets,
     meshoptimizerLODs: meshoptimizerLODs.map((e) => e[0]),
     meshoptimizerMeshletLODs,
-    naniteDbgLODs,
+    naniteObject,
   };
 }
 
@@ -135,8 +135,8 @@ async function createMeshLODs(
   ) {
     const level = meshLODs.length;
 
-    // TODO use last indices instead of original mesh
     const targetIndexCount = (triangleCount * VERTS_IN_TRIANGLE) / 2;
+    // TBH we should use last indices instead of original mesh. Though this is debug view..
     const simplifiedMesh = await simplifyMesh(vertices, originalIndices, {
       targetIndexCount,
       targetError: 0.05,

@@ -13,7 +13,7 @@ import {
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
-import { getTriangleCount } from '../utils/index.ts';
+import { NaniteLODTree } from '../scene/naniteLODTree.ts';
 
 // TODO rename drawNanitesPass()?
 
@@ -105,44 +105,31 @@ ${DrawMeshPass.SHADER_CODE}
     // set render pass data
     renderPass.setPipeline(this.renderPipeline);
     renderPass.setBindGroup(0, this.uniformsBindings);
-    /*
-    renderPass.setVertexBuffer(0, mesh.vertexBuffer);
-    renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
+
     // draw
-    const vertexCount = mesh.triangleCount * 3;
-    renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
-    */
+    this.renderNaniteObject(ctx, renderPass, scene.naniteObject);
 
-    /*
-    // meshlets test
-    const ms = scene.meshlets;
-    renderPass.setVertexBuffer(0, ms.vertexBuffer);
-    renderPass.setIndexBuffer(ms.indexBuffer, 'uint32');
-    let nextIdx = 0;
-    ms.meshlets.forEach((m, firstInstance) => {
-      const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
-      const firstIndex = nextIdx;
-      renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
-      nextIdx += vertexCount;
-    });
-    */
+    // fin
+    renderPass.end();
+  }
 
-    const nanite = scene.naniteDbgLODs;
+  private renderNaniteObject(
+    ctx: PassCtx,
+    renderPass: GPURenderPassEncoder,
+    nanite: NaniteLODTree
+  ) {
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
 
-    const drawnMeshlets = calcNaniteMeshletsVisibility(ctx);
+    const drawnMeshlets = calcNaniteMeshletsVisibility(ctx, nanite);
     let totalTriangleCount = 0;
     drawnMeshlets.forEach((m, firstInstance) => {
       renderPass.setIndexBuffer(m.indexBuffer!, 'uint32');
-      const triangleCount = getTriangleCount(m.indices);
+      const triangleCount = m.triangleCount;
       const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
       renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
       totalTriangleCount += triangleCount;
     });
     STATS['Nanite meshlets: '] = drawnMeshlets.length;
     STATS['Nanite triangles: '] = totalTriangleCount;
-
-    // fin
-    renderPass.end();
   }
 }

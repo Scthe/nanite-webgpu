@@ -49,4 +49,5 @@ export const CONFIG = {
   dbgNaniteLodLevel: 1,
 };
 
+// TODO add vertex/index buffer size
 export const STATS: Record<string, number | string> = {};

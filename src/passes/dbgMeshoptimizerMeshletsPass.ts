@@ -1,6 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { Scene } from '../scene/types.ts';
-import { getTriangleCount } from '../utils/index.ts';
 import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -122,19 +121,18 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
   }
 
   private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
-    const nanite = scene.naniteDbgLODs;
+    const nanite = scene.naniteObject;
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
 
     // const meshlets = nani.naniteDbgLODs[CONFIG.dbgNaniteLodLevel];
-    const drawnMeshlets = nanite.naniteDbgLODs.filter(
+    const drawnMeshlets = nanite.allMeshlets.filter(
       (m) => m.lodLevel === CONFIG.dbgNaniteLodLevel
     );
     drawnMeshlets.forEach((m, firstInstance) => {
       if (m.lodLevel !== CONFIG.dbgNaniteLodLevel) return;
 
       renderPass.setIndexBuffer(m.indexBuffer!, 'uint32');
-      const triangleCount = getTriangleCount(m.indices);
-      const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
+      const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
       renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
     });
   }
