@@ -1,4 +1,4 @@
-import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
+import { BYTES_VEC3, CONFIG, STATS, VERTS_IN_TRIANGLE } from '../constants.ts';
 import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -12,6 +12,10 @@ import {
 } from './_shared.ts';
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
+import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
+import { getTriangleCount } from '../utils/index.ts';
+
+// TODO rename drawNanitesPass()?
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   {
@@ -109,6 +113,7 @@ ${DrawMeshPass.SHADER_CODE}
     renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
     */
 
+    /*
     // meshlets test
     const ms = scene.meshlets;
     renderPass.setVertexBuffer(0, ms.vertexBuffer);
@@ -120,6 +125,22 @@ ${DrawMeshPass.SHADER_CODE}
       renderPass.drawIndexed(vertexCount, 1, firstIndex, 0, firstInstance);
       nextIdx += vertexCount;
     });
+    */
+
+    const nanite = scene.naniteDbgLODs;
+    renderPass.setVertexBuffer(0, nanite.vertexBuffer);
+
+    const drawnMeshlets = calcNaniteMeshletsVisibility(ctx);
+    let totalTriangleCount = 0;
+    drawnMeshlets.forEach((m, firstInstance) => {
+      renderPass.setIndexBuffer(m.indexBuffer!, 'uint32');
+      const triangleCount = getTriangleCount(m.indices);
+      const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
+      renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
+      totalTriangleCount += triangleCount;
+    });
+    STATS['Nanite meshlets: '] = drawnMeshlets.length;
+    STATS['Nanite triangles: '] = totalTriangleCount;
 
     // fin
     renderPass.end();

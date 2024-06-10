@@ -35,6 +35,7 @@ export type NaniteLODTree = {
   vertexBuffer: GPUBuffer;
   // naniteDbgLODs: Array<NaniteMeshletTreeNode[]>;
   naniteDbgLODs: Array<NaniteMeshletTreeNode>;
+  root: NaniteMeshletTreeNode;
 };
 
 export const getMaxNaniteLODLevel = (t: NaniteLODTree) =>

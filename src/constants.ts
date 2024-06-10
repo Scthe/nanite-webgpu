@@ -44,7 +44,9 @@ export const CONFIG = {
   clearColor: [0, 0, 0.2],
   rotationSpeed: 1,
   movementSpeed: 2,
-  displayMode: 'dbg-nanite-meshlets' as DisplayMode,
+  displayMode: 'nanite' as DisplayMode,
   dbgMeshoptimizerLodLevel: 0,
   dbgNaniteLodLevel: 1,
 };
+
+export const STATS: Record<string, number | string> = {};

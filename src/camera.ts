@@ -7,12 +7,10 @@ export interface CameraOpts {
   target?: [number, number, number];
 }
 
-type Mat4 = any;
-
 const UP = [0, 1, 0];
 
 export class Camera {
-  public readonly viewMatrix: Mat4;
+  public readonly viewMatrix: mat4.Mat4;
 
   constructor(
     options: Pick<typeof CAMERA_CFG, 'position' | 'target'> = CAMERA_CFG
@@ -34,12 +32,12 @@ export class Camera {
     mat4.inverse(viewInv, this.viewMatrix);
   }
 
-  update(deltaTime: number, input: Input): Mat4 {
+  update(deltaTime: number, input: Input): mat4.Mat4 {
     const sign = (positive: boolean, negative: boolean) =>
       (positive ? 1 : 0) - (negative ? 1 : 0);
 
-    const m = deltaTime * CONFIG.movementSpeed;
     const digital = input.directions;
+    const m = deltaTime * CONFIG.movementSpeed * (digital.goFaster ? 10 : 1);
     const deltaRight = m * sign(digital.right, digital.left);
     const deltaUp = m * sign(digital.up, digital.down);
     const deltaBack = m * sign(digital.backward, digital.forward);

@@ -1,5 +1,10 @@
 import { NaniteLODTree } from '../scene/types.ts';
-import { createGPU_IndexBuffer } from '../utils/index.ts';
+import {
+  BoundingSphere,
+  calcBoundingSphere,
+  createGPU_IndexBuffer,
+  pluckVertices,
+} from '../utils/index.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
@@ -20,16 +25,25 @@ const MAX_LODS = 15;
 const DECIMATE_FACTOR = 2;
 const TARGET_SIMPLIFY_ERROR = 0.05;
 
+let NEXT_MESHLET_ID = 0;
+
 /** Meshlet when constructing the tree */
 export interface MeshletWIP {
+  id: number;
+  /** In tree, these are the children nodes */
+  createdFrom: MeshletWIP[];
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
+  indexBuffer: GPUBuffer | undefined; // TODO remove?
+
+  // Error calc:
+  /** Error for this node */
+  maxSiblingsError: number;
   /** Infinity for top tree level */
   parentError: number;
-  maxSiblingsError: number;
-  createdFrom: MeshletWIP[];
-  indexBuffer: GPUBuffer | undefined; // TODO remove?
+  bounds: BoundingSphere;
+  parentBounds: BoundingSphere | undefined; // undefined at top level
 }
 
 export async function createNaniteMeshlets(
@@ -38,7 +52,11 @@ export async function createNaniteMeshlets(
 ): Promise<MeshletWIP[]> {
   const allMeshlets: MeshletWIP[] = [];
   let lodLevel = 0;
-  const bottomMeshlets = await splitIntoMeshlets(indices, 0.0);
+  const bottomMeshlets = await splitIntoMeshlets(
+    indices,
+    0.0,
+    calculateBounds(indices)
+  );
   let currentMeshlets = bottomMeshlets;
   lodLevel += 1;
 
@@ -64,11 +82,11 @@ export async function createNaniteMeshlets(
 
     // 2. for each group of 4 meshlets
     const newlyCreatedMeshlets: MeshletWIP[] = [];
-    for (const meshletGroup of partitioned) {
-      // 2.1 merge triangles from all meshlets in the group
-      const megaMeshlet: Uint32Array = mergeMeshlets(...meshletGroup);
+    for (const childMeshletGroup of partitioned) {
+      // 2.1 [GROUP] merge triangles from all meshlets in the group
+      const megaMeshlet: Uint32Array = mergeMeshlets(...childMeshletGroup);
 
-      // 2.2 simplify to remove not needed edges/vertices in the middle
+      // 2.2 [GROUP] simplify to remove not needed edges/vertices in the middle
       const targetIndexCount = Math.floor(megaMeshlet.length / DECIMATE_FACTOR);
       const simplifiedMesh = await simplifyMesh(vertices, megaMeshlet, {
         targetIndexCount,
@@ -77,27 +95,30 @@ export async function createNaniteMeshlets(
       });
       const errorNow = simplifiedMesh.error * simplifiedMesh.errorScale;
       const childrenError = Math.max(
-        ...meshletGroup.map((m) => m.maxSiblingsError)
+        ...childMeshletGroup.map((m) => m.maxSiblingsError)
       );
       const totalError = errorNow + childrenError;
+      const bounds = calculateBounds(simplifiedMesh.indexBuffer);
 
-      // 2.3 split into new meshlets
+      // 2.3 [GROUP] split into new meshlets. Share: simplificationError, bounds
       let newMeshlets: MeshletWIP[];
       if (partitioned.length === 1) {
         // this happens on last iteration, when < 4 meshlets
         // prettier-ignore
-        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError);
+        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds);
         newMeshlets = [rootMeshlet];
       } else {
         // prettier-ignore
-        newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError);
+        newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError, bounds);
       }
 
-      meshletGroup.forEach((m) => {
-        m.parentError = totalError;
-        m.maxSiblingsError = childrenError;
+      childMeshletGroup.forEach((childMeshlet) => {
+        childMeshlet.parentError = totalError; // set based on simplify, not meshlets!
+        // childMeshlet.maxSiblingsError = childrenError; // NO!
+        childMeshlet.parentBounds = bounds;
+
         newMeshlets.forEach((m2) => {
-          m2.createdFrom.push(m);
+          m2.createdFrom.push(childMeshlet);
         });
       });
       newlyCreatedMeshlets.push(...newMeshlets);
@@ -130,7 +151,8 @@ export async function createNaniteMeshlets(
 
   async function splitIntoMeshlets(
     indices: Uint32Array,
-    simplificationError: number
+    simplificationError: number,
+    bounds: BoundingSphere
   ) {
     const meshletsOpt = await createMeshlets(vertices, indices, {});
     // during init: create tons of small meshlets
@@ -138,30 +160,40 @@ export async function createNaniteMeshlets(
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
 
     const meshlets: MeshletWIP[] = meshletsIndices.map((indices) =>
-      createMeshletWip(indices, simplificationError)
+      createMeshletWip(indices, simplificationError, bounds)
     );
 
-    allMeshlets.push(...meshlets);
     return meshlets;
   }
 
   function createMeshletWip(
     indices: Uint32Array,
-    simplificationError: number
+    simplificationError: number,
+    bounds: BoundingSphere
   ): MeshletWIP {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
-    return {
+    const m: MeshletWIP = {
+      id: NEXT_MESHLET_ID,
       indices,
       boundaryEdges,
       // maxSiblingsError will temporarly hold the error till
       // we determine siblings in next iter
       maxSiblingsError: simplificationError,
       parentError: Infinity,
+      bounds,
+      parentBounds: undefined,
       lodLevel,
       createdFrom: [],
       indexBuffer: undefined,
     };
+    NEXT_MESHLET_ID += 1;
+    allMeshlets.push(m);
+    return m;
+  }
+
+  function calculateBounds(indices: Uint32Array) {
+    return calcBoundingSphere(pluckVertices(vertices, indices));
   }
 }
 
@@ -186,8 +218,9 @@ export function createNaniteLODTree(
   vertexBuffer: GPUBuffer,
   allMeshlets: MeshletWIP[]
 ): NaniteLODTree {
-  // const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel));
+  const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel)); // includes LOD level 0
   // const naniteDbgLODs: Array<NaniteMeshletTreeNode[]> = [];
+  // TODO use SINGLE Index buffer (offsets+sizes per meshlet). Print stats how big it is
 
   /* // Code below used with optimized NaniteTreeNode
   for (let i = 0; i < lodLevels; i++) {
@@ -216,5 +249,11 @@ export function createNaniteLODTree(
     m.indexBuffer = indexBuffer;
   });
 
-  return { vertexBuffer, naniteDbgLODs: allMeshlets };
+  const roots = allMeshlets.filter((m) => m.lodLevel === lodLevels - 1);
+  if (roots.length !== 1) {
+    // prettier-ignore
+    throw new Error(`Expected 1 Nanite LOD tree root, found ${roots.length}. Searched for LOD level ${lodLevels - 1}`);
+  }
+
+  return { vertexBuffer, naniteDbgLODs: allMeshlets, root: roots[0] };
 }

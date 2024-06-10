@@ -22,6 +22,7 @@ const Key = {
   CAMERA_RIGHT: 'd',
   CAMERA_UP: ' ',
   CAMERA_DOWN: 'z',
+  CAMERA_GO_FASTER: 'shift',
 };
 
 // Input holds as snapshot of input state
@@ -34,6 +35,7 @@ export default interface Input {
     right: boolean;
     up: boolean;
     down: boolean;
+    goFaster: boolean;
   };
   // Analog input (e.g mouse, touchscreen)
   readonly mouse: {
@@ -52,6 +54,7 @@ export const createMockInputState = (): Input => ({
     right: false,
     up: false,
     down: false,
+    goFaster: false,
   },
   mouse: {
     x: 0,
@@ -69,23 +72,10 @@ export function createInputHandler(
   window: Window,
   canvas: HTMLCanvasElement
 ): InputHandler {
-  const directions: Input['directions'] = {
-    forward: false,
-    backward: false,
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-  };
-  const mouse: Input['mouse'] = {
-    x: 0,
-    y: 0,
-    zoom: 0,
-    touching: false,
-  };
+  const { directions, mouse } = createMockInputState();
 
   const setDigital = (e: KeyboardEvent, value: boolean) => {
-    switch (e.key) {
+    switch (e.key.toLowerCase()) {
       case Key.CAMERA_FORWARD:
         directions.forward = value;
         e.preventDefault();
@@ -113,6 +103,11 @@ export function createInputHandler(
         break;
       case Key.CAMERA_DOWN:
         directions.down = value;
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      case Key.CAMERA_GO_FASTER:
+        directions.goFaster = value;
         e.preventDefault();
         e.stopPropagation();
         break;
