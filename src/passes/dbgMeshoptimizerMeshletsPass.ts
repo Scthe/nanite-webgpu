@@ -73,15 +73,13 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
     });
   }
 
-  draw(ctx: PassCtx, loadOp: GPULoadOp) {
+  draw(ctx: PassCtx) {
     const { cmdBuf, profiler, depthTexture, screenTexture, scene } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DbgMeshoptimizerMeshletsPass.NAME,
-      colorAttachments: [
-        useColorAttachment(screenTexture, loadOp, CONFIG.clearColor),
-      ],
+      colorAttachments: [useColorAttachment(screenTexture, CONFIG.clearColor)],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(
         DbgMeshoptimizerMeshletsPass.NAME
@@ -123,17 +121,20 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
   private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
     const nanite = scene.naniteObject;
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
+    renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
 
-    // const meshlets = nani.naniteDbgLODs[CONFIG.dbgNaniteLodLevel];
     const drawnMeshlets = nanite.allMeshlets.filter(
       (m) => m.lodLevel === CONFIG.dbgNaniteLodLevel
     );
-    drawnMeshlets.forEach((m, firstInstance) => {
-      if (m.lodLevel !== CONFIG.dbgNaniteLodLevel) return;
-
-      renderPass.setIndexBuffer(m.indexBuffer!, 'uint32');
+    drawnMeshlets.forEach((m, meshletIdx) => {
       const vertexCount = m.triangleCount * VERTS_IN_TRIANGLE;
-      renderPass.drawIndexed(vertexCount, 1, 0, 0, firstInstance);
+      renderPass.drawIndexed(
+        vertexCount,
+        1, // instance count
+        m.firstIndexOffset, // first index
+        0, // base vertex
+        meshletIdx
+      );
     });
   }
 }

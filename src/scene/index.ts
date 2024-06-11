@@ -212,7 +212,7 @@ function createInstances(
   let offsetBytes = 0;
   for (let x = 0; x < g.xCnt; x++) {
     for (let y = 0; y < g.yCnt; y++) {
-      const tfx = mat4.translation([-x * g.offset, 0, y * g.offset]);
+      const tfx = mat4.translation([-x * g.offset, 0, -y * g.offset]);
       transforms.push(tfx);
       writeMatrixToGPUBuffer(device, transformsBuffer, offsetBytes, tfx);
       offsetBytes += BYTES_MAT4;

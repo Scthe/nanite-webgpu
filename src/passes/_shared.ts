@@ -40,11 +40,10 @@ export const assignResourcesToBindings = (
 
 export const useColorAttachment = (
   colorTexture: GPUTextureView,
-  loadOp: GPULoadOp,
   clearColor: number[]
 ): GPURenderPassColorAttachment => ({
   view: colorTexture,
-  loadOp,
+  loadOp: 'clear',
   storeOp: 'store',
   clearValue: [clearColor[0], clearColor[1], clearColor[2], 1],
 });

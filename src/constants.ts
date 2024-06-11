@@ -1,11 +1,9 @@
 import { ValueOf } from './utils/index.ts';
 
-const camDist = 1.5;
-
 export const CAMERA_CFG = {
   // pos + rot
-  position: [camDist, camDist, camDist],
-  target: [0, 1, 0],
+  position: [1.5, 1.9, 2.3],
+  rotation: [0.3, -0.6],
   // projection
   fovDgr: 45,
   near: 0.01,
@@ -58,9 +56,10 @@ export type DisplayMode =
 
 export const CONFIG = {
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
-  clearColor: [0, 0, 0.2],
+  clearColor: [0.2, 0.2, 0.2],
   rotationSpeed: 1,
-  movementSpeed: 2,
+  movementSpeed: 3,
+  movementSpeedFaster: 20,
   displayMode: 'nanite' as DisplayMode,
   dbgMeshoptimizerLodLevel: 0,
   dbgNaniteLodLevel: 1,
@@ -77,5 +76,4 @@ export const CONFIG = {
   },
 };
 
-// TODO add vertex/index buffer size
 export const STATS: Record<string, number | string> = {};

@@ -104,14 +104,14 @@ export class Renderer {
     this.renderUniformBuffer.update(ctx);
 
     if (CONFIG.displayMode === 'dbg-lod') {
-      this.dbgMeshoptimizerPass.draw(ctx, 'load');
+      this.dbgMeshoptimizerPass.draw(ctx);
     } else if (
       CONFIG.displayMode === 'dbg-lod-meshlets' ||
       CONFIG.displayMode === 'dbg-nanite-meshlets'
     ) {
-      this.dbgMeshoptimizerMeshletsPass.draw(ctx, 'load');
+      this.dbgMeshoptimizerMeshletsPass.draw(ctx);
     } else {
-      this.drawMeshPass.draw(ctx, 'load');
+      this.drawMeshPass.draw(ctx);
     }
   }
 

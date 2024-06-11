@@ -6,7 +6,6 @@ import { Scene } from '../scene/types.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
-// TODO background color change does not work
 
 export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
   const gui = new dat.GUI();

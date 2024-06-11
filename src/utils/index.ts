@@ -38,8 +38,7 @@ export function getModelViewProjectionMatrix(
   viewMat: Mat4,
   projMat: Mat4
 ): Mat4 {
-  let result = mat4.create();
-  result = mat4.multiply(viewMat, modelMat, result);
+  const result = mat4.multiply(viewMat, modelMat);
   mat4.multiply(projMat, result, result);
   return result;
 }

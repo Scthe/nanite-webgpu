@@ -101,15 +101,13 @@ ${DrawMeshPass.SHADER_CODE}
     });
   }
 
-  draw(ctx: PassCtx, loadOp: GPULoadOp) {
+  draw(ctx: PassCtx) {
     const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawMeshPass.NAME,
-      colorAttachments: [
-        useColorAttachment(screenTexture, loadOp, CONFIG.clearColor),
-      ],
+      colorAttachments: [useColorAttachment(screenTexture, CONFIG.clearColor)],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(DrawMeshPass.NAME),
     });
