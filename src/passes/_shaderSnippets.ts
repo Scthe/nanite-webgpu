@@ -8,7 +8,6 @@ fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} 
 }
 `;
 
-// TODO finish culling
 /** Fragment shader snippet for discard. Mostly for Z-axis. */
 export const FS_CHECK_IS_CULLED = `
 fn checkIsCulled(projectedPosition: vec4f) -> bool {
@@ -17,7 +16,7 @@ fn checkIsCulled(projectedPosition: vec4f) -> bool {
   let z = projectedPosition.z;
   let clipZ = projectedPosition.w;
   let clip = 1.2 * projectedPosition.w;
-  return z < -clipZ || z > clipZ ||
+  return z <= 0 || z > clipZ ||
     x < -clip || x > clip ||
     y < -clip || y > clip;
 }

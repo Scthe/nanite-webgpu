@@ -21,8 +21,8 @@ fn main_vs(
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix); // either here or upload from CPU
   let worldPos = vec4<f32>(inWorldPos.xyz, 1.0);
   var projectedPosition = mvpMatrix * worldPos;
-  projectedPosition /= projectedPosition.w;
-  result.position = vec4<f32>(projectedPosition.xyz, 1.0);
+  // projectedPosition /= projectedPosition.w; // ?! Am I just getting old?
+  result.position = projectedPosition;
   result.projPosition = result.position;
   result.wsPosition = worldPos;
   result.instanceIndex = inInstanceIndex;
