@@ -1,13 +1,18 @@
 import * as path from 'std-path';
 import { assertEquals } from 'assert';
 import {
-  copyToTypedArray,
-  createArray,
+  Dimensions,
+  createCameraProjectionMat,
   createErrorSystem,
   createGpuDevice,
   getClassName,
+  getModelViewProjectionMatrix,
   rethrowWebGPUError,
 } from '../utils/index.ts';
+import { PassCtx } from '../passes/passCtx.ts';
+import { Camera } from '../camera.ts';
+import { mat4 } from 'wgpu-matrix';
+import { MeshletWIP } from '../meshPreprocessing/index.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -42,7 +47,6 @@ export async function createGpuDevice_TESTS(): Promise<
   return [device, validateFn];
 }
 
-/*
 export const createMockPassCtx = (
   device: GPUDevice,
   cmdBuf: GPUCommandEncoder
@@ -54,7 +58,8 @@ export const createMockPassCtx = (
 
   const cameraCtrl = new Camera();
   const projMatrix = createCameraProjectionMat(viewport);
-  const mvpMatrix = getModelViewProjectionMatrix(
+  const vpMatrix = getModelViewProjectionMatrix(
+    mat4.identity(),
     cameraCtrl.viewMatrix,
     projMatrix
   );
@@ -62,38 +67,39 @@ export const createMockPassCtx = (
   return {
     device,
     cmdBuf,
-    mvpMatrix,
+    vpMatrix,
     viewMatrix: cameraCtrl.viewMatrix,
     projMatrix,
     profiler: undefined,
     viewport,
-    mesh: undefined!,
+    scene: undefined!,
     depthTexture: undefined!,
+    screenTexture: undefined!,
   };
-};*/
-
-export const assertSameArray = (actual: number[], expected: number[]) => {
-  assertEquals(actual.length, expected.length);
-  assertEquals(actual, expected);
 };
 
-// deno-lint-ignore no-explicit-any
-export async function readBufferToCPU(TypedArrayClass: any, buffer: GPUBuffer) {
-  await buffer.mapAsync(1);
-  const arrayBufferData = buffer.getMappedRange();
-  const resultData = new TypedArrayClass(arrayBufferData);
-  buffer.unmap();
-  return resultData;
-}
+export const assertSameArray = (
+  actual: number[] | Uint32Array | Float32Array,
+  expected: number[]
+) => {
+  assertEquals(actual.length, expected.length);
+  const actualAsArr: number[] = [];
+  actual.forEach((e) => actualAsArr.push(e));
+  assertEquals(actualAsArr, expected);
+};
 
-export function spreadPrintTypedArray(
+export function printTypedArray(
+  preffix: string,
   arr: Float32Array | Uint32Array,
   cnt = 0
 ) {
   cnt = cnt > 0 ? cnt : arr.length;
-  const a = Array.from(arr).slice(0, cnt);
+  const data = Array.from(arr).slice(0, cnt);
   const typeName = getClassName(arr);
-  return [`${typeName}(len=${arr.length}, bytes=${arr.byteLength})`, a];
+  console.log(
+    `${preffix}${typeName}(len=${arr.length}, bytes=${arr.byteLength})`,
+    data
+  );
 }
 
 ///////////////
@@ -115,9 +121,20 @@ export function cmdCopyToReadBackBuffer(
   cmdBuf.copyBufferToBuffer(orgBuffer, 0, readbackBuffer, 0, orgBuffer.size);
 }
 
+export async function readBufferToCPU<T>(
+  TypedArrayClass: { new (a: ArrayBuffer): T },
+  buffer: GPUBuffer
+): Promise<T> {
+  await buffer.mapAsync(1);
+  const arrayBufferData = buffer.getMappedRange();
+  const resultData = new TypedArrayClass(arrayBufferData);
+  buffer.unmap();
+  return resultData;
+}
+
 ///////////////
 /// Create mock data
-
+/*
 export function createIndicesU32Array(cnt: number, shuffle = false) {
   const arr = createArray(cnt).map((_, idx) => idx);
 
@@ -153,4 +170,38 @@ function shuffleArray(array: number[]) {
     const j = Math.floor(Math.random() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]];
   }
+}
+*/
+
+/** Replace MeshletWIP's 'createdFrom' with indices*/
+type PartialMeshletWIP = Partial<Omit<MeshletWIP, 'createdFrom'>> & {
+  parentIdx?: number;
+};
+
+export function createMeshlets_TESTS(
+  data: Array<PartialMeshletWIP>
+): MeshletWIP[] {
+  const center = [0, 0, -1.2];
+  const meshlets = data.map(
+    // deno-lint-ignore no-unused-vars
+    ({ parentIdx, ...m }, idx): MeshletWIP => ({
+      id: idx,
+      maxSiblingsError: 0.001,
+      parentError: 0.002,
+      bounds: { center, radius: 1 },
+      parentBounds: { center, radius: 1 },
+      // ignore fields below:
+      boundaryEdges: [],
+      createdFrom: [],
+      indices: new Uint32Array([0, 1, 2]),
+      lodLevel: 0,
+      ...m,
+    })
+  );
+  data.forEach((m, idx) => {
+    if (m.parentIdx !== undefined) {
+      meshlets[m.parentIdx].createdFrom.push(meshlets[idx]);
+    }
+  });
+  return meshlets;
 }

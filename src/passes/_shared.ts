@@ -27,10 +27,10 @@ export const PIPELINE_DEPTH_STENCIL_ON: GPUDepthStencilState = {
 export const assignResourcesToBindings = (
   pass: PassClass,
   device: GPUDevice,
-  renderPipeline: GPURenderPipeline,
+  pipeline: GPURenderPipeline | GPUComputePipeline,
   entries: GPUBindGroupEntry[]
 ) => {
-  const uniformsLayout = renderPipeline.getBindGroupLayout(0);
+  const uniformsLayout = pipeline.getBindGroupLayout(0);
   return device.createBindGroup({
     label: labelUniformBindings(pass),
     layout: uniformsLayout,

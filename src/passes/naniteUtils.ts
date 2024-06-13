@@ -1,4 +1,4 @@
-import { mat4, vec3 } from 'wgpu-matrix';
+import { vec3, Mat4 } from 'wgpu-matrix';
 import { PassCtx } from './passCtx.ts';
 import {
   BoundingSphere,
@@ -19,9 +19,11 @@ import {
  */
 type NaniteVisibilityStatus = 'hidden' | 'rendered' | 'check-children';
 
+// TODO rename: calcNaniteMeshletsVisibility / naniteVisibility or smth.
+
 export function calcNaniteMeshletsVisibility(
   ctx: PassCtx,
-  modelMat: mat4.Mat4,
+  modelMat: Mat4,
   naniteLOD: NaniteLODTree
 ) {
   const root = naniteLOD.root;
@@ -66,9 +68,9 @@ export function calcNaniteMeshletsVisibility(
  * This is used in non-parellel from-root rendering. On GPU, when going from bottom,
  * use: isCulled = `parentError <= threshold`, which decide if we are skipped in favour of parent.
  *
- * TODO use the meshoptimizer's cone setting for culling
+ * TODO use the meshoptimizer's cone setting for culling. Remember about transform matrices
  */
-function getVisibilityStatus(
+export function getVisibilityStatus(
   getProjectedError: ReturnType<typeof createErrorMetric>,
   meshlet: NaniteMeshletTreeNode
 ): NaniteVisibilityStatus {
@@ -80,20 +82,21 @@ function getVisibilityStatus(
   const threshold = CONFIG.nanite.render.pixelThreshold; // in pixels
   const shouldRenderThisExactMeshlet =
     parentError > threshold && clusterError <= threshold;
+
+  // const dbgVsThr = (a: number) => (a > threshold ? 'GREATER' : 'LESSER(OK)');
+  // console.log("CMP: ", {id:meshlet.id, parent: dbgVsThr(parentError), cluster: dbgVsThr(clusterError), }); // prettier-ignore
   return shouldRenderThisExactMeshlet ? 'rendered' : 'check-children';
 }
 
 /** Projected error in pixels. https://stackoverflow.com/a/21649403 */
-function createErrorMetric(ctx: PassCtx, modelMat: mat4.Mat4) {
+export function createErrorMetric(ctx: PassCtx, modelMat: Mat4) {
   const mvpMatrix = getModelViewProjectionMatrix(
     modelMat,
     ctx.viewMatrix,
     ctx.projMatrix
   );
   const screenHeight = ctx.viewport.height;
-
-  const fovRad = dgr2rad(CAMERA_CFG.fovDgr);
-  const cotHalfFov = 1.0 / Math.tan(fovRad / 2.0);
+  const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
   return (bounds: BoundingSphere | undefined, errorWorldSpace: number) => {
     // WARNING: .parentError is INFINITY at top level
@@ -104,7 +107,21 @@ function createErrorMetric(ctx: PassCtx, modelMat: mat4.Mat4) {
     const center = projectPoint(mvpMatrix, bounds.center);
     const d2 = vec3.dot(center, center);
     const r = errorWorldSpace;
-    const pr = (cotHalfFov * r) / Math.sqrt(d2 - r * r);
-    return (pr * screenHeight) / 2.0;
+    const projectedR = (cotHalfFov * r) / Math.sqrt(d2 - r * r);
+    /*console.log({
+      cotHalfFov,
+      center,
+      d2,
+      r,
+      projectedR,
+      result: (projectedR * screenHeight) / 2.0,
+      THRESHOLD: CONFIG.nanite.render.pixelThreshold,
+    });*/
+    return (projectedR * screenHeight) / 2.0;
   };
 }
+
+export const calcCotHalfFov = (fovDgr = CAMERA_CFG.fovDgr) => {
+  const fovRad = dgr2rad(fovDgr);
+  return 1.0 / Math.tan(fovRad / 2.0);
+};

@@ -1,4 +1,4 @@
-import { BYTES_U32, STATS } from '../constants.ts';
+import { BYTES_U32, CONFIG, STATS } from '../constants.ts';
 import { MeshletId, NaniteLODTree } from '../scene/naniteLODTree.ts';
 import {
   BoundingSphere,
@@ -35,6 +35,7 @@ export interface MeshletWIP {
   id: MeshletId;
   /** In tree, these are the children nodes */
   createdFrom: MeshletWIP[];
+  /** 0 for leaf, N for root (e.g. 6 is the root for bunny.obj) */
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
@@ -52,6 +53,8 @@ export async function createNaniteMeshlets(
   vertices: Float32Array,
   indices: Uint32Array
 ): Promise<MeshletWIP[]> {
+  NEXT_MESHLET_ID = 0;
+
   const allMeshlets: MeshletWIP[] = [];
   let lodLevel = 0;
   const bottomMeshlets = await splitIntoMeshlets(
@@ -156,7 +159,10 @@ export async function createNaniteMeshlets(
     simplificationError: number,
     bounds: BoundingSphere
   ) {
-    const meshletsOpt = await createMeshlets(vertices, indices, {});
+    const meshletsOpt = await createMeshlets(vertices, indices, {
+      maxVertices: CONFIG.nanite.preprocess.meshletMaxVertices,
+      maxTriangles: CONFIG.nanite.preprocess.meshletMaxTriangles,
+    });
     // during init: create tons of small meshlets
     // during iter: split simplified mesh into 2 meshlets
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
@@ -234,7 +240,12 @@ export function createNaniteLODTree(
     usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
   });
 
-  const naniteLODTree = new NaniteLODTree(vertexBuffer, indexBuffer);
+  const naniteLODTree = new NaniteLODTree(
+    vertexBuffer,
+    indexBuffer,
+    device,
+    allMeshlets.length
+  );
 
   // write meshlets to the LOD tree
   let indexBufferOffsetBytes = 0;
@@ -269,7 +280,7 @@ export function createNaniteLODTree(
   // assert all added OK
   if (allMeshlets.length !== naniteLODTree.allMeshlets.length) {
     // prettier-ignore
-    throw new Error(`Created ${allMeshlets.length} meshlets, but only ${naniteLODTree.allMeshlets.length} were added to the LOD tree?`);
+    throw new Error(`Created ${allMeshlets.length} meshlets, but only ${naniteLODTree.allMeshlets.length} were added to the LOD tree? Please verify '.createdFrom' for all meshlets.`);
   }
 
   // fill `createdFrom`
@@ -286,6 +297,8 @@ export function createNaniteLODTree(
       }
     });
   });
+
+  naniteLODTree.finalizeCreation(device);
 
   STATS['Vertex buffer:'] = formatBytes(vertexBuffer.size);
   STATS['Index buffer:'] = formatBytes(indexBuffer.size);

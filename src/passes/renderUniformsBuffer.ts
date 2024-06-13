@@ -1,8 +1,9 @@
-import { BYTES_MAT4, BYTES_VEC4 } from '../constants.ts';
+import { BYTES_MAT4, BYTES_VEC4, CONFIG } from '../constants.ts';
 import {
   GPU_BUFFER_USAGE_UNIFORM,
   writeMatrixToGPUBuffer,
 } from '../utils/index.ts';
+import { calcCotHalfFov } from './naniteUtils.ts';
 import { PassCtx } from './passCtx.ts';
 
 export class RenderUniformsBuffer {
@@ -21,7 +22,7 @@ export class RenderUniformsBuffer {
     BYTES_MAT4 + // vpMatrix
     BYTES_MAT4 + // viewMatrix
     BYTES_MAT4 + // projMatrix
-    BYTES_VEC4; // viewportAndFocals
+    BYTES_VEC4; // viewport
 
   private readonly gpuBuffer: GPUBuffer;
 
@@ -56,8 +57,8 @@ export class RenderUniformsBuffer {
     const miscF32Array = new Float32Array([
       viewport.width,
       viewport.height,
-      0,
-      0,
+      CONFIG.nanite.render.pixelThreshold,
+      calcCotHalfFov(),
     ]);
     device.queue.writeBuffer(
       this.gpuBuffer,

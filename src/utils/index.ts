@@ -1,4 +1,4 @@
-import { Mat4, mat4, vec3, vec4 } from 'wgpu-matrix';
+import { Mat4, mat4, vec3, vec4, Vec4, Vec3 } from 'wgpu-matrix';
 import {
   BYTES_U32,
   CAMERA_CFG,
@@ -43,7 +43,7 @@ export function getModelViewProjectionMatrix(
   return result;
 }
 
-export function projectPoint(mvpMatrix: mat4.Mat4, p: vec4.Vec4 | vec3.Vec3) {
+export function projectPoint(mvpMatrix: Mat4, p: Vec4 | Vec3) {
   const v = vec4.create(p[0], p[1], p[2], 1);
   return vec4.transformMat4(v, mvpMatrix, v);
 }
@@ -115,7 +115,7 @@ export function calcBoundingBox(
   return [minCo, maxCo];
 }
 
-export type BoundingSphere = { center: vec3.Vec3; radius: number };
+export type BoundingSphere = { center: Vec3; radius: number };
 
 export function calcBoundingSphere(
   vertices: Float32Array,

@@ -64,6 +64,10 @@ export const CONFIG = {
   dbgMeshoptimizerLodLevel: 0,
   dbgNaniteLodLevel: 1,
   nanite: {
+    preprocess: {
+      meshletMaxVertices: 64,
+      meshletMaxTriangles: 124,
+    },
     render: {
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.

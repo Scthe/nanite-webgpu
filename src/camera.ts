@@ -14,7 +14,7 @@ const ANGLE_LEFT_RIGHT = 1; // yaw
 
 /** https://github.com/Scthe/WebFX/blob/09713a3e7ebaa1484ff53bd8a007908a5340ca8e/src/ecs/components/FpsController.ts */
 export class Camera {
-  private readonly _viewMatrix: mat4 = mat4.identity();
+  private readonly _viewMatrix = mat4.identity();
   private readonly _angles: [number, number] = [0, 0]; // angles like in polar coords
   private readonly _position: [number, number, number] = [0, 0, 0];
 
@@ -32,7 +32,7 @@ export class Camera {
     }
   }
 
-  update(deltaTime: number, input: Input): mat4.Mat4 {
+  update(deltaTime: number, input: Input): void {
     this.applyMovement(deltaTime, input);
     this.applyRotation(deltaTime, input);
 

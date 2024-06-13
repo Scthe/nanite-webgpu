@@ -15,7 +15,7 @@ import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
 import { Scene } from '../scene/types.ts';
 
-// TODO rename drawNanitesPass()?
+// TODO rename drawNanitesPass()? Move rest of passes to ./dbg
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_INSTANCES_TRANSFORMS = 1;
