@@ -11,6 +11,10 @@ import { loadScene } from './scene/index.ts';
 //@ts-ignore it works OK
 import drawMeshShader from './passes/drawMeshPass.wgsl';
 //@ts-ignore it works OK
+import drawNaniteGPUShader from './passes/naniteGpu/drawNaniteGPUPass.wgsl';
+//@ts-ignore it works OK
+import naniteVisibilityGPUShader from './passes/naniteGpu/naniteVisibilityPass.wgsl';
+//@ts-ignore it works OK
 import dbgMeshoptimizerShader from './passes/dbgMeshoptimizerPass.wgsl';
 //@ts-ignore it works OK
 import dbgMeshoptimizerMeshletsShader from './passes/dbgMeshoptimizerMeshletsPass.wgsl';
@@ -61,6 +65,8 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
   const profiler = new GpuProfiler(device);
   injectShaderTexts({
     drawMeshShader,
+    drawNaniteGPUShader,
+    naniteVisibilityGPUShader,
     dbgMeshoptimizerShader,
     dbgMeshoptimizerMeshletsShader,
   });

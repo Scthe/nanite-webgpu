@@ -7,7 +7,7 @@ import {
 } from '../constants.ts';
 
 export * from './errors.ts';
-export * from './webgpu.ts';
+export * from './webgpu.ts'; // TODO remove both re-exports
 
 export interface Dimensions {
   width: number;
@@ -179,4 +179,15 @@ export function formatBytes(bytes: number, decimals = 2) {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const v = (bytes / Math.pow(k, i)).toFixed(decimals);
   return `${v} ${units[i]}`;
+}
+
+// deno-lint-ignore no-explicit-any
+export function once(fn: (...arg1: any[]) => void) {
+  let fired = false;
+  // deno-lint-ignore no-explicit-any
+  return (...arg1: any[]) => {
+    if (fired) return;
+    fired = true;
+    fn(...arg1);
+  };
 }

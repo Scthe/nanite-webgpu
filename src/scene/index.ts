@@ -86,6 +86,7 @@ export async function loadScene(
   const naniteObject = createNaniteLODTree(
     device,
     originalMesh.vertexBuffer,
+    originalVertices,
     naniteMeshlets
   );
   const naniteInstances = createInstances(device, SCENES[sceneName]);

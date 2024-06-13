@@ -1,15 +1,3 @@
-struct NaniteMeshletTreeNode {
-  boundsMidPointAndError: vec4f, // bounds.xyz + maxSiblingsError
-  parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
-  id: u32, // TODO not needed, it's just dispatchId.x?
-  triangleCount: u32,
-  firstIndexOffset: u32,
-  padding0: u32
-}
-@group(0) @binding(1)
-var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
-
-
 // TODO in future: vec2f(tfxId, meshletId)
 @group(0) @binding(2)
 var<storage, read_write> _drawnMeshletIdsResult: array<u32>;

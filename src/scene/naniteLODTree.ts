@@ -29,6 +29,8 @@ export class NaniteLODTree {
 
   constructor(
     public readonly vertexBuffer: GPUBuffer,
+    /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
+    public readonly vertexBufferForStorageAsVec4: GPUBuffer,
     public readonly indexBuffer: GPUBuffer,
     device: GPUDevice,
     meshletCount: number

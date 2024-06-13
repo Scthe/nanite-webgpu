@@ -3,11 +3,13 @@ import { MeshletId, NaniteLODTree } from '../scene/naniteLODTree.ts';
 import {
   BoundingSphere,
   calcBoundingSphere,
+  createArray,
   formatBytes,
   getBytesForTriangles,
   getTriangleCount,
   pluckVertices,
 } from '../utils/index.ts';
+import { createGPUBuffer } from '../utils/webgpu.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
@@ -220,9 +222,11 @@ function mergeMeshlets(...meshletGroup: MeshletWIP[]): Uint32Array {
   return result;
 }
 
+// TODO move to scene/createNaniteLODTree.ts
 export function createNaniteLODTree(
   device: GPUDevice,
   vertexBuffer: GPUBuffer,
+  rawVertices: Float32Array,
   allMeshlets: MeshletWIP[]
 ): NaniteLODTree {
   const lodLevels = 1 + Math.max(...allMeshlets.map((m) => m.lodLevel)); // includes LOD level 0
@@ -237,11 +241,20 @@ export function createNaniteLODTree(
   const indexBuffer = device.createBuffer({
     label: 'nanite-index-buffer',
     size: getBytesForTriangles(totalTriangleCount),
-    usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST,
+    usage:
+      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
   });
+  const verticesAsVec4 = createVertexBufferForStorageAsVec4(rawVertices);
+  const vertexBufferForStorageAsVec4 = createGPUBuffer(
+    device,
+    'nanite-vertex-buffer-vec4',
+    GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+    verticesAsVec4
+  );
 
   const naniteLODTree = new NaniteLODTree(
     vertexBuffer,
+    vertexBufferForStorageAsVec4,
     indexBuffer,
     device,
     allMeshlets.length
@@ -249,6 +262,9 @@ export function createNaniteLODTree(
 
   // write meshlets to the LOD tree
   let indexBufferOffsetBytes = 0;
+  let nextId = 0; // id in the index buffer order
+  const rewriteIds = createArray(naniteLODTree.meshletCount);
+
   const meshletsToCheck: MeshletWIP[] = [roots[0]];
   while (meshletsToCheck.length > 0) {
     const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
@@ -268,6 +284,10 @@ export function createNaniteLODTree(
       0
     );
     indexBufferOffsetBytes += getBytesForTriangles(node.triangleCount);
+
+    // rewrite id's to be in index buffer order
+    rewriteIds[meshlet.id] = nextId;
+    nextId += 1;
 
     // schedule child nodes processing
     meshlet.createdFrom.forEach((m) => {
@@ -298,6 +318,14 @@ export function createNaniteLODTree(
     });
   });
 
+  // rewrite id's to be in index buffer order
+  // This should be the last step, as we use ids all over the place.
+  // After this step, MeshletWIP[_].id !== naniteLODTree.allMeshlets[_].id
+  naniteLODTree.allMeshlets.forEach((m) => {
+    m.id = rewriteIds[m.id];
+  });
+
+  // upload meshlet data to the GPU for GPU visibility check/render
   naniteLODTree.finalizeCreation(device);
 
   STATS['Vertex buffer:'] = formatBytes(vertexBuffer.size);
@@ -307,4 +335,17 @@ export function createNaniteLODTree(
 
 function getMeshletTriangleCount(meshlets: MeshletWIP[]) {
   return meshlets.reduce((acc, m) => acc + getTriangleCount(m.indices), 0);
+}
+
+/** We Java now */
+function createVertexBufferForStorageAsVec4(vertices: Float32Array) {
+  const vertexCount = vertices.length / 3;
+  const result = new Float32Array(vertexCount * 4);
+  for (let i = 0; i < vertexCount; i++) {
+    result[i * 4] = vertices[i * 3];
+    result[i * 4 + 1] = vertices[i * 3 + 1];
+    result[i * 4 + 2] = vertices[i * 3 + 2];
+    result[i * 4 + 3] = 1.0;
+  }
+  return result;
 }

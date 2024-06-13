@@ -14,9 +14,13 @@ import { PassCtx } from './passes/passCtx.ts';
 import { DbgMeshoptimizerPass } from './passes/dbgMeshoptimizerPass.ts';
 import { DbgMeshoptimizerMeshletsPass } from './passes/dbgMeshoptimizerMeshletsPass.ts';
 import { Scene } from './scene/types.ts';
+import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
+import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
+  drawNaniteGPUShader: string;
+  naniteVisibilityGPUShader: string;
   dbgMeshoptimizerShader: string;
   dbgMeshoptimizerMeshletsShader: string;
 }
@@ -24,6 +28,8 @@ export interface ShadersTexts {
 /** Web and Deno handle files differently. A bit awkward but good enough. */
 export function injectShaderTexts(texts: ShadersTexts) {
   DrawMeshPass.SHADER_CODE = texts.drawMeshShader;
+  DrawNaniteGPUPass.SHADER_CODE = texts.drawNaniteGPUShader;
+  NaniteVisibilityPass.SHADER_CODE = texts.naniteVisibilityGPUShader;
   DbgMeshoptimizerPass.SHADER_CODE = texts.dbgMeshoptimizerShader;
   DbgMeshoptimizerMeshletsPass.SHADER_CODE =
     texts.dbgMeshoptimizerMeshletsShader;
@@ -38,6 +44,8 @@ export class Renderer {
 
   // passes
   private readonly drawMeshPass: DrawMeshPass;
+  private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
+  private readonly naniteVisibilityPass: NaniteVisibilityPass;
   private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
   private readonly dbgMeshoptimizerMeshletsPass: DbgMeshoptimizerMeshletsPass;
 
@@ -54,6 +62,17 @@ export class Renderer {
       preferredCanvasFormat,
       this.renderUniformBuffer,
       scene
+    );
+    this.drawNaniteGPUPass = new DrawNaniteGPUPass(
+      device,
+      preferredCanvasFormat,
+      this.renderUniformBuffer,
+      scene
+    );
+    this.naniteVisibilityPass = new NaniteVisibilityPass(
+      device,
+      this.renderUniformBuffer,
+      scene.naniteObject
     );
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
@@ -111,7 +130,18 @@ export class Renderer {
     ) {
       this.dbgMeshoptimizerMeshletsPass.draw(ctx);
     } else {
-      this.drawMeshPass.draw(ctx);
+      if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
+        this.naniteVisibilityPass.cmdCalculateVisibility(
+          ctx,
+          ctx.scene.naniteObject
+        );
+        this.drawNaniteGPUPass.draw(
+          ctx,
+          this.naniteVisibilityPass.drawIndirectParamsBuffer
+        );
+      } else {
+        this.drawMeshPass.draw(ctx);
+      }
     }
   }
 

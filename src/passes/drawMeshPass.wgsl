@@ -23,8 +23,8 @@ fn main_vs(
   var projectedPosition = mvpMatrix * worldPos;
   // projectedPosition /= projectedPosition.w; // ?! Am I just getting old?
   result.position = projectedPosition;
-  result.projPosition = result.position;
-  result.wsPosition = worldPos;
+  result.projPosition = projectedPosition;
+  result.wsPosition = worldPos; // skips multiply with model matrix for non-world-space ligthing
   result.instanceIndex = inInstanceIndex;
 
   return result;

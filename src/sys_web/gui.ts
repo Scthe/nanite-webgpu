@@ -22,6 +22,17 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
   // github
   gui.add(dummyObject, 'openGithub').name('GITHUB');
 
+  // nanite visibility calc - GPU/CPU
+  // prettier-ignore
+  const calcVisibilityDummy = createDummy(CONFIG.nanite.render, 'calcVisibilityDevice', [
+    { label: 'GPU', value: 'gpu' },
+    { label: 'CPU', value: 'cpu' },
+  ]);
+  // prettier-ignore
+  gui
+    .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
+    .name('Visibility test');
+
   // bg
   addColorController(CONFIG, 'clearColor', 'Bg color');
 
@@ -39,15 +50,15 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
     dir.open();
 
     dir
-      .add(CONFIG.nanite.render, 'pixelThreshold', 0, 100)
-      .name('Pixel threshold');
+      .add(CONFIG.nanite.render, 'pixelThreshold', 0, 10)
+      .name('Error threshold [px]');
   }
 
   function addDbgFolder() {
     const dir = gui.addFolder('DEBUG');
     dir.open();
 
-    // sorting method
+    // display mode
     const modeDummy = createDummy(CONFIG, 'displayMode', [
       { label: 'Nanite', value: 'nanite' },
       { label: 'DBG: lod', value: 'dbg-lod' },

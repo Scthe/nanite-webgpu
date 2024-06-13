@@ -62,6 +62,7 @@ Deno.test('NaniteVisibilityPass', async () => {
     device,
     // deno-lint-ignore no-explicit-any
     { size: 'mocked-vertex-buffer-size' } as any, // vertexBuffer
+    new Float32Array([0, 1, 2]),
     allMeshlets
   );
   const readbackVisiblityBuffer = createReadbackBuffer(

@@ -53,6 +53,7 @@ export type DisplayMode =
   | 'dbg-lod'
   | 'dbg-lod-meshlets'
   | 'dbg-nanite-meshlets';
+export type CalcVisibilityDevice = 'cpu' | 'gpu';
 
 export const CONFIG = {
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
@@ -69,6 +70,7 @@ export const CONFIG = {
       meshletMaxTriangles: 124,
     },
     render: {
+      calcVisibilityDevice: 'gpu' as CalcVisibilityDevice,
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.

@@ -10,6 +10,19 @@ const BINDINGS_MESHLETS = 1;
 const BINDINGS_MESHLET_IDS = 2;
 const BINDINGS_DRAW_INDIRECT_PARAMS = 3;
 
+export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
+struct NaniteMeshletTreeNode {
+  boundsMidPointAndError: vec4f, // bounds.xyz + maxSiblingsError
+  parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
+  id: u32, // TODO not needed, it's just dispatchId.x?
+  triangleCount: u32,
+  firstIndexOffset: u32,
+  padding0: u32
+}
+@group(0) @binding(${bindingIdx})
+var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
+`;
+
 export class NaniteVisibilityPass {
   public static NAME: string = NaniteVisibilityPass.name;
   public static SHADER_CODE: string = '';
@@ -51,7 +64,7 @@ export class NaniteVisibilityPass {
           resource: { buffer: naniteObject.visiblityBuffer },
         },
         {
-          binding: BINDINGS_DRAW_INDIRECT_PARAMS,
+          binding: BINDINGS_DRAW_INDIRECT_PARAMS, // TODO this should be a small slice of $naniteObject.visiblityBuffer
           resource: { buffer: this.drawIndirectParamsBuffer },
         },
       ]
@@ -61,6 +74,7 @@ export class NaniteVisibilityPass {
   private static createPipeline(device: GPUDevice) {
     let code = `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
+${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
 ${NaniteVisibilityPass.SHADER_CODE}
       `;
     code = applyShaderTextReplace(code, {

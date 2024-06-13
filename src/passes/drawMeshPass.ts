@@ -140,7 +140,7 @@ ${DrawMeshPass.SHADER_CODE}
         nanite
       );
 
-      drawnMeshlets.forEach((m, meshletId) => {
+      drawnMeshlets.forEach((m) => {
         const triangleCount = m.triangleCount;
         const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
         renderPass.drawIndexed(
