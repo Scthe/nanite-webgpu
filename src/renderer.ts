@@ -8,11 +8,11 @@ import {
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG, DEPTH_FORMAT } from './constants.ts';
-import { DrawMeshPass } from './passes/drawMeshPass.ts';
+import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
-import { DbgMeshoptimizerPass } from './passes/dbgMeshoptimizerPass.ts';
-import { DbgMeshoptimizerMeshletsPass } from './passes/dbgMeshoptimizerMeshletsPass.ts';
+import { DbgMeshoptimizerPass } from './passes/debug/dbgMeshoptimizerPass.ts';
+import { DbgMeshoptimizerMeshletsPass } from './passes/debug/dbgMeshoptimizerMeshletsPass.ts';
 import { Scene } from './scene/types.ts';
 import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
 import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
@@ -27,7 +27,7 @@ export interface ShadersTexts {
 
 /** Web and Deno handle files differently. A bit awkward but good enough. */
 export function injectShaderTexts(texts: ShadersTexts) {
-  DrawMeshPass.SHADER_CODE = texts.drawMeshShader;
+  DrawNanitesPass.SHADER_CODE = texts.drawMeshShader;
   DrawNaniteGPUPass.SHADER_CODE = texts.drawNaniteGPUShader;
   NaniteVisibilityPass.SHADER_CODE = texts.naniteVisibilityGPUShader;
   DbgMeshoptimizerPass.SHADER_CODE = texts.dbgMeshoptimizerShader;
@@ -43,7 +43,7 @@ export class Renderer {
   private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
 
   // passes
-  private readonly drawMeshPass: DrawMeshPass;
+  private readonly drawMeshPass: DrawNanitesPass;
   private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
   private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
@@ -57,7 +57,7 @@ export class Renderer {
   ) {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
-    this.drawMeshPass = new DrawMeshPass(
+    this.drawMeshPass = new DrawNanitesPass(
       device,
       preferredCanvasFormat,
       this.renderUniformBuffer,

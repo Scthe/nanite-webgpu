@@ -2,8 +2,8 @@ import { BYTES_MAT4, BYTES_VEC4, CONFIG } from '../constants.ts';
 import {
   GPU_BUFFER_USAGE_UNIFORM,
   writeMatrixToGPUBuffer,
-} from '../utils/index.ts';
-import { calcCotHalfFov } from './naniteUtils.ts';
+} from '../utils/webgpu.ts';
+import { calcCotHalfFov } from './naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { PassCtx } from './passCtx.ts';
 
 export class RenderUniformsBuffer {

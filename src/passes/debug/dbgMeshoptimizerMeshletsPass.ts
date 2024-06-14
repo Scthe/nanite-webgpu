@@ -1,6 +1,6 @@
-import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
-import { Scene } from '../scene/types.ts';
-import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
+import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { Scene } from '../../scene/types.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
@@ -10,10 +10,10 @@ import {
   labelShader,
   useColorAttachment,
   useDepthStencilAttachment,
-} from './_shared.ts';
-import { VERTEX_ATTRIBUTES } from './drawMeshPass.ts';
-import { PassCtx } from './passCtx.ts';
-import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
+} from '../_shared.ts';
+import { VERTEX_ATTRIBUTES } from '../naniteCpu/drawNanitesPass.ts';
+import { PassCtx } from '../passCtx.ts';
+import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 
 export class DbgMeshoptimizerMeshletsPass {
   public static NAME: string = DbgMeshoptimizerMeshletsPass.name;

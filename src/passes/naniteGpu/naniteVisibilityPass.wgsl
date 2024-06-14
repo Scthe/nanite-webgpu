@@ -1,7 +1,7 @@
 /** arg for https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder/drawIndirect */
 struct DrawIndirect{
   vertexCount: u32,
-  instanceCount: atomic<u32>, // TODO reset between each object
+  instanceCount: atomic<u32>,
   firstVertex: u32,
   firstInstance : u32,
 }

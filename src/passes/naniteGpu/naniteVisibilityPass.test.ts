@@ -11,10 +11,13 @@ import {
 import { NaniteVisibilityPass } from './naniteVisibilityPass.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { mat4 } from 'wgpu-matrix';
-import { createNaniteLODTree } from '../../meshPreprocessing/index.ts';
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
-import { createErrorMetric, getVisibilityStatus } from '../naniteUtils.ts';
+import {
+  createErrorMetric,
+  getVisibilityStatus,
+} from '../naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { assertEquals } from 'assert';
+import { createNaniteObject } from '../../scene/createNaniteObject.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -58,7 +61,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   // console.log(allMeshlets);
 
   const uniforms = new RenderUniformsBuffer(device);
-  const naniteObject = createNaniteLODTree(
+  const naniteObject = createNaniteObject(
     device,
     // deno-lint-ignore no-explicit-any
     { size: 'mocked-vertex-buffer-size' } as any, // vertexBuffer

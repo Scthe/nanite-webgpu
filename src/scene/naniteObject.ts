@@ -29,7 +29,7 @@ export const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
 
 // TODO [many objects]: this.visiblityBuffer can be shared between objects - one per scene, not per object. Or one per object for pararel object process? Then it should also include the indirect draw call args.
 
-export class NaniteLODTree {
+export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
 
   constructor(

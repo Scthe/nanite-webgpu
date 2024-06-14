@@ -1,5 +1,10 @@
-import { BYTES_VEC3, CONFIG, STATS, VERTS_IN_TRIANGLE } from '../constants.ts';
-import * as SHADER_SNIPPETS from './_shaderSnippets.ts';
+import {
+  BYTES_VEC3,
+  CONFIG,
+  STATS,
+  VERTS_IN_TRIANGLE,
+} from '../../constants.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
@@ -9,13 +14,11 @@ import {
   labelShader,
   useColorAttachment,
   useDepthStencilAttachment,
-} from './_shared.ts';
-import { PassCtx } from './passCtx.ts';
-import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
-import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
-import { NaniteLODTree } from '../scene/naniteLODTree.ts';
-
-// TODO rename drawNanitesPass()? Move rest of passes to ./dbg
+} from '../_shared.ts';
+import { PassCtx } from '../passCtx.ts';
+import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import { calcNaniteMeshletsVisibility } from './calcNaniteMeshletsVisibility.ts';
+import { NaniteObject } from '../../scene/naniteObject.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_INSTANCES_TRANSFORMS = 1;
@@ -34,8 +37,8 @@ export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   },
 ];
 
-export class DrawMeshPass {
-  public static NAME: string = DrawMeshPass.name;
+export class DrawNanitesPass {
+  public static NAME: string = DrawNanitesPass.name;
   public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
@@ -45,15 +48,15 @@ export class DrawMeshPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteLODTree
+    naniteObject: NaniteObject
   ) {
-    this.renderPipeline = DrawMeshPass.createRenderPipeline(
+    this.renderPipeline = DrawNanitesPass.createRenderPipeline(
       device,
       outTextureFormat
     );
 
     this.uniformsBindings = assignResourcesToBindings(
-      DrawMeshPass,
+      DrawNanitesPass,
       device,
       this.renderPipeline,
       [
@@ -70,21 +73,21 @@ export class DrawMeshPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    assertHasShaderCode(DrawMeshPass);
+    assertHasShaderCode(DrawNanitesPass);
     const shaderModule = device.createShaderModule({
-      label: labelShader(DrawMeshPass),
+      label: labelShader(DrawNanitesPass),
       code: `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
-${DrawMeshPass.SHADER_CODE}
+${DrawNanitesPass.SHADER_CODE}
       `,
     });
 
     return device.createRenderPipeline({
-      label: labelPipeline(DrawMeshPass),
+      label: labelPipeline(DrawNanitesPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -106,10 +109,10 @@ ${DrawMeshPass.SHADER_CODE}
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
-      label: DrawMeshPass.NAME,
+      label: DrawNanitesPass.NAME,
       colorAttachments: [useColorAttachment(screenTexture, CONFIG.clearColor)],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
-      timestampWrites: profiler?.createScopeGpu(DrawMeshPass.NAME),
+      timestampWrites: profiler?.createScopeGpu(DrawNanitesPass.NAME),
     });
 
     // set render pass data

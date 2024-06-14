@@ -1,5 +1,5 @@
 import { BYTES_U32, CONFIG } from '../../constants.ts';
-import { NaniteLODTree } from '../../scene/naniteLODTree.ts';
+import { NaniteObject } from '../../scene/naniteObject.ts';
 import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 import { assertHasShaderCode, assignResourcesToBindings } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
@@ -44,7 +44,7 @@ export class NaniteVisibilityPass {
   constructor(
     device: GPUDevice,
     uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteLODTree
+    naniteObject: NaniteObject
   ) {
     assertHasShaderCode(NaniteVisibilityPass);
     this.pipeline = NaniteVisibilityPass.createPipeline(device);
@@ -106,7 +106,7 @@ ${NaniteVisibilityPass.SHADER_CODE}
     });
   }
 
-  cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteLODTree) {
+  cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler } = ctx;
 
     // zeroe the whole buffer

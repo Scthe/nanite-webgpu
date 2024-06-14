@@ -1,4 +1,4 @@
-import { createErrorSystem, createGpuDevice } from './utils/index.ts';
+import { createGpuDevice } from './utils/webgpu.ts';
 import { createInputHandler } from './sys_web/input.ts';
 import { Renderer, injectShaderTexts } from './renderer.ts';
 import { initFPSCounter } from './sys_web/fpsStats.ts';
@@ -9,15 +9,16 @@ import { SCENES, SceneFile } from './constants.ts';
 import { loadScene } from './scene/index.ts';
 
 //@ts-ignore it works OK
-import drawMeshShader from './passes/drawMeshPass.wgsl';
+import drawMeshShader from './passes/naniteCpu/drawNanitesPass.wgsl';
 //@ts-ignore it works OK
 import drawNaniteGPUShader from './passes/naniteGpu/drawNaniteGPUPass.wgsl';
 //@ts-ignore it works OK
 import naniteVisibilityGPUShader from './passes/naniteGpu/naniteVisibilityPass.wgsl';
 //@ts-ignore it works OK
-import dbgMeshoptimizerShader from './passes/dbgMeshoptimizerPass.wgsl';
+import dbgMeshoptimizerShader from './passes/debug/dbgMeshoptimizerPass.wgsl';
 //@ts-ignore it works OK
-import dbgMeshoptimizerMeshletsShader from './passes/dbgMeshoptimizerMeshletsPass.wgsl';
+import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshletsPass.wgsl';
+import { createErrorSystem } from './utils/errors.ts';
 
 // fix some warnings if VSCode is in deno mode
 declare global {

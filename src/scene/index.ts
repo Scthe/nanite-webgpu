@@ -1,9 +1,6 @@
 import { SCENES, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
-import {
-  createNaniteLODTree,
-  createNaniteMeshlets,
-} from '../meshPreprocessing/index.ts';
+import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import {
   getTriangleCount,
@@ -14,6 +11,7 @@ import {
   createGPU_VertexBuffer,
   createGPU_IndexBuffer,
 } from '../utils/webgpu.ts';
+import { createNaniteObject } from './createNaniteObject.ts';
 import { loadObjFile } from './objLoader.ts';
 import { Mesh, MeshletRenderPckg, Scene } from './types.ts';
 
@@ -75,7 +73,7 @@ export async function loadScene(
     originalVertices,
     originalIndices
   );
-  const naniteObject = createNaniteLODTree(
+  const naniteObject = createNaniteObject(
     device,
     originalMesh.vertexBuffer,
     originalVertices,

@@ -6,9 +6,6 @@ import {
   VERTS_IN_TRIANGLE,
 } from '../constants.ts';
 
-export * from './errors.ts';
-export * from './webgpu.ts'; // TODO remove both re-exports
-
 export interface Dimensions {
   width: number;
   height: number;

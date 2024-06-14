@@ -16,7 +16,7 @@ import {
   SHADER_SNIPPET_DRAWN_MESHLETS_LIST,
   SHADER_SNIPPET_MESHLET_TREE_NODES,
 } from './naniteVisibilityPass.ts';
-import { NaniteLODTree } from '../../scene/naniteLODTree.ts';
+import { NaniteObject } from '../../scene/naniteObject.ts';
 
 // TODO connect to stats (somehow?). Then debug we are actually only drawing minmal set of meshlets (53 on bunny closeup)
 
@@ -40,7 +40,7 @@ export class DrawNaniteGPUPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteLODTree
+    naniteObject: NaniteObject
   ) {
     this.renderPipeline = DrawNaniteGPUPass.createRenderPipeline(
       device,

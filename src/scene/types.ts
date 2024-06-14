@@ -1,8 +1,8 @@
 import { meshopt_Meshlets } from '../meshPreprocessing/createMeshlets.ts';
-import { NaniteLODTree } from './naniteLODTree.ts';
+import { NaniteObject } from './naniteObject.ts';
 
 export interface Scene {
-  naniteObject: NaniteLODTree;
+  naniteObject: NaniteObject;
 
   // meshes for debug
   mesh: Mesh;

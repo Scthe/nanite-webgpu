@@ -3,12 +3,11 @@ import { assertEquals } from 'assert';
 import {
   Dimensions,
   createCameraProjectionMat,
-  createErrorSystem,
-  createGpuDevice,
   getClassName,
   getModelViewProjectionMatrix,
-  rethrowWebGPUError,
 } from '../utils/index.ts';
+import { createGpuDevice } from '../utils/webgpu.ts';
+import { createErrorSystem, rethrowWebGPUError } from '../utils/errors.ts';
 import { PassCtx } from '../passes/passCtx.ts';
 import { Camera } from '../camera.ts';
 import { mat4 } from 'wgpu-matrix';
