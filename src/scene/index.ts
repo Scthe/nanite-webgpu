@@ -1,11 +1,4 @@
-import { mat4 } from 'wgpu-matrix';
-import {
-  BYTES_MAT4,
-  SCENES,
-  SceneDesc,
-  SceneFile,
-  VERTS_IN_TRIANGLE,
-} from '../constants.ts';
+import { SCENES, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
 import {
   createNaniteLODTree,
@@ -23,7 +16,6 @@ import {
 } from '../utils/webgpu.ts';
 import { loadObjFile } from './objLoader.ts';
 import { Mesh, MeshletRenderPckg, Scene } from './types.ts';
-import { writeMatrixToGPUBuffer } from '../utils/webgpu.ts';
 
 const getTriangleAndVertCounts = (
   vertices: Float32Array,
@@ -87,13 +79,12 @@ export async function loadScene(
     device,
     originalMesh.vertexBuffer,
     originalVertices,
-    naniteMeshlets
+    naniteMeshlets,
+    SCENES[sceneName].grid
   );
-  const naniteInstances = createInstances(device, SCENES[sceneName]);
 
   return {
     naniteObject,
-    naniteInstances,
     mesh: originalMesh,
     meshlets,
     meshoptimizerLODs: meshoptimizerLODs.map((e) => e[0]),
@@ -196,29 +187,4 @@ async function createMeshletsMesh(
     vertexBuffer: originalMesh.vertexBuffer, // reuse <3
     indexBuffer: meshletIndexBuffer,
   };
-}
-
-function createInstances(
-  device: GPUDevice,
-  sceneDesc: SceneDesc
-): Scene['naniteInstances'] {
-  const g = sceneDesc.grid;
-  const transformsBuffer = device.createBuffer({
-    label: 'nanite-transforms',
-    size: BYTES_MAT4 * g.xCnt * g.yCnt,
-    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-  });
-  const transforms: Array<mat4.Mat4> = [];
-
-  let offsetBytes = 0;
-  for (let x = 0; x < g.xCnt; x++) {
-    for (let y = 0; y < g.yCnt; y++) {
-      const tfx = mat4.translation([-x * g.offset, 0, -y * g.offset]);
-      transforms.push(tfx);
-      writeMatrixToGPUBuffer(device, transformsBuffer, offsetBytes, tfx);
-      offsetBytes += BYTES_MAT4;
-    }
-  }
-
-  return { transforms, transformsBuffer };
 }

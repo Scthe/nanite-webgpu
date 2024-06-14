@@ -13,7 +13,7 @@ import {
 import { PassCtx } from './passCtx.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 import { calcNaniteMeshletsVisibility } from './naniteUtils.ts';
-import { Scene } from '../scene/types.ts';
+import { NaniteLODTree } from '../scene/naniteLODTree.ts';
 
 // TODO rename drawNanitesPass()? Move rest of passes to ./dbg
 
@@ -45,7 +45,7 @@ export class DrawMeshPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer,
-    scene: Scene
+    naniteObject: NaniteLODTree
   ) {
     this.renderPipeline = DrawMeshPass.createRenderPipeline(
       device,
@@ -60,7 +60,7 @@ export class DrawMeshPass {
         uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
         {
           binding: BINDINGS_INSTANCES_TRANSFORMS,
-          resource: { buffer: scene.naniteInstances.transformsBuffer },
+          resource: { buffer: naniteObject.instances.transformsBuffer },
         },
       ]
     );
@@ -124,8 +124,8 @@ ${DrawMeshPass.SHADER_CODE}
   }
 
   private renderNaniteObjects(ctx: PassCtx, renderPass: GPURenderPassEncoder) {
-    const instances = ctx.scene.naniteInstances.transforms;
     const nanite = ctx.scene.naniteObject;
+    const instances = nanite.instances.transforms;
 
     renderPass.setVertexBuffer(0, nanite.vertexBuffer);
     renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');

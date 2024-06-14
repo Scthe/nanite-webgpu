@@ -61,13 +61,13 @@ export class Renderer {
       device,
       preferredCanvasFormat,
       this.renderUniformBuffer,
-      scene
+      scene.naniteObject
     );
     this.drawNaniteGPUPass = new DrawNaniteGPUPass(
       device,
       preferredCanvasFormat,
       this.renderUniformBuffer,
-      scene
+      scene.naniteObject
     );
     this.naniteVisibilityPass = new NaniteVisibilityPass(
       device,

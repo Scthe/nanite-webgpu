@@ -1,8 +1,5 @@
 // TODO duplicated code from normal DrawNanitePass
 
-@group(0) @binding(2)
-var<storage, read> _drawnMeshletIdsResult: array<u32>;
-
 @group(0) @binding(3)
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
@@ -32,11 +29,10 @@ fn main_vs(
   @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
   var result: VertexOutput;
-  let meshletId = _drawnMeshletIdsResult[inInstanceIndex]; // inInstanceIndex; // TODO get from _drawnMeshletIdsResult
-  let meshlet = _meshlets[meshletId];
-  result.meshletId = meshletId;
-  let tfxId = 0; // TODO get from _drawnMeshletIdsResult
-  let modelMat = _instanceTransforms[tfxId]; // unused anyway
+  let meshletId: vec2u = _drawnMeshletIds[inInstanceIndex]; // .x - transfromIdx, .y - meshletIdx
+  let meshlet = _meshlets[meshletId.y];
+  result.meshletId = meshletId.y;
+  let modelMat = _instanceTransforms[meshletId.x];
 
   // we always draw __MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less. Discard
   if (inVertexIndex >= meshlet.triangleCount * 3) {

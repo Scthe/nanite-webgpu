@@ -16,6 +16,7 @@ export const BYTES_U32 = 4;
 export const BYTES_U64 = 8;
 export const BYTES_VEC3 = BYTES_F32 * 3;
 export const BYTES_VEC4 = BYTES_F32 * 4;
+export const BYTES_UVEC2 = BYTES_U32 * 2;
 export const BYTES_MAT4 = BYTES_F32 * 16;
 
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
@@ -34,6 +35,9 @@ const createGrid = (
   yCnt,
   offset,
 });
+
+export type InstancesGrid = ReturnType<typeof createGrid>;
+export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
 
 export const SCENES = {
   bunny: { file: 'bunny.obj', scale: 8, grid: createGrid() },

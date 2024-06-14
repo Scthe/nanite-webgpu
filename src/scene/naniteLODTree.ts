@@ -1,3 +1,4 @@
+import { Mat4 } from 'wgpu-matrix';
 import { BYTES_U32, BYTES_VEC4, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { getTriangleCount } from '../utils/index.ts';
@@ -18,38 +19,30 @@ export type NaniteMeshletTreeNode = Pick<
   createdFrom: NaniteMeshletTreeNode[];
 };
 
-const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
+export interface NaniteInstancesData {
+  transforms: Array<Mat4>;
+  /** Array of Mat4 */
+  transformsBuffer: GPUBuffer;
+}
+
+export const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
+
+// TODO [many objects]: this.visiblityBuffer can be shared between objects - one per scene, not per object. Or one per object for pararel object process? Then it should also include the indirect draw call args.
 
 export class NaniteLODTree {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
-  /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
-  public readonly meshletsBuffer: GPUBuffer;
-  /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and Array<(tfxId, meshletId)> */
-  public readonly visiblityBuffer: GPUBuffer;
 
   constructor(
     public readonly vertexBuffer: GPUBuffer,
     /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
     public readonly vertexBufferForStorageAsVec4: GPUBuffer,
     public readonly indexBuffer: GPUBuffer,
-    device: GPUDevice,
-    meshletCount: number
-  ) {
-    this.meshletsBuffer = device.createBuffer({
-      label: 'nanite-meshlets',
-      size: meshletCount * GPU_MESHLET_SIZE_BYTES,
-      usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    });
-    // TODO [many objects]: this.visiblityBuffer can be shared between objects - one per scene, not per object. Or one per object for pararel object process? Then it should also include the indirect draw call args.
-    this.visiblityBuffer = device.createBuffer({
-      label: 'nanite-visiblity',
-      size: meshletCount * BYTES_U32,
-      usage:
-        GPUBufferUsage.COPY_DST |
-        GPUBufferUsage.STORAGE |
-        GPUBufferUsage.COPY_SRC, // TODO SRC is only for tests
-    });
-  }
+    /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
+    public readonly meshletsBuffer: GPUBuffer,
+    /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and Array<(tfxId, meshletId)> */
+    public readonly visiblityBuffer: GPUBuffer,
+    public readonly instances: NaniteInstancesData
+  ) {}
 
   find = (id: MeshletId) => this.allMeshlets.find((m) => m.id === id);
 
@@ -75,6 +68,10 @@ export class NaniteLODTree {
     return this.allMeshlets.length;
   }
 
+  get instancesCount() {
+    return this.instances.transforms.length;
+  }
+
   /** Bottom meshlet LOD level is pre-nanite */
   get preNaniteStats() {
     let triangleCount = 0;
@@ -88,7 +85,7 @@ export class NaniteLODTree {
     return [meshletCount, triangleCount];
   }
 
-  /** Upload final meshlet data to the GPU */
+  /** Upload final meshlet data to the GPU. TODO rename */
   finalizeCreation(device: GPUDevice) {
     const actualSize = this.meshletCount * GPU_MESHLET_SIZE_BYTES;
     if (actualSize !== this.meshletsBuffer.size) {

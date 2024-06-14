@@ -80,6 +80,7 @@ export function getVisibilityStatus(
   const parentError = getProjectedError(meshlet.parentBounds, meshlet.parentError);
 
   const threshold = CONFIG.nanite.render.pixelThreshold; // in pixels
+  // TBH we already checked parentError whn traversing the tree, so not needed. Leaving for readability
   const shouldRenderThisExactMeshlet =
     parentError > threshold && clusterError <= threshold;
 

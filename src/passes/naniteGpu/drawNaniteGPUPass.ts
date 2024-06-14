@@ -12,8 +12,11 @@ import {
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { Scene } from '../../scene/types.ts';
-import { SHADER_SNIPPET_MESHLET_TREE_NODES } from './naniteVisibilityPass.ts';
+import {
+  SHADER_SNIPPET_DRAWN_MESHLETS_LIST,
+  SHADER_SNIPPET_MESHLET_TREE_NODES,
+} from './naniteVisibilityPass.ts';
+import { NaniteLODTree } from '../../scene/naniteLODTree.ts';
 
 // TODO connect to stats (somehow?). Then debug we are actually only drawing minmal set of meshlets (53 on bunny closeup)
 
@@ -37,7 +40,7 @@ export class DrawNaniteGPUPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat,
     uniforms: RenderUniformsBuffer,
-    scene: Scene
+    naniteObject: NaniteLODTree
   ) {
     this.renderPipeline = DrawNaniteGPUPass.createRenderPipeline(
       device,
@@ -52,23 +55,23 @@ export class DrawNaniteGPUPass {
         uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
         {
           binding: BINDINGS_MESHLETS,
-          resource: { buffer: scene.naniteObject.meshletsBuffer },
+          resource: { buffer: naniteObject.meshletsBuffer },
         },
         {
           binding: BINDINGS_MESHLET_IDS,
-          resource: { buffer: scene.naniteObject.visiblityBuffer },
+          resource: { buffer: naniteObject.visiblityBuffer },
         },
         {
           binding: BINDINGS_INSTANCES_TRANSFORMS,
-          resource: { buffer: scene.naniteInstances.transformsBuffer },
+          resource: { buffer: naniteObject.instances.transformsBuffer },
         },
         {
           binding: BINDINGS_VERTEX_POSITIONS,
-          resource: { buffer: scene.naniteObject.vertexBufferForStorageAsVec4 },
+          resource: { buffer: naniteObject.vertexBufferForStorageAsVec4 },
         },
         {
           binding: BINDINGS_INDEX_BUFFER,
-          resource: { buffer: scene.naniteObject.indexBuffer },
+          resource: { buffer: naniteObject.indexBuffer },
         },
       ]
     );
@@ -85,6 +88,7 @@ export class DrawNaniteGPUPass {
       code: `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
+${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_MESHLET_IDS, 'read')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}

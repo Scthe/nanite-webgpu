@@ -1,7 +1,3 @@
-// TODO in future: vec2f(tfxId, meshletId)
-@group(0) @binding(2)
-var<storage, read_write> _drawnMeshletIdsResult: array<u32>;
-
 /** arg for https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder/drawIndirect */
 struct DrawIndirect{
   vertexCount: u32,
@@ -12,10 +8,9 @@ struct DrawIndirect{
 @group(0) @binding(3)
 var<storage, read_write> _drawIndirectResult: DrawIndirect;
 
-/*
-@group(0) @binding(2)
+@group(0) @binding(4)
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
-*/
+
 
 /** JS uses errorValue=Infnity when parent does not exist. I don't want to risk CPU->GPU transfer for inifinity, so I use ridiculous value */
 const PARENT_ERROR_INFINITY: f32 = 99990.0f;
@@ -36,10 +31,65 @@ fn main(
   let threshold = _uniforms.viewport.z;
   let screenHeight = _uniforms.viewport.y;
   let cotHalfFov = _uniforms.viewport.w;
-  let mvpMatrix = _uniforms.vpMatrix;
-  let meshlet = _meshlets[global_id.x];
+  let meshletIdx: u32 = global_id.x;
+  let meshlet = _meshlets[meshletIdx];
+  let tfxIdx: u32 = global_id.y;
+  // let instanceCount: u32 = arrayLength(&_instanceTransforms);
 
-  // TODO START: DEBUG HARDCODE
+  // for(var tfxIdx: u32 = 0u; tfxIdx < instanceCount; tfxIdx++){
+  let modelMat = _instanceTransforms[tfxIdx];
+  let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
+
+  // getVisibilityStatus
+  let clusterError = getProjectedError(
+    mvpMatrix,
+    screenHeight,
+    cotHalfFov,
+    meshlet.boundsMidPointAndError,
+  );
+  let parentError = getProjectedError(
+    mvpMatrix,
+    screenHeight,
+    cotHalfFov,
+    meshlet.parentBoundsMidPointAndError,
+  );
+
+  var isVisible = parentError > threshold && clusterError <= threshold;
+
+  if (isVisible){
+    // TODO Aggregate in groups of 8 and add 8 at a time. Would limit atomic 'stalls'.
+    let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
+    _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
+    // _drawnMeshletIds[idx] = vec2u(3u+tfxIdx, 54); // This renders lod0 still?
+  }
+  // }
+}
+
+
+
+fn getProjectedError(
+  mvpMatrix: mat4x4<f32>,
+  screenHeight: f32,
+  cotHalfFov: f32,
+  boundsMidPointAndError: vec4f
+) -> f32 {
+  // return 1000.0 * boundsMidPointAndError.w; // used to debug tests, see calcs at the top of 'naniteVisibilityPass.test.ts'
+  
+  let r = boundsMidPointAndError.w; // error
+  
+  // WARNING: .parentError is INFINITY at top level
+  // This is implemented as GPU meshlet just having some absurd high value
+  if (r >= PARENT_ERROR_INFINITY) {
+    return PARENT_ERROR_INFINITY;
+  }
+
+  let center = mvpMatrix * vec4f(boundsMidPointAndError.xyz, 1.0f);
+  let d2 = dot(center.xyz, center.xyz); // 
+  let projectedR = (cotHalfFov * r) / sqrt(d2 - r * r);
+  return (projectedR * screenHeight) / 2.0;
+}
+
+  // START: DEBUG HARDCODE
   /*var boundsMidPointAndError = vec4f(0.,0.,0.,0.,);
   var parentBoundsMidPointAndError = vec4f(0.,0.,0.,0.,);
   boundsMidPointAndError.x = 0.;
@@ -69,52 +119,4 @@ fn main(
     boundsMidPointAndError.w = lt;
     parentBoundsMidPointAndError.w = gt;
   }*/
-  // TODO END: DEBUG HARDCODE
-
-  // getVisibilityStatus
-  let clusterError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.boundsMidPointAndError,
-  );
-  let parentError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.parentBoundsMidPointAndError,
-  );
-
-  var isVisible = parentError > threshold && clusterError <= threshold;
-  // var isVisible = parentError > threshold;
-
-  if (isVisible){
-    let instanceCountPtr = &_drawIndirectResult.instanceCount;
-    let idx = atomicAdd(instanceCountPtr, 1u); // TODO Aggregate in groups of 8 and add 8 at a time. Would limit atomic 'stalls'.
-    _drawnMeshletIdsResult[idx] = meshlet.id;
-  }
-}
-
-
-
-fn getProjectedError(
-  mvpMatrix: mat4x4<f32>,
-  screenHeight: f32,
-  cotHalfFov: f32,
-  boundsMidPointAndError: vec4f
-) -> f32 {
-  // return 1000.0 * boundsMidPointAndError.w; // used to debug tests, see calcs at the top of 'naniteVisibilityPass.test.ts'
-  
-  let r = boundsMidPointAndError.w; // error
-  
-  // WARNING: .parentError is INFINITY at top level
-  // This is implemented as GPU meshlet just having some absurd high value
-  if (r >= PARENT_ERROR_INFINITY) {
-    return PARENT_ERROR_INFINITY;
-  }
-
-  let center = mvpMatrix * vec4f(boundsMidPointAndError.xyz, 1.0f);
-  let d2 = dot(center.xyz, center.xyz); // 
-  let projectedR = (cotHalfFov * r) / sqrt(d2 - r * r);
-  return (projectedR * screenHeight) / 2.0;
-}
+  // END: DEBUG HARDCODE

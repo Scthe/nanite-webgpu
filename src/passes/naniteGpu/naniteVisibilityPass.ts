@@ -4,11 +4,13 @@ import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 import { assertHasShaderCode, assignResourcesToBindings } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_MESHLETS = 1;
 const BINDINGS_MESHLET_IDS = 2;
 const BINDINGS_DRAW_INDIRECT_PARAMS = 3;
+const BINDINGS_INSTANCES_TRANSFORMS = 4;
 
 export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
 struct NaniteMeshletTreeNode {
@@ -23,13 +25,21 @@ struct NaniteMeshletTreeNode {
 var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
 `;
 
+export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
+  bindingIdx: number,
+  access: 'read_write' | 'read'
+) => `
+@group(0) @binding(${bindingIdx})
+var<storage, ${access}> _drawnMeshletIds: array<vec2<u32>>;
+`;
+
 export class NaniteVisibilityPass {
   public static NAME: string = NaniteVisibilityPass.name;
   public static SHADER_CODE: string = '';
 
   private readonly pipeline: GPUComputePipeline;
   private readonly uniformsBindings: GPUBindGroup;
-  public readonly drawIndirectParamsBuffer: GPUBuffer;
+  public readonly drawIndirectParamsBuffer: GPUBuffer; // TODO make part of NaniteObject. Create NaniteObject.bindIndirectParams(idx)
 
   constructor(
     device: GPUDevice,
@@ -67,6 +77,10 @@ export class NaniteVisibilityPass {
           binding: BINDINGS_DRAW_INDIRECT_PARAMS, // TODO this should be a small slice of $naniteObject.visiblityBuffer
           resource: { buffer: this.drawIndirectParamsBuffer },
         },
+        {
+          binding: BINDINGS_INSTANCES_TRANSFORMS,
+          resource: { buffer: naniteObject.instances.transformsBuffer },
+        },
       ]
     );
   }
@@ -75,6 +89,8 @@ export class NaniteVisibilityPass {
     let code = `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
+${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_MESHLET_IDS, 'read_write')}
+${SHADER_SNIPPETS.GET_MVP_MAT}
 ${NaniteVisibilityPass.SHADER_CODE}
       `;
     code = applyShaderTextReplace(code, {
@@ -105,7 +121,10 @@ ${NaniteVisibilityPass.SHADER_CODE}
     });
     computePass.setPipeline(this.pipeline);
     computePass.setBindGroup(0, this.uniformsBindings);
-    computePass.dispatchWorkgroups(naniteObject.meshletCount);
+    computePass.dispatchWorkgroups(
+      naniteObject.meshletCount,
+      naniteObject.instancesCount
+    );
     computePass.end();
   }
 }
