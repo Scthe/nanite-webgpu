@@ -2,6 +2,7 @@ import { Mat4 } from 'wgpu-matrix';
 import { BYTES_U32, BYTES_VEC4, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { getTriangleCount } from '../utils/index.ts';
+import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
 
 export type MeshletId = number;
 
@@ -27,20 +28,18 @@ export interface NaniteInstancesData {
 
 export const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
 
-// TODO [many objects]: this.visiblityBuffer can be shared between objects - one per scene, not per object. Or one per object for pararel object process? Then it should also include the indirect draw call args.
-
 export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
 
   constructor(
     public readonly vertexBuffer: GPUBuffer,
     /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
-    public readonly vertexBufferForStorageAsVec4: GPUBuffer,
+    private readonly vertexBufferForStorageAsVec4: GPUBuffer,
     public readonly indexBuffer: GPUBuffer,
     /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
-    public readonly meshletsBuffer: GPUBuffer,
+    private readonly meshletsBuffer: GPUBuffer,
     /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and Array<(tfxId, meshletId)> */
-    public readonly visiblityBuffer: GPUBuffer,
+    private readonly visiblityBuffer: GPUBuffer,
     public readonly instances: NaniteInstancesData
   ) {}
 
@@ -85,8 +84,60 @@ export class NaniteObject {
     return [meshletCount, triangleCount];
   }
 
-  /** Upload final meshlet data to the GPU. TODO rename */
-  finalizeCreation(device: GPUDevice) {
+  bufferBindingInstanceTransforms = (
+    bindingIdx: number
+  ): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.instances.transformsBuffer },
+  });
+
+  bufferBindingMeshlets = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.meshletsBuffer },
+  });
+
+  bufferBindingVertexBufferForStorageAsVec4 = (
+    bindingIdx: number
+  ): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.vertexBufferForStorageAsVec4 },
+  });
+
+  bufferBindingIndexBuffer = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.indexBuffer },
+  });
+
+  get drawIndirectBuffer() {
+    return this.visiblityBuffer;
+  }
+
+  bufferBindingIndirectDrawParams = (
+    bindingIdx: number
+  ): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: {
+      buffer: this.visiblityBuffer,
+      offset: 0,
+      size: BYTES_DRAW_INDIRECT,
+    },
+  });
+
+  /** zeroe the draw params (between frames) */
+  cmdClearDrawParams(cmdBuf: GPUCommandEncoder) {
+    cmdBuf.clearBuffer(this.visiblityBuffer, 0, BYTES_DRAW_INDIRECT);
+  }
+
+  bufferBindingVisibility = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: {
+      buffer: this.visiblityBuffer,
+      offset: BYTES_DRAW_INDIRECT,
+    },
+  });
+
+  /** Upload final meshlet data to the GPU */
+  uploadMeshletsToGPU(device: GPUDevice) {
     const actualSize = this.meshletCount * GPU_MESHLET_SIZE_BYTES;
     if (actualSize !== this.meshletsBuffer.size) {
       // prettier-ignore
@@ -107,10 +158,9 @@ export class NaniteObject {
       dataAsF32[6] = m.parentBounds?.center[2] || 0.0;
       dataAsF32[7] = m.parentError === Infinity ? 9999999.0 : m.parentError;
       // u32's:
-      dataAsU32[8] = m.id;
-      dataAsU32[9] = m.triangleCount;
-      dataAsU32[10] = m.firstIndexOffset;
-      dataAsU32[12] = 0;
+      dataAsU32[8] = m.triangleCount;
+      dataAsU32[9] = m.firstIndexOffset;
+      // write
       device.queue.writeBuffer(
         this.meshletsBuffer,
         offsetBytes,

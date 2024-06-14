@@ -3,6 +3,7 @@ import {
   BYTES_MAT4,
   BYTES_U32,
   BYTES_UVEC2,
+  CONFIG,
   InstancesGrid,
   STATS,
   getInstancesCount,
@@ -18,7 +19,11 @@ import {
   getBytesForTriangles,
   getTriangleCount,
 } from '../utils/index.ts';
-import { createGPUBuffer, writeMatrixToGPUBuffer } from '../utils/webgpu.ts';
+import {
+  BYTES_DRAW_INDIRECT,
+  createGPUBuffer,
+  writeMatrixToGPUBuffer,
+} from '../utils/webgpu.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 
 export function createNaniteObject(
@@ -28,7 +33,7 @@ export function createNaniteObject(
   allWIPMeshlets: MeshletWIP[],
   instancesGrid: InstancesGrid
 ): NaniteObject {
-  const lodLevels = 1 + Math.max(...allWIPMeshlets.map((m) => m.lodLevel)); // includes LOD level 0 TODO slow
+  const lodLevels = 1 + Math.max(...allWIPMeshlets.map((m) => m.lodLevel)); // includes LOD level 0
   const roots = allWIPMeshlets.filter((m) => m.lodLevel === lodLevels - 1);
   if (roots.length !== 1) {
     // prettier-ignore
@@ -36,21 +41,11 @@ export function createNaniteObject(
   }
 
   // allocate single shared index buffer. Meshlets will use slices of it
-  const totalTriangleCount = getMeshletTriangleCount(allWIPMeshlets);
-  const indexBuffer = device.createBuffer({
-    label: 'nanite-index-buffer',
-    size: getBytesForTriangles(totalTriangleCount),
-    usage:
-      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-  });
-  const verticesAsVec4 = createVertexBufferForStorageAsVec4(rawVertices);
-  const vertexBufferForStorageAsVec4 = createGPUBuffer(
+  const indexBuffer = createIndexBuffer(device, allWIPMeshlets);
+  const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
     device,
-    'nanite-vertex-buffer-vec4',
-    GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-    verticesAsVec4
+    rawVertices
   );
-
   const meshletsBuffer = createMeshletsDataBuffer(device, allWIPMeshlets);
   const visiblityBuffer = createMeshletsVisiblityBuffer(
     device,
@@ -58,7 +53,7 @@ export function createNaniteObject(
     getInstancesCount(instancesGrid)
   );
   const instances = createInstancesData(device, instancesGrid);
-  const naniteLODTree = new NaniteObject(
+  const naniteObject = new NaniteObject(
     vertexBuffer,
     vertexBufferForStorageAsVec4,
     indexBuffer,
@@ -70,15 +65,15 @@ export function createNaniteObject(
   // write meshlets to the LOD tree
   let indexBufferOffsetBytes = 0;
   let nextId = 0; // id in the index buffer order
-  const rewriteIds = createArray(naniteLODTree.meshletCount);
+  const rewriteIds = createArray(naniteObject.meshletCount);
 
   const meshletsToCheck: MeshletWIP[] = [roots[0]];
   while (meshletsToCheck.length > 0) {
     const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
-    if (naniteLODTree.contains(meshlet.id)) {
+    if (naniteObject.contains(meshlet.id)) {
       continue;
     }
-    const node = naniteLODTree.addMeshlet(
+    const node = naniteObject.addMeshlet(
       meshlet,
       indexBufferOffsetBytes / BYTES_U32
     );
@@ -105,16 +100,16 @@ export function createNaniteObject(
   }
 
   // assert all added OK
-  if (allWIPMeshlets.length !== naniteLODTree.allMeshlets.length) {
+  if (allWIPMeshlets.length !== naniteObject.allMeshlets.length) {
     // prettier-ignore
-    throw new Error(`Created ${allWIPMeshlets.length} meshlets, but only ${naniteLODTree.allMeshlets.length} were added to the LOD tree? Please verify '.createdFrom' for all meshlets.`);
+    throw new Error(`Created ${allWIPMeshlets.length} meshlets, but only ${naniteObject.allMeshlets.length} were added to the LOD tree? Please verify '.createdFrom' for all meshlets.`);
   }
 
   // fill `createdFrom`
   allWIPMeshlets.forEach((m) => {
-    const node = naniteLODTree.find(m.id)!;
+    const node = naniteObject.find(m.id)!;
     m.createdFrom.forEach((mChild) => {
-      const chNode = naniteLODTree.find(mChild.id);
+      const chNode = naniteObject.find(mChild.id);
       if (chNode !== undefined && node !== undefined) {
         node.createdFrom.push(chNode);
       } else {
@@ -128,34 +123,68 @@ export function createNaniteObject(
   // rewrite id's to be in index buffer order
   // This should be the last step, as we use ids all over the place.
   // After this step, MeshletWIP[_].id !== naniteLODTree.allMeshlets[_].id
-  naniteLODTree.allMeshlets.forEach((m) => {
+  naniteObject.allMeshlets.forEach((m) => {
     m.id = rewriteIds[m.id];
   });
 
   // upload meshlet data to the GPU for GPU visibility check/render
-  naniteLODTree.finalizeCreation(device);
+  naniteObject.uploadMeshletsToGPU(device);
 
+  // stats
+  if (!CONFIG.isTest) {
+    const bottomMeshletCount = naniteObject.allMeshlets.filter(
+      (m) => m.lodLevel === 0
+    ).length;
+    console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
+    console.log('[Nanite] Root meshlet:', naniteObject.root);
+    console.log(
+      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${bottomMeshletCount} bottom level meshlets)`
+    );
+  }
+
+  // in-browser stats
   STATS['Vertex buffer:'] = formatBytes(vertexBuffer.size);
   STATS['Index buffer:'] = formatBytes(indexBuffer.size);
   // TODO print other stats too
-  return naniteLODTree;
+
+  return naniteObject;
 }
 
-function getMeshletTriangleCount(meshlets: MeshletWIP[]) {
-  return meshlets.reduce((acc, m) => acc + getTriangleCount(m.indices), 0);
+function createIndexBuffer(
+  device: GPUDevice,
+  meshlets: MeshletWIP[]
+): GPUBuffer {
+  const totalTriangleCount = meshlets.reduce(
+    (acc, m) => acc + getTriangleCount(m.indices),
+    0
+  );
+  return device.createBuffer({
+    label: 'nanite-index-buffer',
+    size: getBytesForTriangles(totalTriangleCount),
+    usage:
+      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+  });
 }
 
 /** We Java now */
-function createVertexBufferForStorageAsVec4(vertices: Float32Array) {
+function createVertexBufferForStorageAsVec4(
+  device: GPUDevice,
+  vertices: Float32Array
+): GPUBuffer {
   const vertexCount = vertices.length / 3;
-  const result = new Float32Array(vertexCount * 4);
+  const data = new Float32Array(vertexCount * 4);
   for (let i = 0; i < vertexCount; i++) {
-    result[i * 4] = vertices[i * 3];
-    result[i * 4 + 1] = vertices[i * 3 + 1];
-    result[i * 4 + 2] = vertices[i * 3 + 2];
-    result[i * 4 + 3] = 1.0;
+    data[i * 4] = vertices[i * 3];
+    data[i * 4 + 1] = vertices[i * 3 + 1];
+    data[i * 4 + 2] = vertices[i * 3 + 2];
+    data[i * 4 + 3] = 1.0;
   }
-  return result;
+  return createGPUBuffer(
+    device,
+    'nanite-vertex-buffer-vec4',
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    data
+  );
 }
 
 function createMeshletsDataBuffer(
@@ -178,13 +207,19 @@ function createMeshletsVisiblityBuffer(
   const bottomMeshletCount = allWIPMeshlets.filter(
     (m) => m.lodLevel === 0
   ).length;
+  const dataSize = bottomMeshletCount * BYTES_UVEC2 * instanceCount;
+
+  const extraUsage: GPUBufferUsageFlags = CONFIG.isTest
+    ? GPUBufferUsage.COPY_SRC
+    : 0;
   return device.createBuffer({
     label: 'nanite-visiblity',
-    size: bottomMeshletCount * BYTES_UVEC2 * instanceCount,
+    size: BYTES_DRAW_INDIRECT + dataSize,
     usage:
-      GPUBufferUsage.COPY_DST |
       GPUBufferUsage.STORAGE |
-      GPUBufferUsage.COPY_SRC, // TODO SRC is only for tests
+      GPUBufferUsage.INDIRECT |
+      GPUBufferUsage.COPY_DST |
+      extraUsage,
   });
 }
 

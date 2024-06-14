@@ -1,5 +1,13 @@
 import { Mat4 } from 'wgpu-matrix';
 import { ensureTypedArray } from './index.ts';
+import { BYTES_U32 } from '../constants.ts';
+
+export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
+
+export const BYTES_DRAW_INDIRECT = Math.max(
+  WEBGPU_MINIMAL_BUFFER_SIZE,
+  4 * BYTES_U32
+);
 
 export async function createGpuDevice() {
   try {

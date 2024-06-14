@@ -12,6 +12,7 @@ import { PassCtx } from '../passes/passCtx.ts';
 import { Camera } from '../camera.ts';
 import { mat4 } from 'wgpu-matrix';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
+import { CONFIG } from '../constants.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -43,6 +44,7 @@ export async function createGpuDevice_TESTS(): Promise<
     await errorSystem.reportErrorScopeAsync(rethrowWebGPUError);
   };
 
+  CONFIG.isTest = true;
   return [device, validateFn];
 }
 
@@ -81,7 +83,11 @@ export const assertSameArray = (
   actual: number[] | Uint32Array | Float32Array,
   expected: number[]
 ) => {
-  assertEquals(actual.length, expected.length);
+  assertEquals(
+    actual.length,
+    expected.length,
+    `Different array length: ${actual.length} vs ${expected.length}`
+  );
   const actualAsArr: number[] = [];
   actual.forEach((e) => actualAsArr.push(e));
   assertEquals(actualAsArr, expected);
@@ -95,6 +101,7 @@ export function printTypedArray(
   cnt = cnt > 0 ? cnt : arr.length;
   const data = Array.from(arr).slice(0, cnt);
   const typeName = getClassName(arr);
+  preffix = preffix.length > 0 ? `${preffix} ` : '';
   console.log(
     `${preffix}${typeName}(len=${arr.length}, bytes=${arr.byteLength})`,
     data

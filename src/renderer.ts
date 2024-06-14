@@ -131,14 +131,9 @@ export class Renderer {
       this.dbgMeshoptimizerMeshletsPass.draw(ctx);
     } else {
       if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
-        this.naniteVisibilityPass.cmdCalculateVisibility(
-          ctx,
-          ctx.scene.naniteObject
-        );
-        this.drawNaniteGPUPass.draw(
-          ctx,
-          this.naniteVisibilityPass.drawIndirectParamsBuffer
-        );
+        const { naniteObject } = ctx.scene;
+        this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+        this.drawNaniteGPUPass.draw(ctx, naniteObject);
       } else {
         this.drawMeshPass.draw(ctx);
       }

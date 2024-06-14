@@ -23,7 +23,8 @@ fn main(
 ) {
   // set rest of the indirect draw params. Has to be first line in the shader in case we ooopsie and do early return by accident somewhere.
   if (global_id.x == 0u) {
-    _drawIndirectResult.vertexCount = __MAX_MESHLET_TRIANGLES * 3u; // MAX_MESHLET_TRIANGLES * VERTS_PER_TRIANGLE(3)
+    // We always draw 'MAX_MESHLET_TRIANGLES * VERTS_PER_TRIANGLE(3)' verts. Draw pass will discard if the meshlet has less.
+    _drawIndirectResult.vertexCount = __MAX_MESHLET_TRIANGLES * 3u;
     _drawIndirectResult.firstVertex = 0u;
     _drawIndirectResult.firstInstance = 0u;
   }

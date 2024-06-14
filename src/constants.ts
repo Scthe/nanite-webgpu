@@ -60,6 +60,8 @@ export type DisplayMode =
 export type CalcVisibilityDevice = 'cpu' | 'gpu';
 
 export const CONFIG = {
+  /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
+  isTest: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   clearColor: [0.2, 0.2, 0.2],
   rotationSpeed: 1,

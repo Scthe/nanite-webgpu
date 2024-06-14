@@ -22,7 +22,7 @@ import { NaniteObject } from '../../scene/naniteObject.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_MESHLETS = 1;
-const BINDINGS_MESHLET_IDS = 2;
+const BINDINGS_DRAWN_MESHLET_IDS = 2;
 const BINDINGS_INSTANCES_TRANSFORMS = 3;
 const BINDINGS_VERTEX_POSITIONS = 4;
 const BINDINGS_INDEX_BUFFER = 5;
@@ -53,26 +53,15 @@ export class DrawNaniteGPUPass {
       this.renderPipeline,
       [
         uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
-        {
-          binding: BINDINGS_MESHLETS,
-          resource: { buffer: naniteObject.meshletsBuffer },
-        },
-        {
-          binding: BINDINGS_MESHLET_IDS,
-          resource: { buffer: naniteObject.visiblityBuffer },
-        },
-        {
-          binding: BINDINGS_INSTANCES_TRANSFORMS,
-          resource: { buffer: naniteObject.instances.transformsBuffer },
-        },
-        {
-          binding: BINDINGS_VERTEX_POSITIONS,
-          resource: { buffer: naniteObject.vertexBufferForStorageAsVec4 },
-        },
-        {
-          binding: BINDINGS_INDEX_BUFFER,
-          resource: { buffer: naniteObject.indexBuffer },
-        },
+        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
+        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
+        naniteObject.bufferBindingInstanceTransforms(
+          BINDINGS_INSTANCES_TRANSFORMS
+        ),
+        naniteObject.bufferBindingVertexBufferForStorageAsVec4(
+          BINDINGS_VERTEX_POSITIONS
+        ),
+        naniteObject.bufferBindingIndexBuffer(BINDINGS_INDEX_BUFFER),
       ]
     );
   }
@@ -88,7 +77,7 @@ export class DrawNaniteGPUPass {
       code: `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
-${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_MESHLET_IDS, 'read')}
+${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_DRAWN_MESHLET_IDS, 'read')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
@@ -115,7 +104,7 @@ ${DrawNaniteGPUPass.SHADER_CODE}
     });
   }
 
-  draw(ctx: PassCtx, drawIndirectParamsBuffer: GPUBuffer) {
+  draw(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
@@ -132,7 +121,7 @@ ${DrawNaniteGPUPass.SHADER_CODE}
 
     // draw
     // this.debugRenderNaniteObjects(ctx, renderPass);
-    renderPass.drawIndirect(drawIndirectParamsBuffer, 0);
+    renderPass.drawIndirect(naniteObject.drawIndirectBuffer, 0);
 
     // fin
     renderPass.end();

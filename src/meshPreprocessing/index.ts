@@ -133,13 +133,6 @@ export async function createNaniteMeshlets(
     }
   }
 
-  // TODO print final tree, not the MeshletWIPs
-  console.log('[Nanite] All meshlets:', allMeshlets);
-  console.log('[Nanite] Top level meshlets:', currentMeshlets);
-  console.log(
-    `[Nanite] Created LOD levels: ${lodLevel} (total ${allMeshlets.length} meshlets from ${bottomMeshlets.length} bottom level meshlets)`
-  );
-
   if (currentMeshlets.length !== 1) {
     // It's ok to increase $MAX_LODS, just make sure you know what you are doing.
     throw new Error(
