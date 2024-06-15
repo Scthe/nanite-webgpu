@@ -4,8 +4,8 @@ type PassClass = { NAME: string; SHADER_CODE: string };
 
 export const labelShader = (pass: PassClass) => `${pass.NAME}-shader`;
 export const labelPipeline = (pass: PassClass) => `${pass.NAME}-pipeline`;
-export const labelUniformBindings = (pass: PassClass) =>
-  `${pass.NAME}-uniform-bindings`;
+export const labelUniformBindings = (pass: PassClass, name = '') =>
+  `${pass.NAME}-${name ? name + '-' : ''}uniforms`;
 
 export const assertHasShaderCode = (pass: PassClass) => {
   if (!pass.SHADER_CODE || pass.SHADER_CODE.length === 0)
@@ -24,18 +24,28 @@ export const PIPELINE_DEPTH_STENCIL_ON: GPUDepthStencilState = {
   format: DEPTH_FORMAT,
 };
 
-export const assignResourcesToBindings = (
+export const assignResourcesToBindings2 = (
   pass: PassClass,
+  name: string,
   device: GPUDevice,
   pipeline: GPURenderPipeline | GPUComputePipeline,
   entries: GPUBindGroupEntry[]
 ) => {
   const uniformsLayout = pipeline.getBindGroupLayout(0);
   return device.createBindGroup({
-    label: labelUniformBindings(pass),
+    label: labelUniformBindings(pass, name),
     layout: uniformsLayout,
     entries,
   });
+};
+
+export const assignResourcesToBindings = (
+  pass: PassClass,
+  device: GPUDevice,
+  pipeline: GPURenderPipeline | GPUComputePipeline,
+  entries: GPUBindGroupEntry[]
+) => {
+  return assignResourcesToBindings2(pass, '', device, pipeline, entries);
 };
 
 export const useColorAttachment = (
@@ -56,3 +66,18 @@ export const useDepthStencilAttachment = (
   depthLoadOp: 'clear',
   depthStoreOp: 'store',
 });
+
+export class BindingsCache {
+  private readonly cache: Record<string, GPUBindGroup | undefined> = {};
+
+  getBindings(key: string, factory: () => GPUBindGroup): GPUBindGroup {
+    const cachedVal = this.cache[key];
+    if (cachedVal) {
+      return cachedVal;
+    }
+
+    const val = factory();
+    this.cache[key] = val;
+    return val;
+  }
+}

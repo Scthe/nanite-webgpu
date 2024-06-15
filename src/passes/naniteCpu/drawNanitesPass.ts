@@ -1,10 +1,11 @@
 import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
+  BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
   assertHasShaderCode,
-  assignResourcesToBindings,
+  assignResourcesToBindings2,
   labelPipeline,
   labelShader,
   useColorAttachment,
@@ -16,6 +17,7 @@ import { calcNaniteMeshletsVisibility } from './calcNaniteMeshletsVisibility.ts'
 import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { formatNumber } from '../../utils/index.ts';
+import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_INSTANCES_TRANSFORMS = 1;
@@ -39,30 +41,13 @@ export class DrawNanitesPass {
   public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
-  private readonly uniformsBindings: GPUBindGroup;
+  private readonly bindingsCache = new BindingsCache();
 
-  constructor(
-    device: GPUDevice,
-    outTextureFormat: GPUTextureFormat,
-    uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteObject
-  ) {
+  constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
+    assertHasShaderCode(DrawNanitesPass);
     this.renderPipeline = DrawNanitesPass.createRenderPipeline(
       device,
       outTextureFormat
-    );
-
-    this.uniformsBindings = assignResourcesToBindings(
-      DrawNanitesPass,
-      device,
-      this.renderPipeline,
-      [
-        uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
-        {
-          binding: BINDINGS_INSTANCES_TRANSFORMS,
-          resource: { buffer: naniteObject.instances.transformsBuffer },
-        },
-      ]
     );
   }
 
@@ -70,19 +55,22 @@ export class DrawNanitesPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    assertHasShaderCode(DrawNanitesPass);
-    const shaderModule = device.createShaderModule({
-      label: labelShader(DrawNanitesPass),
-      code: `
+    let code = `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${DrawNanitesPass.SHADER_CODE}
-      `,
+      `;
+    code = applyShaderTextReplace(code, {
+      __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
     });
 
+    const shaderModule = device.createShaderModule({
+      label: labelShader(DrawNanitesPass),
+      code,
+    });
     return device.createRenderPipeline({
       label: labelPipeline(DrawNanitesPass),
       layout: 'auto',
@@ -117,20 +105,26 @@ ${DrawNanitesPass.SHADER_CODE}
 
     // set render pass data
     renderPass.setPipeline(this.renderPipeline);
-    renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
-    this.renderNaniteObjects(ctx, renderPass);
+    this.renderNaniteObject(ctx, renderPass, ctx.scene.naniteObject);
 
     // fin
     profiler?.endRegionCpu(visibilityCheckProfiler);
     renderPass.end();
   }
 
-  private renderNaniteObjects(ctx: PassCtx, renderPass: GPURenderPassEncoder) {
-    const naniteObject = ctx.scene.naniteObject;
+  private renderNaniteObject(
+    ctx: PassCtx,
+    renderPass: GPURenderPassEncoder,
+    naniteObject: NaniteObject
+  ) {
     const instances = naniteObject.instances.transforms;
+    const bindings = this.bindingsCache.getBindings(naniteObject.name, () =>
+      this.createBindings(ctx, naniteObject)
+    );
 
+    renderPass.setBindGroup(0, bindings);
     renderPass.setVertexBuffer(0, naniteObject.vertexBuffer);
     renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
 
@@ -167,4 +161,23 @@ ${DrawNanitesPass.SHADER_CODE}
     STATS.update('Nanite meshlets' , fmt(drawnMeshletsCount, rawStats.meshletCount)); // prettier-ignore
     STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
   }
+
+  private createBindings = (
+    { device, globalUniforms }: PassCtx,
+    naniteObject: NaniteObject
+  ): GPUBindGroup => {
+    return assignResourcesToBindings2(
+      DrawNanitesPass,
+      naniteObject.name,
+      device,
+      this.renderPipeline,
+      [
+        globalUniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
+        {
+          binding: BINDINGS_INSTANCES_TRANSFORMS,
+          resource: { buffer: naniteObject.instances.transformsBuffer },
+        },
+      ]
+    );
+  };
 }

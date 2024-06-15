@@ -1,14 +1,14 @@
 // TODO duplicated code from normal DrawNanitePass
 
-@group(0) @binding(3)
+@group(0) @binding(__BINDINGS_INSTANCES_TRANSFORMS)
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 // WARNING: SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`.
 // DO NOT ASK HOW I HAVE DEBUGGED THIS.
-@group(0) @binding(4)
+@group(0) @binding(__BINDINGS_VERTEX_POSITIONS)
 var<storage, read> _vertexPositions: array<vec4f>;
 
-@group(0) @binding(5)
+@group(0) @binding(__BINDINGS_INDEX_BUFFER)
 var<storage, read> _indexBuffer: array<u32>;
 
 

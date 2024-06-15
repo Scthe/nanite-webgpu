@@ -1,10 +1,11 @@
 import { CONFIG } from '../../constants.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
+  BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
   assertHasShaderCode,
-  assignResourcesToBindings,
+  assignResourcesToBindings2,
   labelPipeline,
   labelShader,
   useColorAttachment,
@@ -17,6 +18,7 @@ import {
   SHADER_SNIPPET_MESHLET_TREE_NODES,
 } from './naniteVisibilityPass.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
+import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 
 // TODO connect to stats (somehow?). Then debug we are actually only drawing minmal set of meshlets (53 on bunny closeup)
 
@@ -34,35 +36,13 @@ export class DrawNaniteGPUPass {
   public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
-  private readonly uniformsBindings: GPUBindGroup;
+  private readonly bindingsCache = new BindingsCache();
 
-  constructor(
-    device: GPUDevice,
-    outTextureFormat: GPUTextureFormat,
-    uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteObject
-  ) {
+  constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
+    assertHasShaderCode(DrawNaniteGPUPass);
     this.renderPipeline = DrawNaniteGPUPass.createRenderPipeline(
       device,
       outTextureFormat
-    );
-
-    this.uniformsBindings = assignResourcesToBindings(
-      DrawNaniteGPUPass,
-      device,
-      this.renderPipeline,
-      [
-        uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
-        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
-        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
-        naniteObject.bufferBindingInstanceTransforms(
-          BINDINGS_INSTANCES_TRANSFORMS
-        ),
-        naniteObject.bufferBindingVertexBufferForStorageAsVec4(
-          BINDINGS_VERTEX_POSITIONS
-        ),
-        naniteObject.bufferBindingIndexBuffer(BINDINGS_INDEX_BUFFER),
-      ]
     );
   }
 
@@ -70,11 +50,8 @@ export class DrawNaniteGPUPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    assertHasShaderCode(DrawNaniteGPUPass);
     // TODO duplicated code from normal DrawNanitePass
-    const shaderModule = device.createShaderModule({
-      label: labelShader(DrawNaniteGPUPass),
-      code: `
+    let code = `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
 ${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_DRAWN_MESHLET_IDS, 'read')}
@@ -83,7 +60,16 @@ ${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${DrawNaniteGPUPass.SHADER_CODE}
-      `,
+      `;
+    code = applyShaderTextReplace(code, {
+      __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
+      __BINDINGS_VERTEX_POSITIONS: String(BINDINGS_VERTEX_POSITIONS),
+      __BINDINGS_INDEX_BUFFER: String(BINDINGS_INDEX_BUFFER),
+    });
+
+    const shaderModule = device.createShaderModule({
+      label: labelShader(DrawNaniteGPUPass),
+      code,
     });
 
     return device.createRenderPipeline({
@@ -114,10 +100,13 @@ ${DrawNaniteGPUPass.SHADER_CODE}
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(DrawNaniteGPUPass.NAME),
     });
+    const bindings = this.bindingsCache.getBindings(naniteObject.name, () =>
+      this.createBindings(ctx, naniteObject)
+    );
 
     // set render pass data
     renderPass.setPipeline(this.renderPipeline);
-    renderPass.setBindGroup(0, this.uniformsBindings);
+    renderPass.setBindGroup(0, bindings);
 
     // draw
     // this.debugRenderNaniteObjects(ctx, renderPass);
@@ -154,4 +143,28 @@ ${DrawNaniteGPUPass.SHADER_CODE}
   // deno-lint-ignore no-explicit-any
   private reportDrawn = once((...args: any[]) => console.log('Drawn', ...args));
   */
+
+  private createBindings = (
+    { device, globalUniforms }: PassCtx,
+    naniteObject: NaniteObject
+  ): GPUBindGroup => {
+    return assignResourcesToBindings2(
+      DrawNaniteGPUPass,
+      naniteObject.name,
+      device,
+      this.renderPipeline,
+      [
+        globalUniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
+        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
+        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
+        naniteObject.bufferBindingInstanceTransforms(
+          BINDINGS_INSTANCES_TRANSFORMS
+        ),
+        naniteObject.bufferBindingVertexBufferForStorageAsVec4(
+          BINDINGS_VERTEX_POSITIONS
+        ),
+        naniteObject.bufferBindingIndexBuffer(BINDINGS_INDEX_BUFFER),
+      ]
+    );
+  };
 }

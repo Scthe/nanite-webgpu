@@ -5,10 +5,10 @@ struct DrawIndirect{
   firstVertex: u32,
   firstInstance : u32,
 }
-@group(0) @binding(3)
+@group(0) @binding(__BINDINGS_DRAW_INDIRECT_PARAMS)
 var<storage, read_write> _drawIndirectResult: DrawIndirect;
 
-@group(0) @binding(4)
+@group(0) @binding(__BINDINGS_INSTANCES_TRANSFORMS)
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 

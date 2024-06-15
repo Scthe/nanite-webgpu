@@ -13,7 +13,6 @@ import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
 import { DbgMeshoptimizerPass } from './passes/debug/dbgMeshoptimizerPass.ts';
 import { DbgMeshoptimizerMeshletsPass } from './passes/debug/dbgMeshoptimizerMeshletsPass.ts';
-import { Scene } from './scene/types.ts';
 import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
 import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
 
@@ -52,28 +51,16 @@ export class Renderer {
   constructor(
     private readonly device: GPUDevice,
     viewportSize: Dimensions,
-    preferredCanvasFormat: GPUTextureFormat,
-    scene: Scene
+    preferredCanvasFormat: GPUTextureFormat
   ) {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
-    this.drawMeshPass = new DrawNanitesPass(
-      device,
-      preferredCanvasFormat,
-      this.renderUniformBuffer,
-      scene.naniteObject
-    );
+    this.drawMeshPass = new DrawNanitesPass(device, preferredCanvasFormat);
     this.drawNaniteGPUPass = new DrawNaniteGPUPass(
       device,
-      preferredCanvasFormat,
-      this.renderUniformBuffer,
-      scene.naniteObject
+      preferredCanvasFormat
     );
-    this.naniteVisibilityPass = new NaniteVisibilityPass(
-      device,
-      this.renderUniformBuffer,
-      scene.naniteObject
-    );
+    this.naniteVisibilityPass = new NaniteVisibilityPass(device);
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
       preferredCanvasFormat,
@@ -118,6 +105,7 @@ export class Renderer {
       vpMatrix,
       projMatrix: this.projectionMat,
       depthTexture: this.depthTextureView,
+      globalUniforms: this.renderUniformBuffer,
     };
 
     this.renderUniformBuffer.update(ctx);

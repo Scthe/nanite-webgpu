@@ -65,6 +65,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   const uniforms = new RenderUniformsBuffer(device);
   const naniteObject = createNaniteObject(
     device,
+    'test-object',
     // deno-lint-ignore no-explicit-any
     { size: 'mocked-vertex-buffer-size' } as any, // mock vertexBuffer
     new Float32Array([0, 1, 2]), // mock rawVertices
@@ -78,7 +79,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   const readbackVisiblityBuffer = createReadbackBuffer(device, visiblityBuffer);
 
   // pass
-  const pass = new NaniteVisibilityPass(device, uniforms, naniteObject);
+  const pass = new NaniteVisibilityPass(device);
 
   // submit
   const cmdBuf = device.createCommandEncoder();
@@ -86,6 +87,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   passCtx.projMatrix = mat4.identity();
   passCtx.viewMatrix = mat4.identity();
   passCtx.vpMatrix = mat4.identity();
+  passCtx.globalUniforms = uniforms;
   CONFIG.nanite.render.pixelThreshold = THRESHOLD;
   uniforms.update(passCtx);
   pass.cmdCalculateVisibility(passCtx, naniteObject);

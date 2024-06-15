@@ -1,7 +1,13 @@
 import { CONFIG } from '../../constants.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
 import { applyShaderTextReplace } from '../../utils/webgpu.ts';
-import { assertHasShaderCode, assignResourcesToBindings } from '../_shared.ts';
+import {
+  BindingsCache,
+  assertHasShaderCode,
+  assignResourcesToBindings2,
+  labelPipeline,
+  labelShader,
+} from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
@@ -38,32 +44,11 @@ export class NaniteVisibilityPass {
   public static SHADER_CODE: string = '';
 
   private readonly pipeline: GPUComputePipeline;
-  private readonly uniformsBindings: GPUBindGroup;
+  private readonly bindingsCache = new BindingsCache();
 
-  constructor(
-    device: GPUDevice,
-    uniforms: RenderUniformsBuffer,
-    naniteObject: NaniteObject
-  ) {
+  constructor(device: GPUDevice) {
     assertHasShaderCode(NaniteVisibilityPass);
     this.pipeline = NaniteVisibilityPass.createPipeline(device);
-
-    this.uniformsBindings = assignResourcesToBindings(
-      NaniteVisibilityPass,
-      device,
-      this.pipeline,
-      [
-        uniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
-        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
-        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
-        naniteObject.bufferBindingIndirectDrawParams(
-          BINDINGS_DRAW_INDIRECT_PARAMS
-        ),
-        naniteObject.bufferBindingInstanceTransforms(
-          BINDINGS_INSTANCES_TRANSFORMS
-        ),
-      ]
-    );
   }
 
   private static createPipeline(device: GPUDevice) {
@@ -76,9 +61,16 @@ ${NaniteVisibilityPass.SHADER_CODE}
       `;
     code = applyShaderTextReplace(code, {
       __MAX_MESHLET_TRIANGLES: `${CONFIG.nanite.preprocess.meshletMaxTriangles}u`,
+      __BINDINGS_DRAW_INDIRECT_PARAMS: String(BINDINGS_DRAW_INDIRECT_PARAMS),
+      __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
     });
-    const shaderModule = device.createShaderModule({ code });
+
+    const shaderModule = device.createShaderModule({
+      label: labelShader(NaniteVisibilityPass),
+      code,
+    });
     return device.createComputePipeline({
+      label: labelPipeline(NaniteVisibilityPass),
       layout: 'auto',
       compute: {
         module: shaderModule,
@@ -89,6 +81,9 @@ ${NaniteVisibilityPass.SHADER_CODE}
 
   cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler } = ctx;
+    const bindings = this.bindingsCache.getBindings(naniteObject.name, () =>
+      this.createBindings(ctx, naniteObject)
+    );
 
     naniteObject.cmdClearDrawParams(cmdBuf);
 
@@ -96,11 +91,34 @@ ${NaniteVisibilityPass.SHADER_CODE}
       timestampWrites: profiler?.createScopeGpu(NaniteVisibilityPass.NAME),
     });
     computePass.setPipeline(this.pipeline);
-    computePass.setBindGroup(0, this.uniformsBindings);
+    computePass.setBindGroup(0, bindings);
     computePass.dispatchWorkgroups(
       naniteObject.meshletCount,
       naniteObject.instancesCount
     );
     computePass.end();
   }
+
+  private createBindings = (
+    { device, globalUniforms }: PassCtx,
+    naniteObject: NaniteObject
+  ): GPUBindGroup => {
+    return assignResourcesToBindings2(
+      NaniteVisibilityPass,
+      naniteObject.name,
+      device,
+      this.pipeline,
+      [
+        globalUniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
+        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
+        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
+        naniteObject.bufferBindingIndirectDrawParams(
+          BINDINGS_DRAW_INDIRECT_PARAMS
+        ),
+        naniteObject.bufferBindingInstanceTransforms(
+          BINDINGS_INSTANCES_TRANSFORMS
+        ),
+      ]
+    );
+  };
 }

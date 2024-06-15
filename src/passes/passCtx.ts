@@ -2,6 +2,7 @@ import { Mat4 } from 'wgpu-matrix';
 import { GpuProfiler } from '../gpuProfiler.ts';
 import { Dimensions } from '../utils/index.ts';
 import { Scene } from '../scene/types.ts';
+import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
 export interface PassCtx {
   device: GPUDevice;
@@ -14,4 +15,5 @@ export interface PassCtx {
   scene: Scene;
   depthTexture: GPUTextureView;
   screenTexture: GPUTextureView;
+  globalUniforms: RenderUniformsBuffer;
 }

@@ -76,6 +76,7 @@ export const createMockPassCtx = (
     scene: undefined!,
     depthTexture: undefined!,
     screenTexture: undefined!,
+    globalUniforms: undefined!,
   };
 };
 

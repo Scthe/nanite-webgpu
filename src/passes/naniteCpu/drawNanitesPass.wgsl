@@ -1,4 +1,4 @@
-@group(0) @binding(1)
+@group(0) @binding(__BINDINGS_INSTANCES_TRANSFORMS)
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 struct VertexOutput {

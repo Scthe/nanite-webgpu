@@ -31,6 +31,7 @@ import { STATS } from '../sys_web/stats.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
+  name: string,
   vertexBuffer: GPUBuffer,
   rawVertices: Float32Array,
   allWIPMeshlets: MeshletWIP[],
@@ -44,19 +45,22 @@ export function createNaniteObject(
   }
 
   // allocate single shared index buffer. Meshlets will use slices of it
-  const indexBuffer = createIndexBuffer(device, allWIPMeshlets);
+  const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
   const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
     device,
+    name,
     rawVertices
   );
-  const meshletsBuffer = createMeshletsDataBuffer(device, allWIPMeshlets);
+  const meshletsBuffer = createMeshletsDataBuffer(device, name, allWIPMeshlets);
   const visiblityBuffer = createMeshletsVisiblityBuffer(
     device,
+    name,
     allWIPMeshlets,
     getInstancesCount(instancesGrid)
   );
-  const instances = createInstancesData(device, instancesGrid);
+  const instances = createInstancesData(device, name, instancesGrid);
   const naniteObject = new NaniteObject(
+    name,
     vertexBuffer,
     vertexBufferForStorageAsVec4,
     indexBuffer,
@@ -157,6 +161,7 @@ export function createNaniteObject(
 
 function createIndexBuffer(
   device: GPUDevice,
+  name: string,
   meshlets: MeshletWIP[]
 ): GPUBuffer {
   const totalTriangleCount = meshlets.reduce(
@@ -164,7 +169,7 @@ function createIndexBuffer(
     0
   );
   return device.createBuffer({
-    label: 'nanite-index-buffer',
+    label: `${name}-nanite-index-buffer`,
     size: getBytesForTriangles(totalTriangleCount),
     usage:
       GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
@@ -174,6 +179,7 @@ function createIndexBuffer(
 /** We Java now */
 function createVertexBufferForStorageAsVec4(
   device: GPUDevice,
+  name: string,
   vertices: Float32Array
 ): GPUBuffer {
   const vertexCount = vertices.length / 3;
@@ -186,7 +192,7 @@ function createVertexBufferForStorageAsVec4(
   }
   return createGPUBuffer(
     device,
-    'nanite-vertex-buffer-vec4',
+    `${name}-nanite-vertex-buffer-vec4`,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     data
   );
@@ -194,11 +200,12 @@ function createVertexBufferForStorageAsVec4(
 
 function createMeshletsDataBuffer(
   device: GPUDevice,
+  name: string,
   allWIPMeshlets: MeshletWIP[]
 ): GPUBuffer {
   const meshletCount = allWIPMeshlets.length;
   return device.createBuffer({
-    label: 'nanite-meshlets',
+    label: `${name}-nanite-meshlets`,
     size: meshletCount * GPU_MESHLET_SIZE_BYTES,
     usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
   });
@@ -206,6 +213,7 @@ function createMeshletsDataBuffer(
 
 function createMeshletsVisiblityBuffer(
   device: GPUDevice,
+  name: string,
   allWIPMeshlets: MeshletWIP[],
   instanceCount: number
 ): GPUBuffer {
@@ -218,7 +226,7 @@ function createMeshletsVisiblityBuffer(
     ? GPUBufferUsage.COPY_SRC
     : 0;
   return device.createBuffer({
-    label: 'nanite-visiblity',
+    label: `${name}-nanite-visiblity`,
     size: BYTES_DRAW_INDIRECT + dataSize,
     usage:
       GPUBufferUsage.STORAGE |
@@ -230,10 +238,11 @@ function createMeshletsVisiblityBuffer(
 
 function createInstancesData(
   device: GPUDevice,
+  name: string,
   grid: InstancesGrid
 ): NaniteInstancesData {
   const transformsBuffer = device.createBuffer({
-    label: 'nanite-transforms',
+    label: `${name}-nanite-transforms`,
     size: BYTES_MAT4 * grid.xCnt * grid.yCnt,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
   });

@@ -41,6 +41,7 @@ export async function loadScene(
 
   const originalMesh = createOriginalMesh(
     device,
+    sceneName,
     originalVertices,
     originalIndices
   );
@@ -81,6 +82,7 @@ export async function loadScene(
   );
   const naniteObject = createNaniteObject(
     device,
+    sceneName,
     originalMesh.vertexBuffer,
     originalVertices,
     naniteMeshlets,
@@ -100,17 +102,18 @@ export async function loadScene(
 
 function createOriginalMesh(
   device: GPUDevice,
+  sceneName: string,
   vertices: Float32Array,
   indices: Uint32Array
 ): Mesh {
   const vertexBuffer = createGPU_VertexBuffer(
     device,
-    'original-vertices',
+    `${sceneName}-original-vertices`,
     vertices
   );
   const indexBuffer = createGPU_IndexBuffer(
     device,
-    'original-indices',
+    `${sceneName}-original-indices`,
     indices
   );
   return {

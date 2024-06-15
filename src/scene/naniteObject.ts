@@ -33,6 +33,7 @@ export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
 
   constructor(
+    public readonly name: string,
     public readonly vertexBuffer: GPUBuffer,
     /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
     private readonly vertexBufferForStorageAsVec4: GPUBuffer,
