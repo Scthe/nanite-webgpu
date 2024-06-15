@@ -6,15 +6,6 @@
  * https://webgpu.github.io/webgpu-samples/?sample=cameras
  */
 
-// deno-lint-ignore no-explicit-any
-type KeyboardEvent = any;
-// deno-lint-ignore no-explicit-any
-type PointerEvent = any;
-// deno-lint-ignore no-explicit-any
-type WheelEvent = any;
-// deno-lint-ignore no-explicit-any
-type HTMLCanvasElement = any;
-
 const Key = {
   CAMERA_FORWARD: 'w',
   CAMERA_BACK: 's',

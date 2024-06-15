@@ -179,6 +179,7 @@
         "npm:esbuild@^0.21.3",
         "npm:rimraf@^5.0.7",
         "npm:typescript@^5.4.5",
+        "npm:webgl-obj-loader@^2.0.8",
         "npm:wgpu-matrix@^2.9.0"
       ]
     }

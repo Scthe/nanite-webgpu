@@ -20,18 +20,6 @@ import dbgMeshoptimizerShader from './passes/debug/dbgMeshoptimizerPass.wgsl';
 import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshletsPass.wgsl';
 import { createErrorSystem } from './utils/errors.ts';
 
-// fix some warnings if VSCode is in deno mode
-declare global {
-  // deno-lint-ignore no-explicit-any
-  function requestAnimationFrame(cb: any): void;
-  // deno-lint-ignore no-explicit-any
-  type HTMLCanvasElement = any;
-  // deno-lint-ignore no-explicit-any
-  type CanvasRenderingContext2D = any;
-  // deno-lint-ignore no-explicit-any
-  const document: any;
-}
-
 const SCENE_FILE: keyof typeof SCENES = 'bunny';
 // const SCENE_FILE: keyof typeof SCENES = 'displacedPlane';
 // const SCENE_FILE: keyof typeof SCENES = 'cube';
@@ -143,8 +131,9 @@ function getCanvasContext(
   device: GPUDevice,
   canvasFormat: string
 ): [HTMLCanvasElement, CanvasRenderingContext2D] {
-  const canvas = document.querySelector(selector);
-  const context = canvas.getContext('webgpu');
+  const canvas: HTMLCanvasElement = document.querySelector(selector)!;
+  // deno-lint-ignore no-explicit-any
+  const context: any = canvas.getContext('webgpu')!;
 
   // const devicePixelRatio = window.devicePixelRatio;
   // canvas.width = canvas.clientWidth * devicePixelRatio;
@@ -169,9 +158,9 @@ async function loadSceneFile(device: GPUDevice, sceneName: SceneFile) {
 }
 
 function showErrorMessage(msg?: string) {
-  document.getElementById('gpuCanvas').style.display = 'none';
-  document.getElementById('no-webgpu').style.display = 'flex';
+  document.getElementById('gpuCanvas')!.style.display = 'none';
+  document.getElementById('no-webgpu')!.style.display = 'flex';
   if (msg) {
-    document.getElementById('error-msg').textContent = msg;
+    document.getElementById('error-msg')!.textContent = msg;
   }
 }

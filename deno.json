@@ -13,5 +13,8 @@
   },
   "test": {
     "exclude": ["src/web"]
+  },
+  "compilerOptions": {
+    "lib": ["esnext", "dom", "dom.iterable", "deno.window"]
   }
 }

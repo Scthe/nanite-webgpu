@@ -3,8 +3,6 @@ import { CalcVisibilityDevice } from '../constants.ts';
 import { getProfilerTimestamp } from '../gpuProfiler.ts';
 import { lerp } from '../utils/index.ts';
 
-// deno-lint-ignore no-explicit-any
-type HTMLElement = any;
 type StatsValue = number | string;
 
 type StatOpts = {
@@ -44,17 +42,22 @@ class Stats {
   private values: Record<string, number | string> = {};
   private lastRenderedValues: Record<string, number | string> = {};
   //
-  private frameStart: number;
+  private frameStart: number = 0;
   public deltaTimeMS = 0;
   private deltaTimeSmoothMS: number | undefined = undefined;
   // HTML
   private parentEl: HTMLElement;
-  private lastDOMUpdate: number;
+  private lastDOMUpdate: number = 0;
 
   constructor() {
-    this.parentEl = document.getElementById('stats-window');
-    this.frameStart = getProfilerTimestamp();
-    this.lastDOMUpdate = this.frameStart;
+    // deno-lint-ignore no-window
+    if (window && window.document) {
+      this.parentEl = window.document.getElementById('stats-window')!;
+      this.frameStart = getProfilerTimestamp();
+      this.lastDOMUpdate = this.frameStart;
+    } else {
+      this.parentEl = undefined!;
+    }
   }
 
   update(name: StatName, value: StatsValue) {
@@ -94,7 +97,10 @@ class Stats {
   };
 
   private renderStats = () => {
-    const statsChildrenEls: HTMLElement[] = Array.from(this.parentEl.children);
+    const statsChildrenEls: HTMLElement[] = Array.from(
+      this.parentEl.children
+      // deno-lint-ignore no-explicit-any
+    ) as any;
 
     Object.entries(AvailableStats).forEach(([name, opts]) => {
       // deno-lint-ignore no-explicit-any
@@ -132,7 +138,7 @@ class Stats {
     const STATS_ATTR = 'data-stats-attr';
 
     if (opts.el) return opts.el;
-    let el: HTMLElement = els.find(
+    let el = els.find(
       (el: HTMLElement) => el.getAttribute(STATS_ATTR) === name
     );
 
