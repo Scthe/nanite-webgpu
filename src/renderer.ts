@@ -7,7 +7,7 @@ import {
   getViewProjectionMatrix,
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
-import { CAMERA_CFG, CONFIG, DEPTH_FORMAT } from './constants.ts';
+import { CONFIG, DEPTH_FORMAT } from './constants.ts';
 import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
@@ -37,7 +37,7 @@ export function injectShaderTexts(texts: ShadersTexts) {
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
-  private readonly cameraCtrl: Camera;
+  public readonly cameraCtrl: Camera;
   private projectionMat: Mat4;
   private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
   private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
@@ -85,7 +85,7 @@ export class Renderer {
       this.renderUniformBuffer
     );
 
-    this.cameraCtrl = new Camera(CAMERA_CFG);
+    this.cameraCtrl = new Camera();
     this.projectionMat = createCameraProjectionMat(viewportSize);
 
     this.recreateDepthDexture(viewportSize);

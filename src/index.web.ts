@@ -1,11 +1,11 @@
 import { createGpuDevice } from './utils/webgpu.ts';
 import { createInputHandler } from './sys_web/input.ts';
 import { Renderer, injectShaderTexts } from './renderer.ts';
-import { initFPSCounter } from './sys_web/fpsStats.ts';
+import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
-import { SCENES, SceneFile } from './constants.ts';
+import { MILISECONDS_TO_SECONDS, SCENES, SceneFile } from './constants.ts';
 import { loadScene } from './scene/index.ts';
 
 //@ts-ignore it works OK
@@ -79,9 +79,8 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
   );
   canvasResizeSystem.addListener(renderer.onCanvasResize);
 
-  initializeGUI(profiler, scene);
-  const [fpsOnFrameStart, fpsOnFrameEnd] = initFPSCounter();
-  let lastFrameMS = Date.now();
+  initializeGUI(profiler, scene, renderer.cameraCtrl);
+  STATS.show();
   let done = false;
 
   const lastError = await errorSystem.reportErrorScopeAsync();
@@ -94,12 +93,10 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
   const frame = () => {
     errorSystem.startErrorScope('frame');
 
-    fpsOnFrameEnd();
-    fpsOnFrameStart();
+    STATS.onEndFrame();
+    STATS.onBeginFrame();
     profiler.beginFrame();
-    const now = Date.now();
-    const deltaTime = (now - lastFrameMS) / 1000;
-    lastFrameMS = now;
+    const deltaTime = STATS.deltaTimeMS * MILISECONDS_TO_SECONDS;
 
     canvasResizeSystem.revalidateCanvasSize();
 

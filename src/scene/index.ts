@@ -1,7 +1,12 @@
 import { SCENES, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
+import {
+  getDeltaFromTimestampMS,
+  getProfilerTimestamp,
+} from '../gpuProfiler.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
 import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
+import { STATS } from '../sys_web/stats.ts';
 import {
   getTriangleCount,
   getVertexCount,
@@ -69,6 +74,7 @@ export async function loadScene(
     meshoptimizerMeshletLODsAsync
   );
 
+  const naniteProcessingStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
     originalVertices,
     originalIndices
@@ -80,6 +86,8 @@ export async function loadScene(
     naniteMeshlets,
     SCENES[sceneName].grid
   );
+  const processingDelta = getDeltaFromTimestampMS(naniteProcessingStart);
+  STATS.update('Preprocessing', `${processingDelta.toFixed(0)}ms`);
 
   return {
     naniteObject,

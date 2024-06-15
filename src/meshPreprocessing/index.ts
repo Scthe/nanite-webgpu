@@ -128,7 +128,7 @@ export async function createNaniteMeshlets(
 
     currentMeshlets = newlyCreatedMeshlets;
     if (currentMeshlets.length < 2) {
-      console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
+      // console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
       break;
     }
   }

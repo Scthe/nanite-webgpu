@@ -5,17 +5,19 @@ import {
   BYTES_UVEC2,
   CONFIG,
   InstancesGrid,
-  STATS,
   getInstancesCount,
 } from '../constants.ts';
 import {
+  BOTTOM_LEVEL_NODE,
   GPU_MESHLET_SIZE_BYTES,
   NaniteInstancesData,
   NaniteObject,
+  getPreNaniteStats,
 } from '../scene/naniteObject.ts';
 import {
   createArray,
   formatBytes,
+  formatNumber,
   getBytesForTriangles,
   getTriangleCount,
 } from '../utils/index.ts';
@@ -25,6 +27,7 @@ import {
   writeMatrixToGPUBuffer,
 } from '../utils/webgpu.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
+import { STATS } from '../sys_web/stats.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -130,22 +133,24 @@ export function createNaniteObject(
   // upload meshlet data to the GPU for GPU visibility check/render
   naniteObject.uploadMeshletsToGPU(device);
 
-  // stats
+  // print stats
+  const rawStats = getPreNaniteStats(naniteObject);
   if (!CONFIG.isTest) {
-    const bottomMeshletCount = naniteObject.allMeshlets.filter(
-      (m) => m.lodLevel === 0
-    ).length;
     console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
     console.log('[Nanite] Root meshlet:', naniteObject.root);
     console.log(
-      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${bottomMeshletCount} bottom level meshlets)`
+      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${rawStats.meshletCount} bottom level meshlets)`
     );
   }
 
   // in-browser stats
-  STATS['Vertex buffer:'] = formatBytes(vertexBuffer.size);
-  STATS['Index buffer:'] = formatBytes(indexBuffer.size);
-  // TODO print other stats too
+  STATS.update('Vertex buffer', formatBytes(vertexBuffer.size));
+  STATS.update('Vertex buffer2', formatBytes(vertexBufferForStorageAsVec4.size)); // prettier-ignore
+  STATS.update('Index buffer', formatBytes(indexBuffer.size));
+  STATS.update('Meshlets data', formatBytes(meshletsBuffer.size));
+  STATS.update('Visibility buffer', formatBytes(visiblityBuffer.size));
+  STATS.update('Pre-Nanite meshlets', formatNumber(rawStats.meshletCount * naniteObject.instancesCount, 1)); // prettier-ignore
+  STATS.update('Pre-Nanite triangles', formatNumber(rawStats.triangleCount * naniteObject.instancesCount, 1)); // prettier-ignore
 
   return naniteObject;
 }
@@ -205,7 +210,7 @@ function createMeshletsVisiblityBuffer(
   instanceCount: number
 ): GPUBuffer {
   const bottomMeshletCount = allWIPMeshlets.filter(
-    (m) => m.lodLevel === 0
+    (m) => m.lodLevel === BOTTOM_LEVEL_NODE
   ).length;
   const dataSize = bottomMeshletCount * BYTES_UVEC2 * instanceCount;
 

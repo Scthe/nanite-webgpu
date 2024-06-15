@@ -178,6 +178,17 @@ export function formatBytes(bytes: number, decimals = 2) {
   return `${v} ${units[i]}`;
 }
 
+export function formatNumber(num: number, decimals = 2) {
+  const sign = num < 0 ? '-' : '';
+  num = Math.abs(num);
+
+  const units = ['', 'k', 'm', 'b'];
+  const k = 1000;
+  const i = Math.floor(Math.log(num) / Math.log(k));
+  const v = (num / Math.pow(k, i)).toFixed(decimals);
+  return `${sign}${v}${units[i]}`;
+}
+
 // deno-lint-ignore no-explicit-any
 export function once(fn: (...arg1: any[]) => void) {
   let fired = false;

@@ -1,9 +1,12 @@
 import { ValueOf } from './utils/index.ts';
+import type { CameraOpts } from './camera.ts';
 
 export const CAMERA_CFG = {
   // pos + rot
-  position: [1.5, 1.9, 2.3],
-  rotation: [0.3, -0.6],
+  position: {
+    position: [1.5, 1.9, 2.3],
+    rotation: [0.3, -0.6],
+  } satisfies CameraOpts,
   // projection
   fovDgr: 45,
   near: 0.01,
@@ -18,6 +21,9 @@ export const BYTES_VEC3 = BYTES_F32 * 3;
 export const BYTES_VEC4 = BYTES_F32 * 4;
 export const BYTES_UVEC2 = BYTES_U32 * 2;
 export const BYTES_MAT4 = BYTES_F32 * 16;
+
+export const NANO_TO_MILISECONDS = 0.000001;
+export const MILISECONDS_TO_SECONDS = 0.001;
 
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
 
@@ -87,5 +93,3 @@ export const CONFIG = {
     },
   },
 };
-
-export const STATS: Record<string, number | string> = {};

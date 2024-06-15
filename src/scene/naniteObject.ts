@@ -27,6 +27,7 @@ export interface NaniteInstancesData {
 }
 
 export const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
+export const BOTTOM_LEVEL_NODE = 0;
 
 export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
@@ -69,19 +70,6 @@ export class NaniteObject {
 
   get instancesCount() {
     return this.instances.transforms.length;
-  }
-
-  /** Bottom meshlet LOD level is pre-nanite */
-  get preNaniteStats() {
-    let triangleCount = 0;
-    let meshletCount = 0;
-    this.allMeshlets.forEach((m) => {
-      if (m.lodLevel === 0) {
-        triangleCount += m.triangleCount;
-        meshletCount += 1;
-      }
-    });
-    return [meshletCount, triangleCount];
   }
 
   bufferBindingInstanceTransforms = (
@@ -194,4 +182,17 @@ export class NaniteObject {
     this.allMeshlets.push(node);
     return node;
   }
+}
+
+/** Bottom meshlet LOD level is pre-nanite */
+export function getPreNaniteStats(naniteObj: NaniteObject) {
+  let triangleCount = 0;
+  let meshletCount = 0;
+  naniteObj.allMeshlets.forEach((m) => {
+    if (m.lodLevel === BOTTOM_LEVEL_NODE) {
+      triangleCount += m.triangleCount;
+      meshletCount += 1;
+    }
+  });
+  return { meshletCount, triangleCount };
 }

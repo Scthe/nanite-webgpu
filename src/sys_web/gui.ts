@@ -3,11 +3,16 @@ import * as dat from 'dat.gui';
 import { CONFIG, DisplayMode } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
 import { Scene } from '../scene/types.ts';
+import { Camera } from '../camera.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
-export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
+export function initializeGUI(
+  profiler: GpuProfiler,
+  scene: Scene,
+  camera: Camera
+) {
   const gui = new dat.GUI();
 
   const dummyObject = {
@@ -16,6 +21,9 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
     },
     profile: () => {
       profiler.profileNextFrame(true);
+    },
+    resetCamera: () => {
+      camera.resetPosition();
     },
   };
 
@@ -91,6 +99,9 @@ export function initializeGUI(profiler: GpuProfiler, scene: Scene) {
       toggleLodCtrl();
       naniteLodToggle();
     });
+
+    // camera reset
+    dir.add(dummyObject, 'resetCamera').name('Reset camera');
   }
 
   //////////////

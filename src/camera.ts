@@ -1,12 +1,13 @@
 import { mat4, vec3 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
-import { CONFIG, CAMERA_CFG, STATS } from './constants.ts';
+import { CAMERA_CFG, CONFIG } from './constants.ts';
 import { projectPoint } from './utils/index.ts';
+import { STATS } from './sys_web/stats.ts';
 
-export interface CameraOpts {
+export type CameraOpts = {
   position?: [number, number, number];
-  target?: [number, number, number];
-}
+  rotation?: [number, number];
+};
 
 const PI_2 = Math.PI / 2;
 const ANGLE_UP_DOWN = 0; // pitch
@@ -18,9 +19,11 @@ export class Camera {
   private readonly _angles: [number, number] = [0, 0]; // angles like in polar coords
   private readonly _position: [number, number, number] = [0, 0, 0];
 
-  constructor(
-    options: Pick<typeof CAMERA_CFG, 'position' | 'rotation'> = CAMERA_CFG
-  ) {
+  constructor(options: CameraOpts = CAMERA_CFG.position) {
+    this.resetPosition(options);
+  }
+
+  resetPosition = (options: CameraOpts = CAMERA_CFG.position) => {
     if (options.position?.length === 3) {
       this._position[0] = options.position[0];
       this._position[1] = options.position[1];
@@ -30,15 +33,15 @@ export class Camera {
       this._angles[0] = options.rotation[0];
       this._angles[1] = options.rotation[1];
     }
-  }
+  };
 
   update(deltaTime: number, input: Input): void {
     this.applyMovement(deltaTime, input);
     this.applyRotation(deltaTime, input);
 
     const p = (x: number) => x.toFixed(1);
-    STATS['Camera pos:'] = `[${this._position.map(p).join(', ')}]`;
-    STATS['Camera rot:'] = `[${this._angles.map(p).join(', ')}]`;
+    STATS.update('Camera pos', `[${this._position.map(p).join(', ')}]`);
+    STATS.update('Camera rot', `[${this._angles.map(p).join(', ')}]`);
   }
 
   private applyMovement(deltaTime: number, input: Input) {

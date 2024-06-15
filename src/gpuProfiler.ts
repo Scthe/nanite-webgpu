@@ -1,6 +1,4 @@
-import { BYTES_U64 } from './constants.ts';
-
-const NANO_TO_MILISECONDS = 0.000001;
+import { BYTES_U64, NANO_TO_MILISECONDS } from './constants.ts';
 
 /// Big amount of queries to never have to carry about it
 const MAX_QUERY_COUNT = 1024;
@@ -12,6 +10,13 @@ type GpuProfilerResultItem = [string, number];
 export type GpuProfilerResult = Array<[string, number]>;
 
 export type ProfilerRegionId = number | undefined;
+
+export const getProfilerTimestamp = () => performance.now();
+
+export const getDeltaFromTimestampMS = (start: number) => {
+  const end = getProfilerTimestamp();
+  return end - start;
+};
 
 /**
  * https://github.com/Scthe/Rust-Vulkan-TressFX/blob/master/src/gpu_profiler.rs
@@ -179,8 +184,7 @@ export class GpuProfiler {
     const el = this.currentFrameScopes[token];
     if (el) {
       const [_, _2, start] = el;
-      const end = performance.now();
-      el[2] = end - start;
+      el[2] = getDeltaFromTimestampMS(start);
     }
   }
 }

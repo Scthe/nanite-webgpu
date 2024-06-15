@@ -1,9 +1,4 @@
-import {
-  BYTES_VEC3,
-  CONFIG,
-  STATS,
-  VERTS_IN_TRIANGLE,
-} from '../../constants.ts';
+import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -18,7 +13,9 @@ import {
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { calcNaniteMeshletsVisibility } from './calcNaniteMeshletsVisibility.ts';
-import { NaniteObject } from '../../scene/naniteObject.ts';
+import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
+import { STATS } from '../../sys_web/stats.ts';
+import { formatNumber } from '../../utils/index.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_INSTANCES_TRANSFORMS = 1;
@@ -107,6 +104,9 @@ ${DrawNanitesPass.SHADER_CODE}
   draw(ctx: PassCtx) {
     const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
+    // in this fn, time taken is on CPU, as GPU is async. Not 100% accurate, but good enough?
+    const visibilityCheckProfiler = profiler?.startRegionCpu('VisibilityCheckCPU'); // prettier-ignore
+
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawNanitesPass.NAME,
@@ -123,25 +123,27 @@ ${DrawNanitesPass.SHADER_CODE}
     this.renderNaniteObjects(ctx, renderPass);
 
     // fin
+    profiler?.endRegionCpu(visibilityCheckProfiler);
     renderPass.end();
   }
 
   private renderNaniteObjects(ctx: PassCtx, renderPass: GPURenderPassEncoder) {
-    const nanite = ctx.scene.naniteObject;
-    const instances = nanite.instances.transforms;
+    const naniteObject = ctx.scene.naniteObject;
+    const instances = naniteObject.instances.transforms;
 
-    renderPass.setVertexBuffer(0, nanite.vertexBuffer);
-    renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
+    renderPass.setVertexBuffer(0, naniteObject.vertexBuffer);
+    renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
 
-    let totalTriangleCount = 0;
-    let totalDrawnMeshlets = 0;
+    let drawnTriangleCount = 0;
+    let drawnMeshletsCount = 0;
 
     instances.forEach((instanceModelMat, instanceIdx) => {
       const drawnMeshlets = calcNaniteMeshletsVisibility(
         ctx,
         instanceModelMat,
-        nanite
+        naniteObject
       );
+      drawnMeshletsCount += drawnMeshlets.length;
 
       drawnMeshlets.forEach((m) => {
         const triangleCount = m.triangleCount;
@@ -153,15 +155,16 @@ ${DrawNanitesPass.SHADER_CODE}
           0, // base vertex
           instanceIdx // meshletId // first instance TODO encode [meshletId+objectId]?
         );
-        totalTriangleCount += triangleCount;
+        drawnTriangleCount += triangleCount;
       });
-      totalDrawnMeshlets += drawnMeshlets.length;
     });
 
-    const [rawMeshletCount, rawTriangleCount] = nanite.preNaniteStats;
-    STATS['Pre-Nanite meshlets:'] = rawMeshletCount * instances.length;
-    STATS['Pre-Nanite triangles:'] = rawTriangleCount * instances.length;
-    STATS['Nanite meshlets:'] = totalDrawnMeshlets;
-    STATS['Nanite triangles:'] = totalTriangleCount;
+    const rawStats = getPreNaniteStats(naniteObject);
+    const fmt = (drawn: number, total: number) => {
+      const percent = ((drawn / total) * 100) / naniteObject.instancesCount;
+      return `${formatNumber(drawn, 1)} (${percent.toFixed(1)}%)`;
+    };
+    STATS.update('Nanite meshlets' , fmt(drawnMeshletsCount, rawStats.meshletCount)); // prettier-ignore
+    STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
   }
 }
