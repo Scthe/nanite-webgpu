@@ -110,36 +110,6 @@ export function printTypedArray(
 }
 
 ///////////////
-/// Readback GPU->CPU
-
-export function createReadbackBuffer(device: GPUDevice, orgBuffer: GPUBuffer) {
-  return device.createBuffer({
-    label: 'test-readback',
-    size: orgBuffer.size,
-    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
-  });
-}
-
-export function cmdCopyToReadBackBuffer(
-  cmdBuf: GPUCommandEncoder,
-  orgBuffer: GPUBuffer,
-  readbackBuffer: GPUBuffer
-) {
-  cmdBuf.copyBufferToBuffer(orgBuffer, 0, readbackBuffer, 0, orgBuffer.size);
-}
-
-export async function readBufferToCPU<T>(
-  TypedArrayClass: { new (a: ArrayBuffer): T },
-  buffer: GPUBuffer
-): Promise<T> {
-  await buffer.mapAsync(1);
-  const arrayBufferData = buffer.getMappedRange();
-  const resultData = new TypedArrayClass(arrayBufferData);
-  buffer.unmap();
-  return resultData;
-}
-
-///////////////
 /// Create mock data
 /*
 export function createIndicesU32Array(cnt: number, shuffle = false) {

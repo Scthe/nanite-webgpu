@@ -222,9 +222,6 @@ function createMeshletsVisiblityBuffer(
   ).length;
   const dataSize = bottomMeshletCount * BYTES_UVEC2 * instanceCount;
 
-  const extraUsage: GPUBufferUsageFlags = CONFIG.isTest
-    ? GPUBufferUsage.COPY_SRC
-    : 0;
   return device.createBuffer({
     label: `${name}-nanite-visiblity`,
     size: BYTES_DRAW_INDIRECT + dataSize,
@@ -232,7 +229,7 @@ function createMeshletsVisiblityBuffer(
       GPUBufferUsage.STORAGE |
       GPUBufferUsage.INDIRECT |
       GPUBufferUsage.COPY_DST |
-      extraUsage,
+      GPUBufferUsage.COPY_SRC, // for stats, debug etc.
   });
 }
 

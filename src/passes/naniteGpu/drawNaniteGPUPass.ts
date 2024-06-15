@@ -20,8 +20,6 @@ import {
 import { NaniteObject } from '../../scene/naniteObject.ts';
 import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 
-// TODO connect to stats (somehow?). Then debug we are actually only drawing minmal set of meshlets (53 on bunny closeup)
-
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_MESHLETS = 1;
 const BINDINGS_DRAWN_MESHLET_IDS = 2;

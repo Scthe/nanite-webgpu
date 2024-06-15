@@ -1,8 +1,9 @@
 import { Mat4 } from 'wgpu-matrix';
 import { BYTES_U32, BYTES_VEC4, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
-import { getTriangleCount } from '../utils/index.ts';
+import { createArray, getTriangleCount } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
+import { downloadBuffer } from '../utils/webgpu.ts';
 
 export type MeshletId = number;
 
@@ -72,6 +73,9 @@ export class NaniteObject {
   get instancesCount() {
     return this.instances.transforms.length;
   }
+
+  /** Use specialised methods for this buffer! It's complicated */
+  dangerouslyGetVisibilityBuffer = () => this.visiblityBuffer;
 
   bufferBindingInstanceTransforms = (
     bindingIdx: number
@@ -196,4 +200,50 @@ export function getPreNaniteStats(naniteObj: NaniteObject) {
     }
   });
   return { meshletCount, triangleCount };
+}
+
+/**
+ * WARNING: SLOW. DO NOT USE UNLESS FOR DEBUG/TEST PURPOSES.
+ *
+ * Kinda sucks it's async as weird things happen.
+ */
+export async function downloadVisibilityBuffer(
+  device: GPUDevice,
+  naniteObject: NaniteObject
+) {
+  const visiblityBuffer = naniteObject.dangerouslyGetVisibilityBuffer();
+
+  const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
+  const result = parseVisibilityBuffer(naniteObject, data);
+
+  console.log(`[${naniteObject.name}] Visibility buffer`, result);
+  return result;
+}
+
+export type DownloadedVisibilityBuffer = ReturnType<
+  typeof parseVisibilityBuffer
+>;
+
+export function parseVisibilityBuffer(
+  naniteObject: NaniteObject,
+  data: Uint32Array
+) {
+  const indirectDraw = data.slice(0, 4);
+  const meshletCount = indirectDraw[1];
+
+  // remember:
+  // 1) it's uvec2,
+  // 2) the buffer has a lot of space, we do not use it whole
+  const offset = BYTES_DRAW_INDIRECT / BYTES_U32;
+  const lastWrittenIdx = 2 * meshletCount; // uvec2
+  const visibilityResultArr = data.slice(offset, offset + lastWrittenIdx);
+  // printTypedArray('visbilityResult', visibilityResultArr);
+
+  // parse uvec2 into something I won't forget next day
+  const meshletIds = createArray(meshletCount).map((_, i) => ({
+    transformId: visibilityResultArr[2 * i],
+    meshletId: visibilityResultArr[2 * i + 1],
+  }));
+
+  return { naniteObject, meshletCount, indirectDraw, meshletIds };
 }

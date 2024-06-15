@@ -90,6 +90,7 @@ export const CONFIG = {
        * In pixels.
        */
       pixelThreshold: 1.0,
+      nextFrameDebugVisiblityBuffer: false,
     },
   },
 };

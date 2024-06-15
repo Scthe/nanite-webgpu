@@ -4,6 +4,7 @@ import { CONFIG, DisplayMode } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
 import { Scene } from '../scene/types.ts';
 import { Camera } from '../camera.ts';
+import { DrawNanitesPass } from '../passes/naniteCpu/drawNanitesPass.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
@@ -25,21 +26,13 @@ export function initializeGUI(
     resetCamera: () => {
       camera.resetPosition();
     },
+    getGpuDrawStats: () => {
+      CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = true;
+    },
   };
 
   // github
   gui.add(dummyObject, 'openGithub').name('GITHUB');
-
-  // nanite visibility calc - GPU/CPU
-  // prettier-ignore
-  const calcVisibilityDummy = createDummy(CONFIG.nanite.render, 'calcVisibilityDevice', [
-    { label: 'GPU', value: 'gpu' },
-    { label: 'CPU', value: 'cpu' },
-  ]);
-  // prettier-ignore
-  gui
-    .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
-    .name('Visibility test');
 
   // bg
   addColorController(CONFIG, 'clearColor', 'Bg color');
@@ -57,6 +50,24 @@ export function initializeGUI(
     const dir = gui.addFolder('Nanite');
     dir.open();
 
+    // nanite visibility calc - GPU/CPU
+    // prettier-ignore
+    const calcVisibilityDummy = createDummy(CONFIG.nanite.render, 'calcVisibilityDevice', [
+      { label: 'GPU', value: 'gpu' },
+      { label: 'CPU', value: 'cpu' },
+    ]);
+    // prettier-ignore
+    dir
+      .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
+      .name('Visibility test')
+      .onFinishChange(()=>{
+        DrawNanitesPass.updateRenderStats(undefined, undefined, undefined);
+      })
+
+    // profiler
+    dir.add(dummyObject, 'getGpuDrawStats').name('Get GPU visibility stats');
+
+    // pixelThreshold
     dir
       .add(CONFIG.nanite.render, 'pixelThreshold', 0, 10)
       .name('Error threshold [px]');
@@ -214,9 +225,10 @@ const createDummy = <V extends Object, K extends keyof V>(
 
 export function onGpuProfilerResult(result: GpuProfilerResult) {
   console.log('Profiler:', result);
-  const parentEl = document.getElementById('profiler-results');
+  const parentEl = document.getElementById('profiler-results')!;
   parentEl.innerHTML = '';
-  parentEl.parentNode.style.display = 'block';
+  // deno-lint-ignore no-explicit-any
+  (parentEl.parentNode as any).style.display = 'block';
 
   const mergeByName: Record<string, number> = {};
   const names = new Set<string>();

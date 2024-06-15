@@ -30,7 +30,7 @@ const AvailableStats = {
   'Preprocessing': {} as StatOpts,
   'Pre-Nanite meshlets': {} as StatOpts,
   'Pre-Nanite triangles': {} as StatOpts,
-  'Nanite meshlets': { visibilityDevice: 'cpu' } as StatOpts,
+  'Nanite meshlets': {} as StatOpts,
   'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
@@ -39,7 +39,8 @@ const DELTA_SMOOTHING = 0.9;
 const UPDATE_FREQ_MS = 1000;
 
 class Stats {
-  private values: Record<string, number | string> = {};
+  // deno-lint-ignore no-explicit-any
+  private values: Record<StatName, number | string> = {} as any;
   private lastRenderedValues: Record<string, number | string> = {};
   //
   private frameStart: number = 0;
@@ -58,6 +59,8 @@ class Stats {
     } else {
       this.parentEl = undefined!;
     }
+
+    this.values['Nanite meshlets'] = '-';
   }
 
   update(name: StatName, value: StatsValue) {
@@ -102,9 +105,10 @@ class Stats {
       // deno-lint-ignore no-explicit-any
     ) as any;
 
-    Object.entries(AvailableStats).forEach(([name, opts]) => {
+    Object.entries(AvailableStats).forEach(([name_, opts]) => {
       // deno-lint-ignore no-explicit-any
-      const el = this.getStatsHtmlEl(statsChildrenEls, name as any, opts);
+      const name: StatName = name_ as any; // ...TS
+      const el = this.getStatsHtmlEl(statsChildrenEls, name, opts);
 
       if (opts.categoryName) {
         if (el.textContent !== opts.categoryName)
@@ -116,8 +120,10 @@ class Stats {
       // do not update if not visible
       if (!this.checkVisibility(opts, el)) return;
 
+      // do not update if not changed
       const value = this.values[name];
       const shownValue = this.lastRenderedValues[name];
+      // if (name === 'Nanite meshlets') console.log({ value, shownValue }); // dbg
       if (value == shownValue) return;
 
       let text = `${name}: ${value}`;

@@ -3,23 +3,24 @@ import {
   injectDenoShader,
   createMockPassCtx,
   createMeshlets_TESTS,
-  createReadbackBuffer,
-  cmdCopyToReadBackBuffer,
-  readBufferToCPU,
   assertSameArray,
 } from '../../sys_deno/testUtils.ts';
 import { NaniteVisibilityPass } from './naniteVisibilityPass.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { mat4 } from 'wgpu-matrix';
-import { BYTES_U32, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import {
   createErrorMetric,
   getVisibilityStatus,
 } from '../naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { assertEquals } from 'assert';
 import { createNaniteObject } from '../../scene/createNaniteObject.ts';
-import { BYTES_DRAW_INDIRECT } from '../../utils/webgpu.ts';
-import { createArray } from '../../utils/index.ts';
+import {
+  cmdCopyToReadBackBuffer,
+  createReadbackBuffer,
+  readBufferToCPU,
+} from '../../utils/webgpu.ts';
+import { parseVisibilityBuffer } from '../../scene/naniteObject.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -73,9 +74,8 @@ Deno.test('NaniteVisibilityPass', async () => {
     { xCnt: 1, yCnt: 1, offset: 1 } // mock instancesGrid
   );
 
-  // retrieve visiblityBuffer (a bit awkward)
-  const visiblityBuffer = // deno-lint-ignore no-explicit-any
-    (naniteObject.bufferBindingVisibility(0).resource as any).buffer;
+  // retrieve visiblityBuffer
+  const visiblityBuffer = naniteObject.dangerouslyGetVisibilityBuffer();
   const readbackVisiblityBuffer = createReadbackBuffer(device, visiblityBuffer);
 
   // pass
@@ -104,7 +104,8 @@ Deno.test('NaniteVisibilityPass', async () => {
   // printTypedArray('resultData', resultData);
 
   // check draw params
-  const drawParamsResult = resultData.slice(0, 4);
+  const parsedResult = parseVisibilityBuffer(naniteObject, resultData);
+  const drawParamsResult = parsedResult.indirectDraw;
   // printTypedArray('drawParamsResult ', drawParamsResult);
   assertSameArray(drawParamsResult, [
     CONFIG.nanite.preprocess.meshletMaxTriangles * VERTS_IN_TRIANGLE, // vertexCount
@@ -114,19 +115,8 @@ Deno.test('NaniteVisibilityPass', async () => {
   ]);
 
   // check visibility buffer
-  // remember: 1) it's uvec2,  2) the buffer has a lot of space, we do not use it whole
-  const offset = BYTES_DRAW_INDIRECT / BYTES_U32;
-  const lastWrittenIdx = 2 * EXPECTED_DRAWN_MESHLETS_COUNT; // uvec2
-  const visibilityResultArr = resultData.slice(offset, offset + lastWrittenIdx);
+  const visibilityResult = parsedResult.meshletIds;
   // printTypedArray('visbilityResult', visibilityResultArr);
-
-  // parse uvec2 into something I won't forget next day
-  const visibilityResult = createArray(EXPECTED_DRAWN_MESHLETS_COUNT).map(
-    (_, i) => ({
-      transformId: visibilityResultArr[2 * i],
-      meshletId: visibilityResultArr[2 * i + 1],
-    })
-  );
   const getProjectedError = createErrorMetric(passCtx, mat4.identity());
 
   allWIPMeshlets.forEach((mWIP) => {

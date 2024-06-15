@@ -5,7 +5,12 @@ import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
-import { MILISECONDS_TO_SECONDS, SCENES, SceneFile } from './constants.ts';
+import {
+  CONFIG,
+  MILISECONDS_TO_SECONDS,
+  SCENES,
+  SceneFile,
+} from './constants.ts';
 import { loadScene } from './scene/index.ts';
 
 //@ts-ignore it works OK
@@ -19,6 +24,8 @@ import dbgMeshoptimizerShader from './passes/debug/dbgMeshoptimizerPass.wgsl';
 //@ts-ignore it works OK
 import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshletsPass.wgsl';
 import { createErrorSystem } from './utils/errors.ts';
+import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
+import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 
 const SCENE_FILE: keyof typeof SCENES = 'bunny';
 // const SCENE_FILE: keyof typeof SCENES = 'displacedPlane';
@@ -108,6 +115,17 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
     device.queue.submit([cmdBuf.finish()]);
 
     profiler.scheduleRaportIfNeededAsync(onGpuProfilerResult);
+
+    if (CONFIG.nanite.render.nextFrameDebugVisiblityBuffer) {
+      CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = false;
+      downloadVisibilityBuffer(device, scene.naniteObject).then((res): void => {
+        DrawNanitesPass.updateRenderStats(
+          res.naniteObject,
+          res.meshletCount,
+          undefined
+        );
+      });
+    }
 
     // frame end
     if (!done) {

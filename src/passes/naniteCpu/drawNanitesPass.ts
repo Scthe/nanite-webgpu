@@ -153,13 +153,11 @@ ${DrawNanitesPass.SHADER_CODE}
       });
     });
 
-    const rawStats = getPreNaniteStats(naniteObject);
-    const fmt = (drawn: number, total: number) => {
-      const percent = ((drawn / total) * 100) / naniteObject.instancesCount;
-      return `${formatNumber(drawn, 1)} (${percent.toFixed(1)}%)`;
-    };
-    STATS.update('Nanite meshlets' , fmt(drawnMeshletsCount, rawStats.meshletCount)); // prettier-ignore
-    STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
+    DrawNanitesPass.updateRenderStats(
+      naniteObject,
+      drawnMeshletsCount,
+      drawnTriangleCount
+    );
   }
 
   private createBindings = (
@@ -180,4 +178,29 @@ ${DrawNanitesPass.SHADER_CODE}
       ]
     );
   };
+
+  public static updateRenderStats(
+    naniteObject: NaniteObject | undefined,
+    drawnMeshletsCount: number | undefined,
+    drawnTriangleCount: number | undefined
+  ) {
+    if (!naniteObject) {
+      STATS.update('Nanite meshlets', '-');
+      STATS.update('Nanite triangles', '-');
+      return;
+    }
+
+    const rawStats = getPreNaniteStats(naniteObject);
+    const fmt = (drawn: number, total: number) => {
+      const percent = ((drawn / total) * 100) / naniteObject.instancesCount;
+      return `${formatNumber(drawn, 1)} (${percent.toFixed(1)}%)`;
+    };
+
+    if (drawnMeshletsCount !== undefined) {
+      STATS.update('Nanite meshlets' , fmt(drawnMeshletsCount, rawStats.meshletCount)); // prettier-ignore
+    }
+    if (drawnTriangleCount !== undefined) {
+      STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
+    }
+  }
 }

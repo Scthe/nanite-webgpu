@@ -1,6 +1,6 @@
 import { Mat4 } from 'wgpu-matrix';
 import { ensureTypedArray } from './index.ts';
-import { BYTES_U32 } from '../constants.ts';
+import { BYTES_U32, CONFIG } from '../constants.ts';
 
 export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
 
@@ -137,3 +137,68 @@ export function applyShaderTextReplace(
 
 export const getItemsPerThread = (items: number, threads: number) =>
   Math.ceil(items / threads);
+
+///////////////
+/// Readback GPU->CPU
+
+export function createReadbackBuffer(device: GPUDevice, orgBuffer: GPUBuffer) {
+  return device.createBuffer({
+    label: `${orgBuffer}-readback-buffer`,
+    size: orgBuffer.size,
+    usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
+  });
+}
+
+export function cmdCopyToReadBackBuffer(
+  cmdBuf: GPUCommandEncoder,
+  orgBuffer: GPUBuffer,
+  readbackBuffer: GPUBuffer
+) {
+  cmdBuf.copyBufferToBuffer(orgBuffer, 0, readbackBuffer, 0, orgBuffer.size);
+}
+
+export async function readBufferToCPU<T>(
+  TypedArrayClass: { new (a: ArrayBuffer): T },
+  buffer: GPUBuffer
+): Promise<T> {
+  await buffer.mapAsync(GPUMapMode.READ);
+  const arrayBufferData = buffer.getMappedRange();
+  // slice to copy. The 'arrayBufferData' might be deallocated after unmap (chrome)
+  const resultData = new TypedArrayClass(arrayBufferData.slice(0));
+  buffer.unmap();
+  return resultData;
+}
+
+export async function downloadBuffer<T>(
+  device: GPUDevice,
+  TypedArrayClass: { new (a: ArrayBuffer): T },
+  orgBuffer: GPUBuffer
+) {
+  if (!CONFIG.isTest) {
+    console.warn(`Reading '${orgBuffer.label}' buffer back to CPU. This is slow!`); // prettier-ignore
+  }
+
+  let readbackBuffer: GPUBuffer | undefined = undefined;
+  try {
+    readbackBuffer = createReadbackBuffer(device, orgBuffer);
+
+    // copy using command
+    const cmdBuf = device.createCommandEncoder({
+      label: `${orgBuffer.label}-readback`,
+    });
+    cmdCopyToReadBackBuffer(cmdBuf, orgBuffer, readbackBuffer);
+    device.queue.submit([cmdBuf.finish()]);
+
+    // Warning: try-catch with promises
+    const result = await readBufferToCPU(TypedArrayClass, readbackBuffer);
+
+    return result;
+  } catch (e) {
+    throw e;
+  } finally {
+    if (readbackBuffer) {
+      readbackBuffer.unmap();
+      readbackBuffer.destroy();
+    }
+  }
+}
