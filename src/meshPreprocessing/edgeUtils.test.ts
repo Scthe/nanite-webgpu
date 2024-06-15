@@ -2,7 +2,8 @@ import { assertEquals, assertExists } from 'assert';
 import {
   Edge,
   createEdge,
-  findAdjacentMeshlets,
+  findAdjacentMeshlets_Iter,
+  findAdjacentMeshlets_Map,
   findBoundaryEdges,
   isSameEdge,
   listAllEdges,
@@ -59,24 +60,53 @@ Deno.test('edgeUtils :: findBoundaryEdges', () => {
   assertEdgesMatch(result, [edge1, edge3]);
 });
 
-Deno.test('edgeUtils :: findAdjacentMeshlets', () => {
+Deno.test('edgeUtils :: findAdjacentMeshlets', async (t) => {
   const sharedEdge0 = createEdge(0, 1);
   const sharedEdge1 = createEdge(100, 101);
-  const meshlet0 = [createEdge(1, 2), sharedEdge0, sharedEdge1];
+  const sharedEdge2 = createEdge(103, 104);
+
+  // meshlet definition
+  const meshlet0 = [createEdge(1, 2), sharedEdge0, sharedEdge1, sharedEdge2];
   const meshlet1 = [
     createEdge(5000, 5001),
     createEdge(5001, 5002),
     createEdge(5000, 5002),
   ];
   const meshlet2 = [sharedEdge0, createEdge(0, 11), createEdge(1, 11)];
-  const meshlet3 = [sharedEdge1, createEdge(100, 11), createEdge(103, 11)];
+  const meshlet3 = [
+    sharedEdge1,
+    sharedEdge2, // shares 2 edges with meshlet0
+    createEdge(100, 11),
+    createEdge(103, 11),
+  ];
 
-  const result = findAdjacentMeshlets([meshlet0, meshlet1, meshlet2, meshlet3]);
-  // console.log(result);
+  const assertResult = (result: number[][]) => {
+    assertEquals(result.length, 4);
+    assertEquals(result[0], [2, 3]);
+    assertEquals(result[1], []);
+    assertEquals(result[2], [0]);
+    assertEquals(result[3], [0]);
+  };
 
-  assertEquals(result.length, 4);
-  assertEquals(result[0], [2, 3]);
-  assertEquals(result[1], []);
-  assertEquals(result[2], [0]);
-  assertEquals(result[3], [0]);
+  await t.step('findAdjacentMeshlets_Iter', () => {
+    const result0 = findAdjacentMeshlets_Iter([
+      meshlet0,
+      meshlet1,
+      meshlet2,
+      meshlet3,
+    ]);
+    // console.log(result0);
+    assertResult(result0);
+  });
+
+  await t.step('findAdjacentMeshlets_Map', () => {
+    const result1 = findAdjacentMeshlets_Map([
+      meshlet0,
+      meshlet1,
+      meshlet2,
+      meshlet3,
+    ]);
+    // console.log(result1);
+    assertResult(result1);
+  });
 });

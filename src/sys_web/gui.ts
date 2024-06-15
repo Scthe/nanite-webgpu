@@ -5,6 +5,7 @@ import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
 import { Scene } from '../scene/types.ts';
 import { Camera } from '../camera.ts';
 import { DrawNanitesPass } from '../passes/naniteCpu/drawNanitesPass.ts';
+import { showHtmlEl } from '../utils/index.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
@@ -228,7 +229,7 @@ export function onGpuProfilerResult(result: GpuProfilerResult) {
   const parentEl = document.getElementById('profiler-results')!;
   parentEl.innerHTML = '';
   // deno-lint-ignore no-explicit-any
-  (parentEl.parentNode as any).style.display = 'block';
+  showHtmlEl(parentEl.parentNode as any);
 
   const mergeByName: Record<string, number> = {};
   const names = new Set<string>();

@@ -10,10 +10,15 @@ import {
   listAllEdges,
   findBoundaryEdges,
   Edge,
-  findAdjacentMeshlets,
+  findAdjacentMeshlets_Iter,
+  findAdjacentMeshlets_Map,
 } from './edgesUtils.ts';
 import { partitionGraph } from './partitionGraph.ts';
 import { simplifyMesh } from './simplifyMesh.ts';
+
+const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
+  ? findAdjacentMeshlets_Map
+  : findAdjacentMeshlets_Iter;
 
 /** We half triangle count each time. Each meshlet is 124 triangles.
  * $2^{MAX_LODS}*124$. E.g. MAX_LODS=15 gives 4M. Vertices above would

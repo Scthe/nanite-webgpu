@@ -1,12 +1,8 @@
 import { SCENES, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
-import {
-  getDeltaFromTimestampMS,
-  getProfilerTimestamp,
-} from '../gpuProfiler.ts';
+import { getProfilerTimestamp } from '../gpuProfiler.ts';
 import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
 import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
-import { STATS } from '../sys_web/stats.ts';
 import {
   getTriangleCount,
   getVertexCount,
@@ -32,9 +28,13 @@ export async function loadScene(
   device: GPUDevice,
   sceneName: SceneFile,
   objText: string,
-  scale: number
+  scale: number,
+  addTimer: (name: string, start: number) => void
 ): Promise<Scene> {
+  let timerStart = getProfilerTimestamp();
   const [originalVertices, originalIndices] = await loadObjFile(objText, scale);
+  addTimer('OBJ parsing', timerStart);
+
   // prettier-ignore
   console.log(`Scene '${sceneName}': ${getVertexCount(originalVertices)} vertices, ${getTriangleCount(originalIndices)} triangles`);
   printBoundingBox(originalVertices);
@@ -75,7 +75,7 @@ export async function loadScene(
     meshoptimizerMeshletLODsAsync
   );
 
-  const naniteProcessingStart = getProfilerTimestamp();
+  timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
     originalVertices,
     originalIndices
@@ -88,8 +88,7 @@ export async function loadScene(
     naniteMeshlets,
     SCENES[sceneName].grid
   );
-  const processingDelta = getDeltaFromTimestampMS(naniteProcessingStart);
-  STATS.update('Preprocessing', `${processingDelta.toFixed(0)}ms`);
+  addTimer('Nanite LOD build', timerStart);
 
   return {
     naniteObject,

@@ -3,7 +3,11 @@ import { createInputHandler } from './sys_web/input.ts';
 import { Renderer, injectShaderTexts } from './renderer.ts';
 import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
-import { GpuProfiler } from './gpuProfiler.ts';
+import {
+  GpuProfiler,
+  getDeltaFromTimestampMS,
+  getProfilerTimestamp,
+} from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
 import {
   CONFIG,
@@ -26,11 +30,15 @@ import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshl
 import { createErrorSystem } from './utils/errors.ts';
 import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
 import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
+import { Scene } from './scene/types.ts';
+import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 
-const SCENE_FILE: keyof typeof SCENES = 'bunny';
-// const SCENE_FILE: keyof typeof SCENES = 'displacedPlane';
-// const SCENE_FILE: keyof typeof SCENES = 'cube';
-// const SCENE_FILE: keyof typeof SCENES = 'plane';
+const SCENE_FILE: SceneFile = 'bunny';
+// const SCENE_FILE: SceneFile = 'lucy';
+// const SCENE_FILE: SceneFile = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
+// const SCENE_FILE: SceneFile = 'displacedPlane';
+// const SCENE_FILE: SceneFile = 'cube';
+// const SCENE_FILE: SceneFile = 'plane';
 
 (async function () {
   // GPUDevice
@@ -55,7 +63,17 @@ const SCENE_FILE: keyof typeof SCENES = 'bunny';
   const getInputState = createInputHandler(window, canvas);
 
   // file load
-  const scene = await loadSceneFile(device, SCENE_FILE);
+  let scene: Scene;
+  let loaderEl: HTMLElement | null = null;
+  try {
+    loaderEl = document.getElementById('loader-wrapper');
+    showHtmlEl(loaderEl);
+    scene = await loadSceneFile(device, SCENE_FILE);
+  } catch (e) {
+    throw e;
+  } finally {
+    hideHtmlEl(loaderEl);
+  }
 
   // renderer setup
   const profiler = new GpuProfiler(device);
@@ -165,18 +183,47 @@ function getCanvasContext(
 }
 
 async function loadSceneFile(device: GPUDevice, sceneName: SceneFile) {
+  const start = getProfilerTimestamp();
+  const timers: string[] = [];
+  const addTimer = (name: string, start: number) =>
+    timers.push(`${name}: ${getDeltaFromTimestampMS(start).toFixed(2)}ms`);
+
+  // enable dev tools
+  const { enableProfiler } = CONFIG.nanite.preprocess;
+  if (enableProfiler) {
+    console.profile('scene-loading');
+  }
+
   const scene = SCENES[sceneName];
   const objFileResp = await fetch(scene.file);
   if (!objFileResp.ok) {
     throw `Could not download mesh file '${scene.file}'`;
   }
   const fileStr = await objFileResp.text();
-  return loadScene(device, sceneName, fileStr, scene.scale);
+  addTimer('OBJ fetch', start);
+
+  const result = await loadScene(
+    device,
+    sceneName,
+    fileStr,
+    scene.scale,
+    addTimer
+  );
+
+  const delta = getDeltaFromTimestampMS(start);
+  addTimer('---TOTAL---', start);
+  STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
+  console.log('Mesh loading timers:', timers);
+  if (enableProfiler) {
+    console.profileEnd();
+  }
+
+  return result;
 }
 
 function showErrorMessage(msg?: string) {
-  document.getElementById('gpuCanvas')!.style.display = 'none';
-  document.getElementById('no-webgpu')!.style.display = 'flex';
+  hideHtmlEl(document.getElementById('gpuCanvas'));
+  showHtmlEl(document.getElementById('no-webgpu'), 'flex');
   if (msg) {
     document.getElementById('error-msg')!.textContent = msg;
   }

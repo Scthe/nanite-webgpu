@@ -47,6 +47,8 @@ export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
 
 export const SCENES = {
   bunny: { file: 'bunny.obj', scale: 8, grid: createGrid() },
+  lucy: { file: 'lucy.obj', scale: 0.001, grid: createGrid(1, 1) },
+  dragon: { file: 'xyzrgb_dragon.obj', scale: 1, grid: createGrid(1, 1) },
   cube: { file: 'cube.obj', scale: 1, grid: createGrid() },
   plane: { file: 'plane.obj', scale: 1, grid: createGrid() },
   displacedPlane: {
@@ -80,6 +82,10 @@ export const CONFIG = {
     preprocess: {
       meshletMaxVertices: 64,
       meshletMaxTriangles: 124,
+      /** Select algo. to use */
+      useMapToFindAdjacentEdges: true,
+      /** Go to Devtools->Performance to check Chrome's log */
+      enableProfiler: false,
     },
     render: {
       calcVisibilityDevice: 'gpu' as CalcVisibilityDevice,

@@ -1,7 +1,12 @@
 import { CONFIG } from '../constants.ts';
 import { CalcVisibilityDevice } from '../constants.ts';
 import { getProfilerTimestamp } from '../gpuProfiler.ts';
-import { lerp } from '../utils/index.ts';
+import {
+  hideHtmlEl,
+  isHtmlElVisible,
+  lerp,
+  showHtmlEl,
+} from '../utils/index.ts';
 
 type StatsValue = number | string;
 
@@ -67,9 +72,7 @@ class Stats {
     this.values[name] = value;
   }
 
-  show() {
-    this.parentEl.style.display = 'block';
-  }
+  show = () => showHtmlEl(this.parentEl);
 
   onBeginFrame = () => {
     this.frameStart = getProfilerTimestamp();
@@ -123,7 +126,7 @@ class Stats {
       // do not update if not changed
       const value = this.values[name];
       const shownValue = this.lastRenderedValues[name];
-      // if (name === 'Nanite meshlets') console.log({ value, shownValue }); // dbg
+      // if (name === 'Nanite triangles') console.log({ value, shownValue }); // dbg
       if (value == shownValue) return;
 
       let text = `${name}: ${value}`;
@@ -167,14 +170,14 @@ class Stats {
   }
 
   setElVisible(el: HTMLElement, nextVisible: boolean) {
-    if (nextVisible && el.style.display !== 'block') {
+    if (nextVisible && !isHtmlElVisible(el)) {
       // console.log('setElVisible', el, nextVisible);
-      el.style.display = 'block';
+      showHtmlEl(el);
       this.lastRenderedValues = {}; // force rerender all
     }
-    if (!nextVisible && el.style.display !== 'none') {
+    if (!nextVisible && isHtmlElVisible(el)) {
       // console.log('setElVisible', el, nextVisible);
-      el.style.display = 'none';
+      hideHtmlEl(el);
       this.lastRenderedValues = {}; // force rerender all
     }
   }

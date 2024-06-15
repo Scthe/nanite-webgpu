@@ -199,3 +199,18 @@ export function once(fn: (...arg1: any[]) => void) {
     fn(...arg1);
   };
 }
+
+export const isHtmlElVisible = (el: HTMLElement | null) => {
+  return el && el.style.display !== 'none';
+};
+
+export const showHtmlEl = (
+  el: HTMLElement | null,
+  display: 'block' | 'flex' = 'block'
+) => {
+  if (el) el.style.display = display;
+};
+
+export const hideHtmlEl = (el: HTMLElement | null) => {
+  if (el) el.style.display = 'none';
+};
