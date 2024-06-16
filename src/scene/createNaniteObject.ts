@@ -1,12 +1,5 @@
 import { Mat4, mat4 } from 'wgpu-matrix';
-import {
-  BYTES_MAT4,
-  BYTES_U32,
-  BYTES_UVEC2,
-  CONFIG,
-  InstancesGrid,
-  getInstancesCount,
-} from '../constants.ts';
+import { BYTES_MAT4, BYTES_U32, BYTES_UVEC2, CONFIG } from '../constants.ts';
 import {
   BOTTOM_LEVEL_NODE,
   GPU_MESHLET_SIZE_BYTES,
@@ -28,6 +21,7 @@ import {
 } from '../utils/webgpu.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { STATS } from '../sys_web/stats.ts';
+import { InstancesGrid, getInstancesCount } from './sceneFiles.ts';
 
 export function createNaniteObject(
   device: GPUDevice,

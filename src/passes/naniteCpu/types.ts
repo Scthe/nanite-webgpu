@@ -1,4 +1,4 @@
-import { mat4 } from 'wgpu-matrix';
+import { mat4, Mat4 } from 'wgpu-matrix';
 import type {
   MeshletId,
   NaniteMeshletTreeNode,
@@ -12,7 +12,7 @@ export class NaniteVisibilityBufferCPU {
   public visitedMeshlets: boolean[] = [];
   public drawnMeshlets: NaniteMeshletTreeNode[] = [];
   public drawnMesletsCount = 0;
-  public mvpMatrix: mat4.Mat4 = mat4.identity();
+  public mvpMatrix: Mat4 = mat4.identity();
 
   initialize(meshletCount: number) {
     this.visitedMeshlets = Array(meshletCount);

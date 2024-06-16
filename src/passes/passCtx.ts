@@ -1,7 +1,7 @@
 import { Mat4 } from 'wgpu-matrix';
 import { GpuProfiler } from '../gpuProfiler.ts';
 import { Dimensions } from '../utils/index.ts';
-import { Scene } from '../scene/types.ts';
+import { Scene } from '../scene/scene.ts';
 import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 
 export interface PassCtx {

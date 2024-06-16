@@ -17,7 +17,7 @@ import { NaniteVisibilityBufferCPU } from './types.ts';
  * 'rendered' - this is the correct level to render
  * 'check-children' - children have more appropriate LOD
  */
-enum NaniteVisibilityStatus {
+export enum NaniteVisibilityStatus {
   HIDDEN,
   RENDERED,
   CHECK_CHILDREN,

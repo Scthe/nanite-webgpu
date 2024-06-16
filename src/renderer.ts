@@ -15,7 +15,7 @@ import { DbgMeshoptimizerMeshletsPass } from './passes/debug/dbgMeshoptimizerMes
 import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
 import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
-import { Scene } from './scene/types.ts';
+import { Scene } from './scene/scene.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;

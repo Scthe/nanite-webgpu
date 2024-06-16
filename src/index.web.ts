@@ -3,19 +3,15 @@ import { createInputHandler } from './sys_web/input.ts';
 import { Renderer, injectShaderTexts } from './renderer.ts';
 import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
-import {
-  GpuProfiler,
-  getDeltaFromTimestampMS,
-  getProfilerTimestamp,
-} from './gpuProfiler.ts';
+import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
-import {
-  CONFIG,
-  MILISECONDS_TO_SECONDS,
-  SCENES,
-  SceneFile,
-} from './constants.ts';
-import { loadScene } from './scene/index.ts';
+import { CONFIG, MILISECONDS_TO_SECONDS } from './constants.ts';
+import { createErrorSystem } from './utils/errors.ts';
+import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
+import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
+import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
+import { FileTextReader, Scene, loadScene } from './scene/scene.ts';
+import { SceneName } from './scene/sceneFiles.ts';
 
 //@ts-ignore it works OK
 import drawMeshShader from './passes/naniteCpu/drawNanitesPass.wgsl';
@@ -27,18 +23,13 @@ import naniteVisibilityGPUShader from './passes/naniteGpu/naniteVisibilityPass.w
 import dbgMeshoptimizerShader from './passes/debug/dbgMeshoptimizerPass.wgsl';
 //@ts-ignore it works OK
 import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshletsPass.wgsl';
-import { createErrorSystem } from './utils/errors.ts';
-import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
-import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
-import { Scene } from './scene/types.ts';
-import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 
-const SCENE_FILE: SceneFile = 'bunny';
-// const SCENE_FILE: SceneFile = 'lucy';
-// const SCENE_FILE: SceneFile = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
-// const SCENE_FILE: SceneFile = 'displacedPlane';
-// const SCENE_FILE: SceneFile = 'cube';
-// const SCENE_FILE: SceneFile = 'plane';
+const SCENE_FILE: SceneName = 'bunny';
+// const SCENE_FILE: SceneName = 'lucy';
+// const SCENE_FILE: SceneName = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
+// const SCENE_FILE: SceneName = 'displacedPlane';
+// const SCENE_FILE: SceneName = 'cube';
+// const SCENE_FILE: SceneName = 'plane';
 
 (async function () {
   // GPUDevice
@@ -87,7 +78,8 @@ const SCENE_FILE: SceneFile = 'bunny';
   const renderer = new Renderer(
     device,
     canvasResizeSystem.getViewportSize(),
-    PREFERRED_CANVAS_FORMAT
+    PREFERRED_CANVAS_FORMAT,
+    profiler
   );
   canvasResizeSystem.addListener(renderer.onCanvasResize);
 
@@ -182,43 +174,16 @@ function getCanvasContext(
   return [canvas, context];
 }
 
-async function loadSceneFile(device: GPUDevice, sceneName: SceneFile) {
-  const start = getProfilerTimestamp();
-  const timers: string[] = [];
-  const addTimer = (name: string, start: number) =>
-    timers.push(`${name}: ${getDeltaFromTimestampMS(start).toFixed(2)}ms`);
+function loadSceneFile(device: GPUDevice, sceneName: SceneName) {
+  const fileTextReader: FileTextReader = async (filename: string) => {
+    const objFileResp = await fetch(filename);
+    if (!objFileResp.ok) {
+      throw `Could not download mesh file '${filename}'`;
+    }
+    return objFileResp.text();
+  };
 
-  // enable dev tools
-  const { enableProfiler } = CONFIG.nanite.preprocess;
-  if (enableProfiler) {
-    console.profile('scene-loading');
-  }
-
-  const scene = SCENES[sceneName];
-  const objFileResp = await fetch(scene.file);
-  if (!objFileResp.ok) {
-    throw `Could not download mesh file '${scene.file}'`;
-  }
-  const fileStr = await objFileResp.text();
-  addTimer('OBJ fetch', start);
-
-  const result = await loadScene(
-    device,
-    sceneName,
-    fileStr,
-    scene.scale,
-    addTimer
-  );
-
-  const delta = getDeltaFromTimestampMS(start);
-  addTimer('---TOTAL---', start);
-  STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
-  console.log('Mesh loading timers:', timers);
-  if (enableProfiler) {
-    console.profileEnd();
-  }
-
-  return result;
+  return loadScene(device, fileTextReader, sceneName);
 }
 
 function showErrorMessage(msg?: string) {

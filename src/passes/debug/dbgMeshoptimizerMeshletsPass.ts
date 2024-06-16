@@ -1,5 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
-import { Scene } from '../../scene/types.ts';
+import { Scene } from '../../scene/scene.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -106,7 +106,9 @@ ${DbgMeshoptimizerMeshletsPass.SHADER_CODE}
     scene: Scene
   ) {
     const meshlets =
-      scene.meshoptimizerMeshletLODs[CONFIG.dbgMeshoptimizerLodLevel];
+      scene.debugMeshes.meshoptimizerMeshletLODs[
+        CONFIG.dbgMeshoptimizerLodLevel
+      ];
     renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
     renderPass.setIndexBuffer(meshlets.indexBuffer, 'uint32');
     let nextIdx = 0;

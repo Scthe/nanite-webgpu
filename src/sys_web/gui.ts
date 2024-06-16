@@ -2,7 +2,7 @@
 import * as dat from 'dat.gui';
 import { CONFIG, DisplayMode } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
-import { Scene } from '../scene/types.ts';
+import { Scene } from '../scene/scene.ts';
 import { Camera } from '../camera.ts';
 import { DrawNanitesPass } from '../passes/naniteCpu/drawNanitesPass.ts';
 import { showHtmlEl } from '../utils/index.ts';
@@ -89,7 +89,7 @@ export function initializeGUI(
       .add(modeDummy, 'displayMode', modeDummy.values)
       .name('Display mode');
 
-    let maxLod = scene.meshoptimizerLODs.length - 1;
+    let maxLod = scene.debugMeshes.meshoptimizerLODs.length - 1;
     const toggleLodCtrl = addLODController(
       dir,
       'dbgMeshoptimizerLodLevel',

@@ -87,7 +87,8 @@ ${DbgMeshoptimizerPass.SHADER_CODE}
     renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
-    const mesh = scene.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
+    const mesh =
+      scene.debugMeshes.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
     const vertexCount = mesh.triangleCount * VERTS_IN_TRIANGLE;

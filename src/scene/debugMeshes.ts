@@ -1,51 +1,39 @@
-import { SCENES, SceneFile, VERTS_IN_TRIANGLE } from '../constants.ts';
-import { getProfilerTimestamp } from '../gpuProfiler.ts';
-import { createMeshlets } from '../meshPreprocessing/createMeshlets.ts';
-import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
+import { VERTS_IN_TRIANGLE } from '../constants.ts';
+import {
+  createMeshlets,
+  meshopt_Meshlets,
+} from '../meshPreprocessing/createMeshlets.ts';
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
-import {
-  getTriangleCount,
-  getVertexCount,
-  printBoundingBox,
-} from '../utils/index.ts';
-import {
-  createGPU_VertexBuffer,
-  createGPU_IndexBuffer,
-} from '../utils/webgpu.ts';
-import { createNaniteObject } from './createNaniteObject.ts';
-import { loadObjFile } from './objLoader.ts';
-import { Mesh, MeshletRenderPckg, Scene } from './types.ts';
+import { getTriangleCount, getVertexCount } from '../utils/index.ts';
+import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
 
-const getTriangleAndVertCounts = (
-  vertices: Float32Array,
-  indices: Uint32Array
-): Pick<Mesh, 'triangleCount' | 'vertexCount'> => ({
-  vertexCount: getVertexCount(vertices),
-  triangleCount: getTriangleCount(indices),
-});
+export interface DebugMeshes {
+  mesh: Mesh;
+  meshlets: MeshletRenderPckg;
+  meshoptimizerLODs: Mesh[];
+  meshoptimizerMeshletLODs: MeshletRenderPckg[];
+}
 
-export async function loadScene(
+/** Used only in debug */
+export interface Mesh {
+  vertexCount: number;
+  triangleCount: number;
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+}
+
+/** Used only in debug */
+export type MeshletRenderPckg = meshopt_Meshlets & {
+  vertexBuffer: GPUBuffer;
+  indexBuffer: GPUBuffer;
+};
+
+export async function createDebugMeshes(
   device: GPUDevice,
-  sceneName: SceneFile,
-  objText: string,
-  scale: number,
-  addTimer: (name: string, start: number) => void
-): Promise<Scene> {
-  let timerStart = getProfilerTimestamp();
-  const [originalVertices, originalIndices] = await loadObjFile(objText, scale);
-  addTimer('OBJ parsing', timerStart);
-
-  // prettier-ignore
-  console.log(`Scene '${sceneName}': ${getVertexCount(originalVertices)} vertices, ${getTriangleCount(originalIndices)} triangles`);
-  printBoundingBox(originalVertices);
-
-  const originalMesh = createOriginalMesh(
-    device,
-    sceneName,
-    originalVertices,
-    originalIndices
-  );
-
+  originalMesh: Mesh,
+  originalVertices: Float32Array,
+  originalIndices: Uint32Array
+): Promise<DebugMeshes> {
   const meshlets = await createMeshletsMesh(
     device,
     originalMesh,
@@ -75,50 +63,11 @@ export async function loadScene(
     meshoptimizerMeshletLODsAsync
   );
 
-  timerStart = getProfilerTimestamp();
-  const naniteMeshlets = await createNaniteMeshlets(
-    originalVertices,
-    originalIndices
-  );
-  const naniteObject = createNaniteObject(
-    device,
-    sceneName,
-    originalMesh.vertexBuffer,
-    originalVertices,
-    naniteMeshlets,
-    SCENES[sceneName].grid
-  );
-  addTimer('Nanite LOD build', timerStart);
-
   return {
-    naniteObject,
     mesh: originalMesh,
     meshlets,
     meshoptimizerLODs: meshoptimizerLODs.map((e) => e[0]),
     meshoptimizerMeshletLODs,
-  };
-}
-
-function createOriginalMesh(
-  device: GPUDevice,
-  sceneName: string,
-  vertices: Float32Array,
-  indices: Uint32Array
-): Mesh {
-  const vertexBuffer = createGPU_VertexBuffer(
-    device,
-    `${sceneName}-original-vertices`,
-    vertices
-  );
-  const indexBuffer = createGPU_IndexBuffer(
-    device,
-    `${sceneName}-original-indices`,
-    indices
-  );
-  return {
-    indexBuffer,
-    vertexBuffer,
-    ...getTriangleAndVertCounts(vertices, indices),
   };
 }
 
@@ -167,7 +116,8 @@ async function createMeshLODs(
     const meshLod = {
       vertexBuffer: originalMesh.vertexBuffer,
       indexBuffer,
-      ...getTriangleAndVertCounts(vertices, simplifiedMesh.indexBuffer),
+      vertexCount: getVertexCount(vertices),
+      triangleCount: getTriangleCount(simplifiedMesh.indexBuffer),
     };
     addMeshLod(meshLod, simplifiedMesh.indexBuffer);
   }
