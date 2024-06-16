@@ -16,6 +16,7 @@ const ANGLE_LEFT_RIGHT = 1; // yaw
 /** https://github.com/Scthe/WebFX/blob/09713a3e7ebaa1484ff53bd8a007908a5340ca8e/src/ecs/components/FpsController.ts */
 export class Camera {
   private readonly _viewMatrix = mat4.identity();
+  private readonly _tmpMatrix = mat4.identity(); // cache to prevent alloc
   private readonly _angles: [number, number] = [0, 0]; // angles like in polar coords
   private readonly _position: [number, number, number] = [0, 0, 0];
 
@@ -39,9 +40,14 @@ export class Camera {
     this.applyMovement(deltaTime, input);
     this.applyRotation(deltaTime, input);
 
-    const p = (x: number) => x.toFixed(1);
-    STATS.update('Camera pos', `[${this._position.map(p).join(', ')}]`);
-    STATS.update('Camera rot', `[${this._angles.map(p).join(', ')}]`);
+    const fmt = (x: number) => x.toFixed(1);
+    const p = this._position;
+    const r = this._angles;
+    STATS.update('Camera pos', `[${fmt(p[0])}, ${fmt(p[1])}, ${fmt(p[2])}]`);
+    STATS.update(
+      'Camera rot',
+      `[${fmt(r[ANGLE_LEFT_RIGHT])}, ${fmt(r[ANGLE_UP_DOWN])}]`
+    );
   }
 
   private applyMovement(deltaTime: number, input: Input) {
@@ -52,13 +58,13 @@ export class Camera {
     const m =
       deltaTime *
       (digital.goFaster ? CONFIG.movementSpeedFaster : CONFIG.movementSpeed);
-    const moveDir: [number, number, number] = [0, 0, 0];
+    const moveDir: [number, number, number, number] = [0, 0, 0, 1];
     moveDir[0] = m * sign(digital.right, digital.left);
     moveDir[1] = m * sign(digital.up, digital.down);
     moveDir[2] = m * sign(digital.backward, digital.forward);
 
-    const rotationMat = mat4.transpose(this.getRotationMat());
-    const moveDirLocal = projectPoint(rotationMat, moveDir);
+    const rotMatrixInv = mat4.transpose(this.getRotationMat(), this._tmpMatrix);
+    const moveDirLocal = projectPoint(rotMatrixInv, moveDir, moveDir);
     vec3.add(this._position, moveDirLocal, this._position);
   }
 
@@ -78,7 +84,7 @@ export class Camera {
 
   private getRotationMat() {
     const angles = this._angles;
-    const result = mat4.identity();
+    const result = mat4.identity(this._tmpMatrix);
     mat4.rotateX(result, angles[ANGLE_UP_DOWN], result); // up-down
     mat4.rotateY(result, angles[ANGLE_LEFT_RIGHT], result); // left-right
     return result;

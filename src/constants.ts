@@ -33,8 +33,8 @@ export const CO_PER_VERTEX: number = 3;
 export const VERTS_IN_TRIANGLE: number = 3;
 
 const createGrid = (
-  xCnt: number = 10,
-  yCnt: number = 10,
+  xCnt: number = 10, // 500,
+  yCnt: number = 10, // 500,
   offset: number = 1
 ) => ({
   xCnt,
@@ -46,7 +46,7 @@ export type InstancesGrid = ReturnType<typeof createGrid>;
 export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
 
 export const SCENES = {
-  bunny: { file: 'bunny.obj', scale: 8, grid: createGrid() },
+  bunny: { file: 'bunny.obj', scale: 8, grid: createGrid() }, // 500x500 is 1.2b tris
   lucy: { file: 'lucy.obj', scale: 0.001, grid: createGrid(1, 1) },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 1, grid: createGrid(1, 1) },
   cube: { file: 'cube.obj', scale: 1, grid: createGrid() },

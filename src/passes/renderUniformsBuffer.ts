@@ -1,8 +1,6 @@
-import { BYTES_MAT4, BYTES_VEC4, CONFIG } from '../constants.ts';
-import {
-  GPU_BUFFER_USAGE_UNIFORM,
-  writeMatrixToGPUBuffer,
-} from '../utils/webgpu.ts';
+import { Mat4 } from 'wgpu-matrix';
+import { BYTES_F32, BYTES_MAT4, BYTES_VEC4, CONFIG } from '../constants.ts';
+import { GPU_BUFFER_USAGE_UNIFORM } from '../utils/webgpu.ts';
 import { calcCotHalfFov } from './naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { PassCtx } from './passCtx.ts';
 
@@ -25,6 +23,8 @@ export class RenderUniformsBuffer {
     BYTES_VEC4; // viewport
 
   private readonly gpuBuffer: GPUBuffer;
+  private readonly data = new ArrayBuffer(RenderUniformsBuffer.BUFFER_SIZE);
+  private readonly dataAsF32: Float32Array;
 
   constructor(device: GPUDevice) {
     this.gpuBuffer = device.createBuffer({
@@ -32,6 +32,7 @@ export class RenderUniformsBuffer {
       size: RenderUniformsBuffer.BUFFER_SIZE,
       usage: GPU_BUFFER_USAGE_UNIFORM,
     });
+    this.dataAsF32 = new Float32Array(this.data);
   }
 
   createBindingDesc = (bindingIdx: number): GPUBindGroupEntry => ({
@@ -41,31 +42,29 @@ export class RenderUniformsBuffer {
 
   update(ctx: PassCtx) {
     const { device, vpMatrix, viewMatrix, projMatrix, viewport } = ctx;
+
     let offsetBytes = 0;
+    offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
+    offsetBytes = this.writeMat4(offsetBytes, viewMatrix);
+    offsetBytes = this.writeMat4(offsetBytes, projMatrix);
+    offsetBytes = this.writeF32(offsetBytes, viewport.width);
+    offsetBytes = this.writeF32(offsetBytes, viewport.height);
+    offsetBytes = this.writeF32(offsetBytes, CONFIG.nanite.render.pixelThreshold); // prettier-ignore
+    offsetBytes = this.writeF32(offsetBytes, calcCotHalfFov());
+    device.queue.writeBuffer(this.gpuBuffer, 0, this.data, 0, offsetBytes);
+  }
 
-    // TODO single write to GPU instead many tiny ones
-    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, vpMatrix);
-    offsetBytes += BYTES_MAT4;
+  private writeMat4(offsetBytes: number, mat: Mat4) {
+    const offset = offsetBytes / BYTES_F32;
+    for (let i = 0; i < 16; i++) {
+      this.dataAsF32[offset + i] = mat[i];
+    }
+    return offsetBytes + BYTES_MAT4;
+  }
 
-    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, viewMatrix);
-    offsetBytes += BYTES_MAT4;
-
-    writeMatrixToGPUBuffer(device, this.gpuBuffer, offsetBytes, projMatrix);
-    offsetBytes += BYTES_MAT4;
-
-    // viewport as vec4
-    const miscF32Array = new Float32Array([
-      viewport.width,
-      viewport.height,
-      CONFIG.nanite.render.pixelThreshold,
-      calcCotHalfFov(),
-    ]);
-    device.queue.writeBuffer(
-      this.gpuBuffer,
-      offsetBytes,
-      miscF32Array.buffer,
-      0
-    );
-    offsetBytes += BYTES_VEC4;
+  private writeF32(offsetBytes: number, v: number) {
+    const offset = offsetBytes / BYTES_F32;
+    this.dataAsF32[offset] = v;
+    return offsetBytes + BYTES_F32;
   }
 }

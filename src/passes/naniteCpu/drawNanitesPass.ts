@@ -13,7 +13,10 @@ import {
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { calcNaniteMeshletsVisibility } from './calcNaniteMeshletsVisibility.ts';
+import {
+  calcCotHalfFov,
+  calcNaniteMeshletsVisibility,
+} from './calcNaniteMeshletsVisibility.ts';
 import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { formatNumber } from '../../utils/index.ts';
@@ -130,16 +133,20 @@ ${DrawNanitesPass.SHADER_CODE}
 
     let drawnTriangleCount = 0;
     let drawnMeshletsCount = 0;
+    const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
-    instances.forEach((instanceModelMat, instanceIdx) => {
-      const drawnMeshlets = calcNaniteMeshletsVisibility(
+    for (let instanceIdx = 0; instanceIdx < instances.length; instanceIdx++) {
+      const instanceModelMat = instances[instanceIdx];
+      const toDrawCount = calcNaniteMeshletsVisibility(
         ctx,
+        cotHalfFov,
         instanceModelMat,
         naniteObject
       );
-      drawnMeshletsCount += drawnMeshlets.length;
+      drawnMeshletsCount += toDrawCount;
 
-      drawnMeshlets.forEach((m) => {
+      for (let mIdx = 0; mIdx < toDrawCount; mIdx++) {
+        const m = naniteObject.naniteVisibilityBufferCPU.drawnMeshlets[mIdx];
         const triangleCount = m.triangleCount;
         const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
         renderPass.drawIndexed(
@@ -150,8 +157,8 @@ ${DrawNanitesPass.SHADER_CODE}
           instanceIdx // meshletId // first instance TODO encode [meshletId+objectId]?
         );
         drawnTriangleCount += triangleCount;
-      });
-    });
+      }
+    }
 
     DrawNanitesPass.updateRenderStats(
       naniteObject,

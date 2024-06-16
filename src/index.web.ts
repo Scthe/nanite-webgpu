@@ -101,6 +101,10 @@ const SCENE_FILE: SceneFile = 'bunny';
     return;
   }
 
+  const mainCmdBufDesc: GPUCommandEncoderDescriptor = {
+    label: 'main-frame-cmd-buffer',
+  };
+
   // frame callback
   const frame = () => {
     errorSystem.startErrorScope('frame');
@@ -116,17 +120,10 @@ const SCENE_FILE: SceneFile = 'bunny';
     renderer.updateCamera(deltaTime, inputState);
 
     // record commands
-    const cmdBuf = device.createCommandEncoder({
-      label: 'main-frame-cmd-buffer',
-    });
-    renderer.cmdRender({
-      cmdBuf,
-      device,
-      profiler,
-      scene,
-      viewport: canvasResizeSystem.getViewportSize(),
-      screenTexture: canvasResizeSystem.getScreenTextureView(),
-    });
+    const cmdBuf = device.createCommandEncoder(mainCmdBufDesc);
+    const viewport = canvasResizeSystem.getViewportSize();
+    const screenTexture = canvasResizeSystem.getScreenTextureView();
+    renderer.cmdRender(cmdBuf, scene, viewport, screenTexture);
 
     // submit commands
     profiler.endFrame(cmdBuf);
@@ -134,6 +131,7 @@ const SCENE_FILE: SceneFile = 'bunny';
 
     profiler.scheduleRaportIfNeededAsync(onGpuProfilerResult);
 
+    // download GPU visibility buffer if needed
     if (CONFIG.nanite.render.nextFrameDebugVisiblityBuffer) {
       CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = false;
       downloadVisibilityBuffer(device, scene.naniteObject).then((res): void => {
@@ -147,11 +145,7 @@ const SCENE_FILE: SceneFile = 'bunny';
 
     // frame end
     if (!done) {
-      errorSystem.reportErrorScopeAsync((lastError) => {
-        showErrorMessage(lastError);
-        done = true;
-        throw new Error(lastError);
-      }); // not awaited!
+      errorSystem.reportErrorScopeAsync(onRenderFrameError); // not awaited!
 
       requestAnimationFrame(frame);
     }
@@ -159,6 +153,12 @@ const SCENE_FILE: SceneFile = 'bunny';
 
   // start rendering
   requestAnimationFrame(frame);
+
+  function onRenderFrameError(lastError: string): never {
+    showErrorMessage(lastError);
+    done = true;
+    throw new Error(lastError);
+  }
 })();
 
 function getCanvasContext(

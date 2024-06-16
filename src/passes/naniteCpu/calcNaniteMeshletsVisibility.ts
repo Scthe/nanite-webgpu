@@ -1,57 +1,70 @@
-import { vec3, Mat4 } from 'wgpu-matrix';
+import { Mat4, Vec3 } from 'wgpu-matrix';
 import { PassCtx } from '../passCtx.ts';
 import {
   BoundingSphere,
   dgr2rad,
   getModelViewProjectionMatrix,
-  projectPoint,
 } from '../../utils/index.ts';
 import { CAMERA_CFG, CONFIG } from '../../constants.ts';
 import {
   NaniteObject,
   NaniteMeshletTreeNode,
 } from '../../scene/naniteObject.ts';
+import { NaniteVisibilityBufferCPU } from './types.ts';
 
 /**
  * 'hidden' - skip subtree
  * 'rendered' - this is the correct level to render
  * 'check-children' - children have more appropriate LOD
  */
-type NaniteVisibilityStatus = 'hidden' | 'rendered' | 'check-children';
+enum NaniteVisibilityStatus {
+  HIDDEN,
+  RENDERED,
+  CHECK_CHILDREN,
+}
 
 export function calcNaniteMeshletsVisibility(
   ctx: PassCtx,
+  cotHalfFov: number,
   modelMat: Mat4,
-  naniteLOD: NaniteObject
-) {
-  const root = naniteLOD.root;
+  naniteObject: NaniteObject
+): number {
+  const root = naniteObject.root;
   const meshletsToCheck = [root];
-  const visitedMeshlets: Set<number> = new Set();
-  const renderedMeshlets: NaniteMeshletTreeNode[] = [];
-  const getProjectedError = createErrorMetric(ctx, modelMat);
+  const visibilityBuffer = naniteObject.naniteVisibilityBufferCPU;
+  visibilityBuffer.prepareForDraw();
+  const getProjectedError = createErrorMetric(
+    ctx,
+    cotHalfFov,
+    visibilityBuffer,
+    modelMat
+  );
 
   while (meshletsToCheck.length > 0) {
-    const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
-    visitedMeshlets.add(meshlet.id);
+    // depth-first seems better as it has shorter avg $meshletsToCheck length.
+    // const meshlet = meshletsToCheck.shift()!; // remove 1st from queue - breadth first
+    const meshlet = meshletsToCheck.pop()!; // remove last from queue - depth first
+    visibilityBuffer.setVisited(meshlet.id);
 
     const status = getVisibilityStatus(getProjectedError, meshlet);
 
-    if (status === 'rendered') {
+    if (status === NaniteVisibilityStatus.RENDERED) {
       // skip children - we are at the correct cut-off level
-      renderedMeshlets.push(meshlet);
-    } else if (status === 'check-children') {
+      visibilityBuffer.setDrawn(meshlet);
+    } else if (status === NaniteVisibilityStatus.CHECK_CHILDREN) {
       // check lower levels of LOD tree
-      meshlet.createdFrom.forEach((m) => {
-        if (m && !visitedMeshlets.has(m.id)) {
-          visitedMeshlets.add(m.id);
+      for (let i = 0; i < meshlet.createdFrom.length; i++) {
+        const m = meshlet.createdFrom[i];
+        if (m && !visibilityBuffer.wasVisited(m.id)) {
+          visibilityBuffer.setVisited(meshlet.id);
           meshletsToCheck.push(m);
         }
-      });
+      }
     }
   }
 
   // console.log({ visitedMeshlets }); // debug how far the tree we went
-  return renderedMeshlets;
+  return visibilityBuffer.drawnMesletsCount;
 }
 
 /**
@@ -84,27 +97,38 @@ export function getVisibilityStatus(
 
   // const dbgVsThr = (a: number) => (a > threshold ? 'GREATER' : 'LESSER(OK)');
   // console.log("CMP: ", {id:meshlet.id, parent: dbgVsThr(parentError), cluster: dbgVsThr(clusterError), }); // prettier-ignore
-  return shouldRenderThisExactMeshlet ? 'rendered' : 'check-children';
+  return shouldRenderThisExactMeshlet
+    ? NaniteVisibilityStatus.RENDERED
+    : NaniteVisibilityStatus.CHECK_CHILDREN;
 }
 
 /** Projected error in pixels. https://stackoverflow.com/a/21649403 */
-export function createErrorMetric(ctx: PassCtx, modelMat: Mat4) {
+export function createErrorMetric(
+  ctx: PassCtx,
+  cotHalfFov: number,
+  visibilityBuffer: NaniteVisibilityBufferCPU,
+  modelMat: Mat4
+) {
   const mvpMatrix = getModelViewProjectionMatrix(
     modelMat,
     ctx.viewMatrix,
-    ctx.projMatrix
+    ctx.projMatrix,
+    visibilityBuffer.mvpMatrix
   );
   const screenHeight = ctx.viewport.height;
-  const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
-  return (bounds: BoundingSphere | undefined, errorWorldSpace: number) => {
+  return function getProjectedError(
+    bounds: BoundingSphere | undefined,
+    errorWorldSpace: number
+  ) {
     // WARNING: .parentError is INFINITY at top level
     if (errorWorldSpace === Infinity || bounds == undefined) {
       return Infinity;
     }
 
-    const center = projectPoint(mvpMatrix, bounds.center);
-    const d2 = vec3.dot(center, center);
+    // const center = projectPoint(mvpMatrix, bounds.center);
+    // const d2 = vec3.dot(center, center);
+    const d2 = calculateD2(mvpMatrix, bounds.center);
     const r = errorWorldSpace;
     const projectedR = (cotHalfFov * r) / Math.sqrt(d2 - r * r);
     /*console.log({
@@ -124,3 +148,12 @@ export const calcCotHalfFov = (fovDgr = CAMERA_CFG.fovDgr) => {
   const fovRad = dgr2rad(fovDgr);
   return 1.0 / Math.tan(fovRad / 2.0);
 };
+
+function calculateD2(m: Mat4, v: Vec3): number {
+  // project point
+  const a = m[0] * v[0] + m[4] * v[1] + m[8] * v[2] + m[12];
+  const b = m[1] * v[0] + m[5] * v[1] + m[9] * v[2] + m[13];
+  const c = m[2] * v[0] + m[6] * v[1] + m[10] * v[2] + m[14];
+  // dot product
+  return a * a + b * b + c * c;
+}

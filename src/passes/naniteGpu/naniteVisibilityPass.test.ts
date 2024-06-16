@@ -10,6 +10,8 @@ import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { mat4 } from 'wgpu-matrix';
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import {
+  NaniteVisibilityStatus,
+  calcCotHalfFov,
   createErrorMetric,
   getVisibilityStatus,
 } from '../naniteCpu/calcNaniteMeshletsVisibility.ts';
@@ -21,6 +23,7 @@ import {
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
 import { parseVisibilityBuffer } from '../../scene/naniteObject.ts';
+import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -116,8 +119,15 @@ Deno.test('NaniteVisibilityPass', async () => {
 
   // check visibility buffer
   const visibilityResult = parsedResult.meshletIds;
+  const naniteVisibilityBufferCPU = new NaniteVisibilityBufferCPU();
+  naniteVisibilityBufferCPU.initialize(allWIPMeshlets.length);
   // printTypedArray('visbilityResult', visibilityResultArr);
-  const getProjectedError = createErrorMetric(passCtx, mat4.identity());
+  const getProjectedError = createErrorMetric(
+    passCtx,
+    calcCotHalfFov(),
+    naniteVisibilityBufferCPU,
+    mat4.identity()
+  );
 
   allWIPMeshlets.forEach((mWIP) => {
     if (mWIP.id === 0) return; // the dummy one, cause idx==0 is also the default value of the U32Array buffer
@@ -127,7 +137,7 @@ Deno.test('NaniteVisibilityPass', async () => {
 
     // compare if it's visible or not
     const expectedStr = getVisibilityStatus(getProjectedError, meshlet);
-    const expected = expectedStr === 'rendered';
+    const expected = expectedStr === NaniteVisibilityStatus.RENDERED;
     // console.log({ id: mWIP.id, expected, resultMeshlet });
     assertEquals(
       expected,

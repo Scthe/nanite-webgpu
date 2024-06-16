@@ -1,5 +1,4 @@
-import { Mat4 } from 'wgpu-matrix';
-
+import { Mat4, mat4 } from 'wgpu-matrix';
 import { RenderUniformsBuffer } from './passes/renderUniformsBuffer.ts';
 import {
   Dimensions,
@@ -15,6 +14,8 @@ import { DbgMeshoptimizerPass } from './passes/debug/dbgMeshoptimizerPass.ts';
 import { DbgMeshoptimizerMeshletsPass } from './passes/debug/dbgMeshoptimizerMeshletsPass.ts';
 import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
 import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
+import { GpuProfiler } from './gpuProfiler.ts';
+import { Scene } from './scene/types.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
@@ -38,6 +39,7 @@ export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
   public readonly cameraCtrl: Camera;
   private projectionMat: Mat4;
+  private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
   private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
   private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
 
@@ -51,7 +53,8 @@ export class Renderer {
   constructor(
     private readonly device: GPUDevice,
     viewportSize: Dimensions,
-    preferredCanvasFormat: GPUTextureFormat
+    preferredCanvasFormat: GPUTextureFormat,
+    private readonly profiler?: GpuProfiler
   ) {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
@@ -92,15 +95,24 @@ export class Renderer {
   };
 
   cmdRender(
-    _ctx: Pick<
-      PassCtx,
-      'device' | 'cmdBuf' | 'profiler' | 'viewport' | 'scene' | 'screenTexture'
-    >
+    cmdBuf: GPUCommandEncoder,
+    scene: Scene,
+    viewport: Dimensions,
+    screenTexture: GPUTextureView
   ) {
     const viewMatrix = this.cameraCtrl.viewMatrix;
-    const vpMatrix = getViewProjectionMatrix(viewMatrix, this.projectionMat);
+    const vpMatrix = getViewProjectionMatrix(
+      viewMatrix,
+      this.projectionMat,
+      this._viewMatrix
+    );
     const ctx: PassCtx = {
-      ..._ctx,
+      cmdBuf,
+      viewport,
+      scene,
+      screenTexture,
+      device: this.device,
+      profiler: this.profiler,
       viewMatrix,
       vpMatrix,
       projMatrix: this.projectionMat,

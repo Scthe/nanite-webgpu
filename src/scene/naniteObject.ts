@@ -4,6 +4,7 @@ import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { createArray, getTriangleCount } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
 import { downloadBuffer } from '../utils/webgpu.ts';
+import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
 
 export type MeshletId = number;
 
@@ -32,6 +33,7 @@ export const BOTTOM_LEVEL_NODE = 0;
 
 export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
+  public readonly naniteVisibilityBufferCPU = new NaniteVisibilityBufferCPU();
 
   constructor(
     public readonly name: string,
@@ -131,6 +133,9 @@ export class NaniteObject {
 
   /** Upload final meshlet data to the GPU */
   uploadMeshletsToGPU(device: GPUDevice) {
+    this.naniteVisibilityBufferCPU.initialize(this.meshletCount); // bonus!
+
+    // ok, actual code starts now
     const actualSize = this.meshletCount * GPU_MESHLET_SIZE_BYTES;
     if (actualSize !== this.meshletsBuffer.size) {
       // prettier-ignore
