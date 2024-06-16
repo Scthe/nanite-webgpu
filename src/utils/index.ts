@@ -225,3 +225,7 @@ export const showHtmlEl = (
 export const hideHtmlEl = (el: HTMLElement | null) => {
   if (el) el.style.display = 'none';
 };
+
+export const randomBetween = (start: number, end: number) => {
+  return lerp(start, end, Math.random());
+};

@@ -2,7 +2,7 @@ import { ValueOf } from '../utils/index.ts';
 
 export const OBJECTS = {
   bunny: { file: 'bunny.obj', scale: 8 },
-  lucy: { file: 'lucy.obj', scale: 0.001 },
+  lucy: { file: 'lucy.obj', scale: 1 },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 1 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1 },
@@ -18,7 +18,6 @@ export const SCENES = {
   bunny: [sceneModel('bunny')],
   bunny1b: [sceneModel('bunny', 500, 500)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
-
   lucy: [sceneModel('lucy', 1, 1)],
   dragon: [sceneModel('dragon', 1, 1)],
   cube: [sceneModel('cube')],
@@ -46,7 +45,7 @@ export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
 function createGrid(
   xCnt: number = 10,
   yCnt: number = 10,
-  offset: number = 1
+  offset: number = 1.3
 ): InstancesGrid {
   return {
     xCnt,

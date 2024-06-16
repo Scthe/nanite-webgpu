@@ -9,10 +9,12 @@ import {
 } from '../scene/naniteObject.ts';
 import {
   createArray,
+  dgr2rad,
   formatBytes,
   formatNumber,
   getBytesForTriangles,
   getTriangleCount,
+  randomBetween,
 } from '../utils/index.ts';
 import {
   BYTES_DRAW_INDIRECT,
@@ -242,9 +244,13 @@ function createInstancesData(
   let offsetBytes = 0;
   for (let x = 0; x < grid.xCnt; x++) {
     for (let y = 0; y < grid.yCnt; y++) {
-      const tfx = mat4.translation([-x * grid.offset, 0, -y * grid.offset]);
-      transforms.push(tfx);
-      writeMatrixToGPUBuffer(device, transformsBuffer, offsetBytes, tfx);
+      const moveMat = mat4.translation([-x * grid.offset, 0, -y * grid.offset]);
+      const angleDgr = x == 0 && y == 0 ? 0 : randomBetween(0, 360);
+      const rotMat = mat4.rotationY(dgr2rad(angleDgr));
+      const tfxMat = mat4.multiply(moveMat, rotMat);
+
+      transforms.push(tfxMat);
+      writeMatrixToGPUBuffer(device, transformsBuffer, offsetBytes, tfxMat);
       offsetBytes += BYTES_MAT4;
     }
   }
