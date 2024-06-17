@@ -1,6 +1,9 @@
 import { CONFIG } from '../../constants.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import { applyShaderTextReplace } from '../../utils/webgpu.ts';
+import {
+  applyShaderTextReplace,
+  getItemsPerThread,
+} from '../../utils/webgpu.ts';
 import {
   BindingsCache,
   assertHasShaderCode,
@@ -11,12 +14,16 @@ import {
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import { STATS } from '../../sys_web/stats.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
 const BINDINGS_MESHLETS = 1;
 const BINDINGS_DRAWN_MESHLET_IDS = 2;
 const BINDINGS_DRAW_INDIRECT_PARAMS = 3;
 const BINDINGS_INSTANCES_TRANSFORMS = 4;
+
+const WORKGROUP_SIZE_X = 32;
+const MAX_WORKGROUPS_Y = 1 << 15; // Spec says limit is 65535 (2^16 - 1).
 
 export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
 struct NaniteMeshletTreeNode {
@@ -63,6 +70,8 @@ ${NaniteVisibilityPass.SHADER_CODE}
       __MAX_MESHLET_TRIANGLES: `${CONFIG.nanite.preprocess.meshletMaxTriangles}u`,
       __BINDINGS_DRAW_INDIRECT_PARAMS: String(BINDINGS_DRAW_INDIRECT_PARAMS),
       __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
+      __WORKGROUP_SIZE_X: String(WORKGROUP_SIZE_X),
+      __MAX_WORKGROUPS_Y: `${MAX_WORKGROUPS_Y}u`,
     });
 
     const shaderModule = device.createShaderModule({
@@ -92,10 +101,19 @@ ${NaniteVisibilityPass.SHADER_CODE}
     });
     computePass.setPipeline(this.pipeline);
     computePass.setBindGroup(0, bindings);
-    computePass.dispatchWorkgroups(
+
+    // dispatch
+    const workgroupsCntX = getItemsPerThread(
       naniteObject.meshletCount,
-      naniteObject.instancesCount
+      WORKGROUP_SIZE_X
     );
+    const workgroupsCntY = Math.min(
+      naniteObject.instancesCount,
+      MAX_WORKGROUPS_Y
+    );
+    computePass.dispatchWorkgroups(workgroupsCntX, workgroupsCntY);
+    STATS.update('Visibility wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, 1]`); // prettier-ignore
+
     computePass.end();
   }
 

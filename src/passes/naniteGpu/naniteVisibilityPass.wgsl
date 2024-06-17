@@ -17,7 +17,7 @@ const PARENT_ERROR_INFINITY: f32 = 99990.0f;
 
 
 @compute
-@workgroup_size(1) // TODO?
+@workgroup_size(__WORKGROUP_SIZE_X, 1, 1)
 fn main(
   @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
@@ -28,42 +28,46 @@ fn main(
     _drawIndirectResult.firstVertex = 0u;
     _drawIndirectResult.firstInstance = 0u;
   }
+  if (global_id.x >= arrayLength(&_meshlets)) {
+    return;
+  }
 
   let threshold = _uniforms.viewport.z;
   let screenHeight = _uniforms.viewport.y;
   let cotHalfFov = _uniforms.viewport.w;
   let meshletIdx: u32 = global_id.x;
   let meshlet = _meshlets[meshletIdx];
-  let tfxIdx: u32 = global_id.y;
-  // let instanceCount: u32 = arrayLength(&_instanceTransforms);
+  let instanceCount: u32 = arrayLength(&_instanceTransforms);
+  let iterCount: u32 = ceilDivideU32(instanceCount, __MAX_WORKGROUPS_Y);
+  let tfxOffset: u32 = global_id.y * iterCount;
 
-  // for(var tfxIdx: u32 = 0u; tfxIdx < instanceCount; tfxIdx++){
-  let modelMat = _instanceTransforms[tfxIdx];
-  let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
+  for(var i: u32 = 0u; i < iterCount; i++){
+    let tfxIdx: u32 = tfxOffset + i;
+    let modelMat = _instanceTransforms[tfxIdx];
+    let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
 
-  // getVisibilityStatus
-  let clusterError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.boundsMidPointAndError,
-  );
-  let parentError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.parentBoundsMidPointAndError,
-  );
+    // getVisibilityStatus
+    let clusterError = getProjectedError(
+      mvpMatrix,
+      screenHeight,
+      cotHalfFov,
+      meshlet.boundsMidPointAndError,
+    );
+    let parentError = getProjectedError(
+      mvpMatrix,
+      screenHeight,
+      cotHalfFov,
+      meshlet.parentBoundsMidPointAndError,
+    );
 
-  var isVisible = parentError > threshold && clusterError <= threshold;
+    var isVisible = parentError > threshold && clusterError <= threshold;
 
-  if (isVisible){
-    // TODO Aggregate in groups of 8 and add 8 at a time. Would limit atomic 'stalls'.
-    let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
-    _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
-    // _drawnMeshletIds[idx] = vec2u(3u+tfxIdx, 54); // This renders lod0 still?
+    if (isVisible){
+      // TODO Aggregate atomic writes. Though we don't do much iters usually, so..
+      let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
+      _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
+    }
   }
-  // }
 }
 
 
@@ -88,6 +92,10 @@ fn getProjectedError(
   let d2 = dot(center.xyz, center.xyz); // 
   let projectedR = (cotHalfFov * r) / sqrt(d2 - r * r);
   return (projectedR * screenHeight) / 2.0;
+}
+
+fn ceilDivideU32(numerator: u32, denominator: u32) -> u32 {
+  return (numerator + denominator - 1) / denominator;
 }
 
   // START: DEBUG HARDCODE

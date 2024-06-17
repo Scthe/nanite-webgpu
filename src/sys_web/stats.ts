@@ -37,6 +37,7 @@ const AvailableStats = {
   'Pre-Nanite triangles': {} as StatOpts,
   'Nanite meshlets': {} as StatOpts,
   'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
+  'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
 

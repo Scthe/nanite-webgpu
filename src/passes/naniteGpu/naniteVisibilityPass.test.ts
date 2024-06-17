@@ -74,7 +74,7 @@ Deno.test('NaniteVisibilityPass', async () => {
     { size: 'mocked-vertex-buffer-size' } as any, // mock vertexBuffer
     new Float32Array([0, 1, 2]), // mock rawVertices
     allWIPMeshlets,
-    { xCnt: 1, yCnt: 1, offset: 1 } // mock instancesGrid
+    { xCnt: 1, yCnt: 1, spacing: 1 } // mock instancesGrid
   );
 
   // retrieve visiblityBuffer

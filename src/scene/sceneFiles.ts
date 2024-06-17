@@ -18,7 +18,9 @@ export const SCENES = {
   bunny: [sceneModel('bunny')],
   bunny1b: [sceneModel('bunny', 500, 500)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
-  lucy: [sceneModel('lucy', 1, 1)],
+  singleLucy: [sceneModel('lucy', 1, 1)],
+  // lucy: [sceneModel('lucy', 10, 10, 0)],
+  lucy: [sceneModel('lucy', 10, 10, 0)],
   dragon: [sceneModel('dragon', 1, 1)],
   cube: [sceneModel('cube')],
   plane: [sceneModel('plane', 1, 1)],
@@ -38,18 +40,18 @@ function sceneModel(
 export type InstancesGrid = {
   xCnt: number;
   yCnt: number;
-  offset: number;
+  spacing: number;
 };
 export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
 
 function createGrid(
   xCnt: number = 10,
   yCnt: number = 10,
-  offset: number = 1.3
+  spacing: number = 1.3
 ): InstancesGrid {
   return {
     xCnt,
     yCnt,
-    offset,
+    spacing,
   };
 }
