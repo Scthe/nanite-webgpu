@@ -13,11 +13,11 @@ import {
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import { SHADER_SNIPPET_DRAWN_MESHLETS_LIST } from './naniteVisibilityPass.ts';
 import {
-  SHADER_SNIPPET_DRAWN_MESHLETS_LIST,
+  NaniteObject,
   SHADER_SNIPPET_MESHLET_TREE_NODES,
-} from './naniteVisibilityPass.ts';
-import { NaniteObject } from '../../scene/naniteObject.ts';
+} from '../../scene/naniteObject.ts';
 import { applyShaderTextReplace } from '../../utils/webgpu.ts';
 
 const BINDINGS_RENDER_UNIFORMS = 0;
@@ -54,7 +54,6 @@ ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
 ${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_DRAWN_MESHLET_IDS, 'read')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
-${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${DrawNaniteGPUPass.SHADER_CODE}

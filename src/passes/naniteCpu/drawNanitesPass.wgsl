@@ -3,9 +3,8 @@ var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
-  @location(0) projPosition: vec4f,
-  @location(1) wsPosition: vec4f,
-  @location(2) @interpolate(flat) instanceIndex: u32,
+  @location(0) wsPosition: vec4f,
+  @location(1) @interpolate(flat) instanceIndex: u32,
 };
 
 
@@ -23,7 +22,6 @@ fn main_vs(
   var projectedPosition = mvpMatrix * worldPos;
   // projectedPosition /= projectedPosition.w; // ?! Am I just getting old?
   result.position = projectedPosition;
-  result.projPosition = projectedPosition;
   result.wsPosition = worldPos; // skips multiply with model matrix for non-world-space ligthing
   result.instanceIndex = inInstanceIndex;
 
@@ -34,11 +32,6 @@ fn main_vs(
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let c = fakeLighting(fragIn.wsPosition);
-
-  if (checkIsCulled(fragIn.projPosition)) {
-    discard;
-  }
-  
   var color = getRandomColor(fragIn.instanceIndex);
   color = color * c;
   return vec4(color.xyz, 1.0);

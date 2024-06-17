@@ -1,5 +1,8 @@
 import { CONFIG } from '../../constants.ts';
-import { NaniteObject } from '../../scene/naniteObject.ts';
+import {
+  NaniteObject,
+  SHADER_SNIPPET_MESHLET_TREE_NODES,
+} from '../../scene/naniteObject.ts';
 import {
   applyShaderTextReplace,
   getItemsPerThread,
@@ -24,19 +27,6 @@ const BINDINGS_INSTANCES_TRANSFORMS = 4;
 
 const WORKGROUP_SIZE_X = 32;
 const MAX_WORKGROUPS_Y = 1 << 15; // Spec says limit is 65535 (2^16 - 1).
-
-export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
-struct NaniteMeshletTreeNode {
-  boundsMidPointAndError: vec4f, // bounds.xyz + maxSiblingsError
-  parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
-  triangleCount: u32,
-  firstIndexOffset: u32,
-  padding0: u32, // required to fill uvec4
-  padding1: u32, // required to fill uvec4
-}
-@group(0) @binding(${bindingIdx})
-var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
-`;
 
 export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
   bindingIdx: number,

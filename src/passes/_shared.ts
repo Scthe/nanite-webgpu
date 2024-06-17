@@ -1,4 +1,4 @@
-import { DEPTH_FORMAT } from '../constants.ts';
+import { CONFIG, DEPTH_FORMAT } from '../constants.ts';
 
 type PassClass = { NAME: string; SHADER_CODE: string };
 
@@ -13,7 +13,7 @@ export const assertHasShaderCode = (pass: PassClass) => {
 };
 
 export const PIPELINE_PRIMITIVE_TRIANGLE_LIST: GPUPrimitiveState = {
-  cullMode: 'none', // this should be 'back', but if some model has wrong winding I refuse to spend hours debugging thinking it's disappearing meshlet
+  cullMode: CONFIG.nanite.render.allowHardwareBackfaceCull ? 'back' : 'none',
   topology: 'triangle-list',
   stripIndexFormat: undefined,
 };

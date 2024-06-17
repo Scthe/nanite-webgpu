@@ -56,6 +56,18 @@ export function projectPoint(mvpMatrix: Mat4, p: Vec4 | Vec3, result?: Vec4) {
   return vec4.transformMat4(v, mvpMatrix, result);
 }
 
+/** debug matrix to string */
+export function dbgMat(m: Float32Array | Mat4) {
+  const s = Math.floor(Math.sqrt(m.length));
+  let result = '';
+  for (let i = 0; i < m.length; i++) {
+    if (i % s === 0) result += '\n';
+    else result += '   ';
+    result += m[i].toFixed(2);
+  }
+  return `[${result}\n]`;
+}
+
 export function getClassName(a: object) {
   // deno-lint-ignore no-explicit-any
   return (a as any).constructor.name;
@@ -190,6 +202,7 @@ export function formatBytes(bytes: number, decimals = 2) {
 }
 
 export function formatNumber(num: number, decimals = 2) {
+  if (num === 0) return '0';
   const sign = num < 0 ? '-' : '';
   num = Math.abs(num);
 

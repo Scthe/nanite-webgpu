@@ -72,6 +72,9 @@ export function initializeGUI(
     dir
       .add(CONFIG.nanite.render, 'pixelThreshold', 0, 10)
       .name('Error threshold [px]');
+
+    // culling
+    dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
   }
 
   function addDbgFolder() {

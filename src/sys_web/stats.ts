@@ -1,12 +1,7 @@
 import { CONFIG } from '../constants.ts';
 import { CalcVisibilityDevice } from '../constants.ts';
 import { getProfilerTimestamp } from '../gpuProfiler.ts';
-import {
-  hideHtmlEl,
-  isHtmlElVisible,
-  lerp,
-  showHtmlEl,
-} from '../utils/index.ts';
+import { hideHtmlEl, isHtmlElVisible, showHtmlEl } from '../utils/index.ts';
 
 type StatsValue = number | string;
 
@@ -37,11 +32,12 @@ const AvailableStats = {
   'Pre-Nanite triangles': {} as StatOpts,
   'Nanite meshlets': {} as StatOpts,
   'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
+  'Culled instances': { visibilityDevice: 'cpu' } as StatOpts,
   'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
 
-const DELTA_SMOOTHING = 0.9;
+const DELTA_SMOOTHING = 0.95;
 const UPDATE_FREQ_MS = 1000;
 
 class Stats {
@@ -86,11 +82,10 @@ class Stats {
     if (this.deltaTimeSmoothMS === undefined) {
       this.deltaTimeSmoothMS = this.deltaTimeMS;
     } else {
-      this.deltaTimeSmoothMS = lerp(
-        this.deltaTimeSmoothMS,
-        this.deltaTimeMS,
-        1 - DELTA_SMOOTHING
-      );
+      // lerp
+      this.deltaTimeSmoothMS =
+        this.deltaTimeSmoothMS * DELTA_SMOOTHING +
+        this.deltaTimeMS * (1.0 - DELTA_SMOOTHING);
     }
 
     const fps = (1.0 / this.deltaTimeMS) * 1000;

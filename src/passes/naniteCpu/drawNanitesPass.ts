@@ -61,7 +61,6 @@ export class DrawNanitesPass {
     let code = `
 ${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
-${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${DrawNanitesPass.SHADER_CODE}
@@ -133,6 +132,7 @@ ${DrawNanitesPass.SHADER_CODE}
 
     let drawnTriangleCount = 0;
     let drawnMeshletsCount = 0;
+    let culledInstances = 0;
     const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
     for (let instanceIdx = 0; instanceIdx < instances.length; instanceIdx++) {
@@ -144,6 +144,10 @@ ${DrawNanitesPass.SHADER_CODE}
         naniteObject
       );
       drawnMeshletsCount += toDrawCount;
+      if (toDrawCount === 0) {
+        culledInstances += 1;
+        continue;
+      }
 
       for (let mIdx = 0; mIdx < toDrawCount; mIdx++) {
         const m = naniteObject.naniteVisibilityBufferCPU.drawnMeshlets[mIdx];
@@ -163,7 +167,8 @@ ${DrawNanitesPass.SHADER_CODE}
     DrawNanitesPass.updateRenderStats(
       naniteObject,
       drawnMeshletsCount,
-      drawnTriangleCount
+      drawnTriangleCount,
+      culledInstances
     );
   }
 
@@ -189,7 +194,8 @@ ${DrawNanitesPass.SHADER_CODE}
   public static updateRenderStats(
     naniteObject: NaniteObject | undefined,
     drawnMeshletsCount: number | undefined,
-    drawnTriangleCount: number | undefined
+    drawnTriangleCount: number | undefined,
+    culledInstances: number | undefined
   ) {
     if (!naniteObject) {
       STATS.update('Nanite meshlets', '-');
@@ -199,7 +205,7 @@ ${DrawNanitesPass.SHADER_CODE}
 
     const rawStats = getPreNaniteStats(naniteObject);
     const fmt = (drawn: number, total: number) => {
-      const percent = ((drawn / total) * 100) / naniteObject.instancesCount;
+      const percent = ((drawn / total) * 100.0) / naniteObject.instancesCount;
       return `${formatNumber(drawn, 1)} (${percent.toFixed(1)}%)`;
     };
 
@@ -208,6 +214,9 @@ ${DrawNanitesPass.SHADER_CODE}
     }
     if (drawnTriangleCount !== undefined) {
       STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
+    }
+    if (culledInstances !== undefined) {
+      STATS.update('Culled instances', fmt(culledInstances, 1)); // prettier-ignore
     }
   }
 }

@@ -16,10 +16,11 @@ export type SceneObjectName = keyof typeof OBJECTS;
 export const SCENES = {
   singleBunny: [sceneModel('bunny', 1, 1)],
   bunny: [sceneModel('bunny')],
+  bunnyRow: [sceneModel('bunny', 1 << 17, 1)],
   bunny1b: [sceneModel('bunny', 500, 500)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
   singleLucy: [sceneModel('lucy', 1, 1)],
-  // lucy: [sceneModel('lucy', 10, 10, 0)],
+  // lucy: [sceneModel('lucy', 100, 10, 0)],
   lucy: [sceneModel('lucy', 10, 10, 0)],
   dragon: [sceneModel('dragon', 1, 1)],
   cube: [sceneModel('cube')],

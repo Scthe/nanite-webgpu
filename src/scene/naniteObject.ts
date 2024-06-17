@@ -1,5 +1,10 @@
 import { Mat4 } from 'wgpu-matrix';
-import { BYTES_U32, BYTES_VEC4, VERTS_IN_TRIANGLE } from '../constants.ts';
+import {
+  BYTES_U32,
+  BYTES_UVEC4,
+  BYTES_VEC4,
+  VERTS_IN_TRIANGLE,
+} from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { createArray, getTriangleCount } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
@@ -28,7 +33,20 @@ export interface NaniteInstancesData {
   transformsBuffer: GPUBuffer;
 }
 
-export const GPU_MESHLET_SIZE_BYTES = BYTES_VEC4 + BYTES_VEC4 + 4 * BYTES_U32;
+export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
+struct NaniteMeshletTreeNode {
+  boundsMidPointAndError: vec4f, // bounds.xyz + maxSiblingsError
+  parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
+  triangleCount: u32,
+  firstIndexOffset: u32,
+  boundingSphereRadius: f32,
+  padding0: u32, // required to fill uvec4
+}
+@group(0) @binding(${bindingIdx})
+var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
+`;
+export const GPU_MESHLET_SIZE_BYTES = 2 * BYTES_VEC4 + BYTES_UVEC4;
+
 export const BOTTOM_LEVEL_NODE = 0;
 
 export class NaniteObject {
@@ -158,6 +176,8 @@ export class NaniteObject {
       // u32's:
       dataAsU32[8] = m.triangleCount;
       dataAsU32[9] = m.firstIndexOffset;
+      // f32
+      dataAsF32[10] = m.bounds.radius;
       // write
       device.queue.writeBuffer(
         this.meshletsBuffer,

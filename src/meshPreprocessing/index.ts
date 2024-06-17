@@ -32,7 +32,12 @@ const TARGET_SIMPLIFY_ERROR = 0.05;
 
 let NEXT_MESHLET_ID = 0;
 
-/** Meshlet when constructing the tree */
+/**
+ * Meshlet when constructing the tree. This is an intermediary structure.
+ * Later on we will convert it to 'NaniteMeshletTreeNode'.
+ *
+ * WIP - work in progress
+ */
 export interface MeshletWIP {
   id: MeshletId;
   /** In tree, these are the children nodes */

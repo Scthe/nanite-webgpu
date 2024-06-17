@@ -13,6 +13,7 @@ import { Camera } from '../camera.ts';
 import { mat4 } from 'wgpu-matrix';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { CONFIG } from '../constants.ts';
+import { Frustum } from '../utils/frustum.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -64,6 +65,8 @@ export const createMockPassCtx = (
     cameraCtrl.viewMatrix,
     projMatrix
   );
+  const cameraFrustum = new Frustum();
+  cameraFrustum.update(vpMatrix);
 
   return {
     device,
@@ -77,6 +80,7 @@ export const createMockPassCtx = (
     depthTexture: undefined!,
     screenTexture: undefined!,
     globalUniforms: undefined!,
+    cameraFrustum,
   };
 };
 

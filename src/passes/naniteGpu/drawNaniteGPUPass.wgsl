@@ -14,14 +14,12 @@ var<storage, read> _indexBuffer: array<u32>;
 
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
-  @location(0) projPosition: vec4f,
-  @location(1) wsPosition: vec4f,
-  @location(2) @interpolate(flat) instanceIndex: u32,
-  @location(3) @interpolate(flat) meshletId: u32,
+  @location(0) wsPosition: vec4f,
+  @location(1) @interpolate(flat) instanceIndex: u32,
+  @location(2) @interpolate(flat) meshletId: u32,
 };
 
-const INVALID_MESHLET: u32 = 1 << 30;
-
+const OUT_OF_SIGHT = 9999999.0;
 
 @vertex
 fn main_vs(
@@ -36,7 +34,10 @@ fn main_vs(
 
   // we always draw __MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less. Discard
   if (inVertexIndex >= meshlet.triangleCount * 3) {
-    result.meshletId = INVALID_MESHLET;
+    result.position.x = OUT_OF_SIGHT;
+    result.position.y = OUT_OF_SIGHT;
+    result.position.z = OUT_OF_SIGHT;
+    result.position.w = 1.0;
     return result;
   }
 
@@ -48,7 +49,6 @@ fn main_vs(
   var projectedPosition = mvpMatrix * worldPos;
   // projectedPosition /= projectedPosition.w; // ?! Am I just getting old?
   result.position = projectedPosition;
-  result.projPosition = projectedPosition;
   result.wsPosition = worldPos; // skips multiply with model matrix for non-world-space ligthing
   result.instanceIndex = inInstanceIndex;
 
@@ -59,11 +59,6 @@ fn main_vs(
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let c = fakeLighting(fragIn.wsPosition);
-
-  if (fragIn.meshletId == INVALID_MESHLET || checkIsCulled(fragIn.projPosition)) {
-    discard;
-  }
-  
   var color = getRandomColor(fragIn.meshletId);
   color = color * c;
   return vec4(color.xyz, 1.0);

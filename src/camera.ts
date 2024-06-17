@@ -1,4 +1,4 @@
-import { mat4, vec3 } from 'wgpu-matrix';
+import { Mat4, mat4, vec3 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG } from './constants.ts';
 import { projectPoint } from './utils/index.ts';
@@ -31,8 +31,8 @@ export class Camera {
       this._position[2] = options.position[2];
     }
     if (options.rotation?.length === 2) {
-      this._angles[0] = options.rotation[0];
-      this._angles[1] = options.rotation[1];
+      this._angles[ANGLE_UP_DOWN] = options.rotation[0];
+      this._angles[ANGLE_LEFT_RIGHT] = options.rotation[1];
     }
   };
 
@@ -82,7 +82,7 @@ export class Camera {
     );
   }
 
-  private getRotationMat() {
+  private getRotationMat(): Mat4 {
     const angles = this._angles;
     const result = mat4.identity(this._tmpMatrix);
     mat4.rotateX(result, angles[ANGLE_UP_DOWN], result); // up-down
@@ -90,7 +90,7 @@ export class Camera {
     return result;
   }
 
-  get viewMatrix() {
+  get viewMatrix(): Mat4 {
     const rotMat = this.getRotationMat();
     const pos = this._position;
 

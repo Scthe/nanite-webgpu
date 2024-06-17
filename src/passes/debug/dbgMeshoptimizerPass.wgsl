@@ -1,8 +1,6 @@
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
-  @location(0) projPosition: vec4f,
-  @location(1) wsPosition: vec4f,
-  @location(2) @interpolate(flat) instanceIndex: u32,
+  @location(0) wsPosition: vec4f,
 };
 
 @vertex
@@ -17,9 +15,7 @@ fn main_vs(
   var projectedPosition = _uniforms.vpMatrix * worldPos;
   projectedPosition /= projectedPosition.w;
   result.position = vec4<f32>(projectedPosition.xyz, 1.0);
-  result.projPosition = result.position;
   result.wsPosition = worldPos;
-  result.instanceIndex = inInstanceIndex;
 
   return result;
 }
@@ -27,10 +23,5 @@ fn main_vs(
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let c = fakeLighting(fragIn.wsPosition);
-
-  if (checkIsCulled(fragIn.projPosition)) {
-    discard;
-  }
-  
   return vec4(c, c, c, 1.0);
 }

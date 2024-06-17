@@ -1,9 +1,10 @@
-import { Mat4, Vec3 } from 'wgpu-matrix';
+import { Mat4, Vec3, vec4 } from 'wgpu-matrix';
 import { PassCtx } from '../passCtx.ts';
 import {
   BoundingSphere,
   dgr2rad,
   getModelViewProjectionMatrix,
+  projectPoint,
 } from '../../utils/index.ts';
 import { CAMERA_CFG, CONFIG } from '../../constants.ts';
 import {
@@ -11,6 +12,7 @@ import {
   NaniteMeshletTreeNode,
 } from '../../scene/naniteObject.ts';
 import { NaniteVisibilityBufferCPU } from './types.ts';
+import { Frustum } from '../../utils/frustum.ts';
 
 /**
  * 'hidden' - skip subtree
@@ -30,6 +32,12 @@ export function calcNaniteMeshletsVisibility(
   naniteObject: NaniteObject
 ): number {
   const root = naniteObject.root;
+  // check: entire instance is visible
+  // TODO is root.boundingSphere.r based on LOD6 (coarse)? or on the full-res model? Should be on full-res model, as LOD6 may remove vertices. TBH do not use root here, but naniteObj.boundingBox
+  if (!checkIsInsideFrustum(ctx.cameraFrustum, root, modelMat)) {
+    return 0;
+  }
+
   const meshletsToCheck = [root];
   const visibilityBuffer = naniteObject.naniteVisibilityBufferCPU;
   visibilityBuffer.prepareForDraw();
@@ -65,6 +73,28 @@ export function calcNaniteMeshletsVisibility(
 
   // console.log({ visitedMeshlets }); // debug how far the tree we went
   return visibilityBuffer.drawnMesletsCount;
+}
+
+const TMP_CACHED_VEC4 = vec4.create();
+
+function checkIsInsideFrustum(
+  frustum: Frustum,
+  meshlet: NaniteMeshletTreeNode,
+  modelMat: Mat4
+): boolean {
+  if (!CONFIG.nanite.render.useFrustumCulling) return true;
+
+  TMP_CACHED_VEC4[0] = meshlet.bounds.center[0];
+  TMP_CACHED_VEC4[1] = meshlet.bounds.center[1];
+  TMP_CACHED_VEC4[2] = meshlet.bounds.center[2];
+  TMP_CACHED_VEC4[3] = 1;
+  const sphereWorldSpace = projectPoint(
+    modelMat,
+    TMP_CACHED_VEC4,
+    TMP_CACHED_VEC4
+  );
+  sphereWorldSpace[3] = meshlet.bounds.radius;
+  return frustum.isInside(sphereWorldSpace);
 }
 
 /**

@@ -1,6 +1,6 @@
 const MAT4 = 'mat4x4<f32>';
 
-/** Fragment shader snippet for discard. Mostly for Z-axis. */
+/** I always forget the order. */
 export const GET_MVP_MAT = `
 fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} {
   let a = viewMat * modelMat;
@@ -8,21 +8,7 @@ fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} 
 }
 `;
 
-/** Fragment shader snippet for discard. Mostly for Z-axis. */
-export const FS_CHECK_IS_CULLED = `
-fn checkIsCulled(projectedPosition: vec4f) -> bool {
-  let x = projectedPosition.x;
-  let y = projectedPosition.y;
-  let z = projectedPosition.z;
-  let clipZ = projectedPosition.w;
-  let clip = 1.2 * projectedPosition.w;
-  return z <= 0 || z > clipZ ||
-    x < -clip || x > clip ||
-    y < -clip || y > clip;
-}
-`;
-
-/** Fragment shader snippet for discard. Mostly for Z-axis. */
+/** Object-space lighting. */
 export const FS_FAKE_LIGHTING = `
 fn fakeLighting(wsPosition: vec4f) -> f32{
   let AMBIENT_LIGHT = 0.1;

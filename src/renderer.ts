@@ -16,6 +16,7 @@ import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
 import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { Scene } from './scene/scene.ts';
+import { Frustum } from './utils/frustum.ts';
 
 export interface ShadersTexts {
   drawMeshShader: string;
@@ -38,6 +39,7 @@ export function injectShaderTexts(texts: ShadersTexts) {
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
   public readonly cameraCtrl: Camera;
+  private readonly cameraFrustum: Frustum = new Frustum();
   private projectionMat: Mat4;
   private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
   private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
@@ -106,6 +108,7 @@ export class Renderer {
       this.projectionMat,
       this._viewMatrix
     );
+    this.cameraFrustum.update(vpMatrix);
     const ctx: PassCtx = {
       cmdBuf,
       viewport,
@@ -116,6 +119,7 @@ export class Renderer {
       viewMatrix,
       vpMatrix,
       projMatrix: this.projectionMat,
+      cameraFrustum: this.cameraFrustum,
       depthTexture: this.depthTextureView,
       globalUniforms: this.renderUniformBuffer,
     };

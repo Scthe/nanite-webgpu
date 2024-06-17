@@ -47,7 +47,6 @@ export class DbgMeshoptimizerPass {
       label: labelShader(DbgMeshoptimizerPass),
       code: `
 ${RenderUniformsBuffer.SHADER_SNIPPET(0)}
-${SHADER_SNIPPETS.FS_CHECK_IS_CULLED}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${DbgMeshoptimizerPass.SHADER_CODE}
       `,
