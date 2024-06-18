@@ -1,9 +1,7 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
-  assertHasShaderCode,
   assignResourcesToBindings,
   labelPipeline,
   labelShader,
@@ -13,10 +11,10 @@ import {
 import { VERTEX_ATTRIBUTES } from '../naniteCpu/drawNanitesPass.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import { SHADER_CODE } from './dbgMeshoptimizerPass.wgsl.ts';
 
 export class DbgMeshoptimizerPass {
   public static NAME: string = DbgMeshoptimizerPass.name;
-  public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly uniformsBindings: GPUBindGroup;
@@ -42,14 +40,9 @@ export class DbgMeshoptimizerPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    assertHasShaderCode(DbgMeshoptimizerPass);
     const shaderModule = device.createShaderModule({
       label: labelShader(DbgMeshoptimizerPass),
-      code: `
-${RenderUniformsBuffer.SHADER_SNIPPET(0)}
-${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
-${DbgMeshoptimizerPass.SHADER_CODE}
-      `,
+      code: SHADER_CODE(),
     });
 
     return device.createRenderPipeline({

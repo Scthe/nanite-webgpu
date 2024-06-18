@@ -1,3 +1,22 @@
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+
+export const SHADER_PARAMS = {
+  bindings: {
+    renderUniforms: 0,
+  },
+};
+
+///////////////////////////
+/// SHADER CODE
+///////////////////////////
+const b = SHADER_PARAMS.bindings;
+
+export const SHADER_CODE = () => /* wgsl */ `
+
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
+
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) wsPosition: vec4f,
@@ -25,3 +44,4 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let c = fakeLighting(fragIn.wsPosition);
   return vec4(c, c, c, 1.0);
 }
+`;

@@ -1,10 +1,8 @@
 import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
-  assertHasShaderCode,
   assignResourcesToBindings2,
   labelPipeline,
   labelShader,
@@ -12,7 +10,6 @@ import {
   useDepthStencilAttachment,
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
-import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import {
   calcCotHalfFov,
   calcNaniteMeshletsVisibility,
@@ -20,10 +17,7 @@ import {
 import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { formatNumber } from '../../utils/index.ts';
-import { applyShaderTextReplace } from '../../utils/webgpu.ts';
-
-const BINDINGS_RENDER_UNIFORMS = 0;
-const BINDINGS_INSTANCES_TRANSFORMS = 1;
+import { SHADER_CODE, SHADER_PARAMS } from './drawNanitesPass.wgsl.ts';
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   {
@@ -41,13 +35,11 @@ export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
 
 export class DrawNanitesPass {
   public static NAME: string = DrawNanitesPass.name;
-  public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();
 
   constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
-    assertHasShaderCode(DrawNanitesPass);
     this.renderPipeline = DrawNanitesPass.createRenderPipeline(
       device,
       outTextureFormat
@@ -58,21 +50,11 @@ export class DrawNanitesPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    let code = `
-${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
-${SHADER_SNIPPETS.GET_MVP_MAT}
-${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
-${SHADER_SNIPPETS.GET_RANDOM_COLOR}
-${DrawNanitesPass.SHADER_CODE}
-      `;
-    code = applyShaderTextReplace(code, {
-      __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
-    });
-
     const shaderModule = device.createShaderModule({
       label: labelShader(DrawNanitesPass),
-      code,
+      code: SHADER_CODE(),
     });
+
     return device.createRenderPipeline({
       label: labelPipeline(DrawNanitesPass),
       layout: 'auto',
@@ -176,15 +158,17 @@ ${DrawNanitesPass.SHADER_CODE}
     { device, globalUniforms }: PassCtx,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
+    const b = SHADER_PARAMS.bindings;
+
     return assignResourcesToBindings2(
       DrawNanitesPass,
       naniteObject.name,
       device,
       this.renderPipeline,
       [
-        globalUniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
+        globalUniforms.createBindingDesc(b.renderUniforms),
         {
-          binding: BINDINGS_INSTANCES_TRANSFORMS,
+          binding: b.instancesTransforms,
           resource: { buffer: naniteObject.instances.transformsBuffer },
         },
       ]

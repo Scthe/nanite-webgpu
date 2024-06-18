@@ -1,10 +1,8 @@
 import { CONFIG } from '../../constants.ts';
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import {
   BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
-  assertHasShaderCode,
   assignResourcesToBindings2,
   labelPipeline,
   labelShader,
@@ -12,32 +10,18 @@ import {
   useDepthStencilAttachment,
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
-import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { SHADER_SNIPPET_DRAWN_MESHLETS_LIST } from './naniteVisibilityPass.ts';
-import {
-  NaniteObject,
-  SHADER_SNIPPET_MESHLET_TREE_NODES,
-} from '../../scene/naniteObject.ts';
-import { applyShaderTextReplace } from '../../utils/webgpu.ts';
-
-const BINDINGS_RENDER_UNIFORMS = 0;
-const BINDINGS_MESHLETS = 1;
-const BINDINGS_DRAWN_MESHLET_IDS = 2;
-const BINDINGS_INSTANCES_TRANSFORMS = 3;
-const BINDINGS_VERTEX_POSITIONS = 4;
-const BINDINGS_INDEX_BUFFER = 5;
+import { NaniteObject } from '../../scene/naniteObject.ts';
+import { SHADER_CODE, SHADER_PARAMS } from './drawNaniteGPUPass.wgsl.ts';
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [];
 
 export class DrawNaniteGPUPass {
   public static NAME: string = DrawNaniteGPUPass.name;
-  public static SHADER_CODE: string;
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();
 
   constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
-    assertHasShaderCode(DrawNaniteGPUPass);
     this.renderPipeline = DrawNaniteGPUPass.createRenderPipeline(
       device,
       outTextureFormat
@@ -48,27 +32,12 @@ export class DrawNaniteGPUPass {
     device: GPUDevice,
     outTextureFormat: GPUTextureFormat
   ) {
-    // TODO duplicated code from normal DrawNanitePass
-    let code = `
-${RenderUniformsBuffer.SHADER_SNIPPET(BINDINGS_RENDER_UNIFORMS)}
-${SHADER_SNIPPET_MESHLET_TREE_NODES(BINDINGS_MESHLETS)}
-${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(BINDINGS_DRAWN_MESHLET_IDS, 'read')}
-${SHADER_SNIPPETS.GET_MVP_MAT}
-${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
-${SHADER_SNIPPETS.GET_RANDOM_COLOR}
-${DrawNaniteGPUPass.SHADER_CODE}
-      `;
-    code = applyShaderTextReplace(code, {
-      __BINDINGS_INSTANCES_TRANSFORMS: String(BINDINGS_INSTANCES_TRANSFORMS),
-      __BINDINGS_VERTEX_POSITIONS: String(BINDINGS_VERTEX_POSITIONS),
-      __BINDINGS_INDEX_BUFFER: String(BINDINGS_INDEX_BUFFER),
-    });
-
     const shaderModule = device.createShaderModule({
       label: labelShader(DrawNaniteGPUPass),
-      code,
+      code: SHADER_CODE(),
     });
 
+    // TODO duplicated code from normal DrawNanitePass
     return device.createRenderPipeline({
       label: labelPipeline(DrawNaniteGPUPass),
       layout: 'auto',
@@ -145,22 +114,22 @@ ${DrawNaniteGPUPass.SHADER_CODE}
     { device, globalUniforms }: PassCtx,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
+    const b = SHADER_PARAMS.bindings;
+
     return assignResourcesToBindings2(
       DrawNaniteGPUPass,
       naniteObject.name,
       device,
       this.renderPipeline,
       [
-        globalUniforms.createBindingDesc(BINDINGS_RENDER_UNIFORMS),
-        naniteObject.bufferBindingMeshlets(BINDINGS_MESHLETS),
-        naniteObject.bufferBindingVisibility(BINDINGS_DRAWN_MESHLET_IDS),
-        naniteObject.bufferBindingInstanceTransforms(
-          BINDINGS_INSTANCES_TRANSFORMS
-        ),
+        globalUniforms.createBindingDesc(b.renderUniforms),
+        naniteObject.bufferBindingMeshlets(b.meshlets),
+        naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
+        naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
         naniteObject.bufferBindingVertexBufferForStorageAsVec4(
-          BINDINGS_VERTEX_POSITIONS
+          b.vertexPositions
         ),
-        naniteObject.bufferBindingIndexBuffer(BINDINGS_INDEX_BUFFER),
+        naniteObject.bufferBindingIndexBuffer(b.indexBuffer),
       ]
     );
   };

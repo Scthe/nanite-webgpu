@@ -105,36 +105,6 @@ export function writeMatrixToGPUBuffer(
   device.queue.writeBuffer(gpuBuffer, offsetBytes, f32Arr.buffer, 0);
 }
 
-export function assertHasInjectedShader(clazz: {
-  SHADER_CODE: string;
-  name: string;
-}) {
-  if (!clazz.SHADER_CODE || clazz.SHADER_CODE.length == 0) {
-    throw new Error(`${clazz.name} has no .SHADER_CODE defined.`);
-  }
-}
-
-type ShaderOverrides = { [key: string]: string };
-
-/**
- * In WGSL there is something called overrides:
- *  - https://www.w3.org/TR/WGSL/#override-declaration
- *  - https://webgpufundamentals.org/webgpu/lessons/webgpu-constants.html
- * Would have been better than text replace. But neither works
- * with language servers in text editors, so might as well text replace.
- */
-export function applyShaderTextReplace(
-  text: string,
-  overrides?: ShaderOverrides
-) {
-  let code = text;
-  overrides = overrides || {};
-  Object.entries(overrides).forEach(([k, v]) => {
-    code = code.replaceAll(k, v);
-  });
-  return code;
-}
-
 export const getItemsPerThread = (items: number, threads: number) =>
   Math.ceil(items / threads);
 

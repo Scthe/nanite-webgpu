@@ -1,3 +1,42 @@
+import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
+import { CONFIG } from '../../constants.ts';
+
+export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
+  bindingIdx: number,
+  access: 'read_write' | 'read'
+) => `
+@group(0) @binding(${bindingIdx})
+var<storage, ${access}> _drawnMeshletIds: array<vec2<u32>>;
+`;
+
+export const SHADER_PARAMS = {
+  workgroupSizeX: 32,
+  maxWorkgroupsY: 1 << 15, // Spec says limit is 65535 (2^16 - 1),
+  maxMeshletTriangles: `${CONFIG.nanite.preprocess.meshletMaxTriangles}u`,
+  bindings: {
+    renderUniforms: 0,
+    meshlets: 1,
+    drawnMeshletIds: 2,
+    drawIndirectParams: 3,
+    instancesTransforms: 4,
+  },
+};
+
+///////////////////////////
+/// SHADER CODE
+///////////////////////////
+const c = SHADER_PARAMS;
+const b = SHADER_PARAMS.bindings;
+
+export const SHADER_CODE = () => /* wgsl */ `
+
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
+${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
+${SHADER_SNIPPETS.GET_MVP_MAT}
+
 /** arg for https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder/drawIndirect */
 struct DrawIndirect{
   vertexCount: u32,
@@ -5,10 +44,10 @@ struct DrawIndirect{
   firstVertex: u32,
   firstInstance : u32,
 }
-@group(0) @binding(__BINDINGS_DRAW_INDIRECT_PARAMS)
+@group(0) @binding(${b.drawIndirectParams})
 var<storage, read_write> _drawIndirectResult: DrawIndirect;
 
-@group(0) @binding(__BINDINGS_INSTANCES_TRANSFORMS)
+@group(0) @binding(${b.instancesTransforms})
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 
@@ -17,14 +56,14 @@ const PARENT_ERROR_INFINITY: f32 = 99990.0f;
 
 
 @compute
-@workgroup_size(__WORKGROUP_SIZE_X, 1, 1)
+@workgroup_size(${c.workgroupSizeX}, 1, 1)
 fn main(
   @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
   // set rest of the indirect draw params. Has to be first line in the shader in case we ooopsie and do early return by accident somewhere.
   if (global_id.x == 0u) {
     // We always draw 'MAX_MESHLET_TRIANGLES * VERTS_PER_TRIANGLE(3)' verts. Draw pass will discard if the meshlet has less.
-    _drawIndirectResult.vertexCount = __MAX_MESHLET_TRIANGLES * 3u;
+    _drawIndirectResult.vertexCount = ${c.maxMeshletTriangles} * 3u;
     _drawIndirectResult.firstVertex = 0u;
     _drawIndirectResult.firstInstance = 0u;
   }
@@ -38,7 +77,7 @@ fn main(
   let meshletIdx: u32 = global_id.x;
   let meshlet = _meshlets[meshletIdx];
   let instanceCount: u32 = arrayLength(&_instanceTransforms);
-  let iterCount: u32 = ceilDivideU32(instanceCount, __MAX_WORKGROUPS_Y);
+  let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
   let tfxOffset: u32 = global_id.y * iterCount;
 
   for(var i: u32 = 0u; i < iterCount; i++){
@@ -152,3 +191,4 @@ fn ceilDivideU32(numerator: u32, denominator: u32) -> u32 {
     parentBoundsMidPointAndError.w = gt;
   }*/
   // END: DEBUG HARDCODE
+`;

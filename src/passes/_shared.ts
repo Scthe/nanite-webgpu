@@ -1,16 +1,11 @@
 import { CONFIG, DEPTH_FORMAT } from '../constants.ts';
 
-type PassClass = { NAME: string; SHADER_CODE: string };
+type PassClass = { NAME: string };
 
 export const labelShader = (pass: PassClass) => `${pass.NAME}-shader`;
 export const labelPipeline = (pass: PassClass) => `${pass.NAME}-pipeline`;
 export const labelUniformBindings = (pass: PassClass, name = '') =>
   `${pass.NAME}-${name ? name + '-' : ''}uniforms`;
-
-export const assertHasShaderCode = (pass: PassClass) => {
-  if (!pass.SHADER_CODE || pass.SHADER_CODE.length === 0)
-    throw new Error(`Pass '${pass.NAME}' does not contain SHADER_CODE`);
-};
 
 export const PIPELINE_PRIMITIVE_TRIANGLE_LIST: GPUPrimitiveState = {
   cullMode: CONFIG.nanite.render.allowHardwareBackfaceCull ? 'back' : 'none',

@@ -1,6 +1,5 @@
 import {
   createGpuDevice_TESTS,
-  injectDenoShader,
   createMockPassCtx,
   createMeshlets_TESTS,
   assertSameArray,
@@ -38,11 +37,6 @@ const EXPECTED_DRAWN_MESHLETS_COUNT = 2;
 
 Deno.test('NaniteVisibilityPass', async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
-  injectDenoShader(
-    NaniteVisibilityPass,
-    import.meta.url,
-    'naniteVisibilityPass.wgsl'
-  );
 
   // prettier-ignore
   const allWIPMeshlets = createMeshlets_TESTS([

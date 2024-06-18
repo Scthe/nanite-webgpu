@@ -20,17 +20,6 @@ export function absPathFromRepoRoot(filePath: string) {
   return path.resolve(__dirname, '..', '..', filePath);
 }
 
-export function injectDenoShader(
-  PassClass: { SHADER_CODE: string },
-  modulePath: string, // import.meta.url
-  shaderFile: string
-) {
-  const __dirname = path.dirname(path.fromFileUrl(modulePath));
-  PassClass.SHADER_CODE = Deno.readTextFileSync(
-    `${__dirname}${path.SEPARATOR}${shaderFile}`
-  );
-}
-
 type ValidateWebGPUCallsFn = () => Promise<void>;
 
 export async function createGpuDevice_TESTS(): Promise<

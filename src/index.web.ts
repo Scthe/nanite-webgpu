@@ -1,6 +1,6 @@
 import { createGpuDevice } from './utils/webgpu.ts';
 import { createInputHandler } from './sys_web/input.ts';
-import { Renderer, injectShaderTexts } from './renderer.ts';
+import { Renderer } from './renderer.ts';
 import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
@@ -13,18 +13,8 @@ import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 import { FileTextReader, Scene, loadScene } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 
-//@ts-ignore it works OK
-import drawMeshShader from './passes/naniteCpu/drawNanitesPass.wgsl';
-//@ts-ignore it works OK
-import drawNaniteGPUShader from './passes/naniteGpu/drawNaniteGPUPass.wgsl';
-//@ts-ignore it works OK
-import naniteVisibilityGPUShader from './passes/naniteGpu/naniteVisibilityPass.wgsl';
-//@ts-ignore it works OK
-import dbgMeshoptimizerShader from './passes/debug/dbgMeshoptimizerPass.wgsl';
-//@ts-ignore it works OK
-import dbgMeshoptimizerMeshletsShader from './passes/debug/dbgMeshoptimizerMeshletsPass.wgsl';
-
-const SCENE_FILE: SceneName = 'bunny';
+const SCENE_FILE: SceneName = 'bunnyRow';
+// const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'lucy';
 // const SCENE_FILE: SceneName = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
 // const SCENE_FILE: SceneName = 'displacedPlane';
@@ -68,13 +58,6 @@ const SCENE_FILE: SceneName = 'bunny';
 
   // renderer setup
   const profiler = new GpuProfiler(device);
-  injectShaderTexts({
-    drawMeshShader,
-    drawNaniteGPUShader,
-    naniteVisibilityGPUShader,
-    dbgMeshoptimizerShader,
-    dbgMeshoptimizerMeshletsShader,
-  });
   const renderer = new Renderer(
     device,
     canvasResizeSystem.getViewportSize(),
@@ -130,6 +113,7 @@ const SCENE_FILE: SceneName = 'bunny';
         DrawNanitesPass.updateRenderStats(
           res.naniteObject,
           res.meshletCount,
+          undefined,
           undefined
         );
       });

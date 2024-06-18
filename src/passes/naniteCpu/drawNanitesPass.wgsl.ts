@@ -1,4 +1,26 @@
-@group(0) @binding(__BINDINGS_INSTANCES_TRANSFORMS)
+import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+
+export const SHADER_PARAMS = {
+  bindings: {
+    renderUniforms: 0,
+    instancesTransforms: 1,
+  },
+};
+
+///////////////////////////
+/// SHADER CODE
+///////////////////////////
+const b = SHADER_PARAMS.bindings;
+
+export const SHADER_CODE = () => /* wgsl */ `
+
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${SHADER_SNIPPETS.GET_MVP_MAT}
+${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
+${SHADER_SNIPPETS.GET_RANDOM_COLOR}
+
+@group(0) @binding(${b.instancesTransforms})
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 struct VertexOutput {
@@ -36,3 +58,4 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   color = color * c;
   return vec4(color.xyz, 1.0);
 }
+`;

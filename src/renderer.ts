@@ -18,24 +18,6 @@ import { GpuProfiler } from './gpuProfiler.ts';
 import { Scene } from './scene/scene.ts';
 import { Frustum } from './utils/frustum.ts';
 
-export interface ShadersTexts {
-  drawMeshShader: string;
-  drawNaniteGPUShader: string;
-  naniteVisibilityGPUShader: string;
-  dbgMeshoptimizerShader: string;
-  dbgMeshoptimizerMeshletsShader: string;
-}
-
-/** Web and Deno handle files differently. A bit awkward but good enough. */
-export function injectShaderTexts(texts: ShadersTexts) {
-  DrawNanitesPass.SHADER_CODE = texts.drawMeshShader;
-  DrawNaniteGPUPass.SHADER_CODE = texts.drawNaniteGPUShader;
-  NaniteVisibilityPass.SHADER_CODE = texts.naniteVisibilityGPUShader;
-  DbgMeshoptimizerPass.SHADER_CODE = texts.dbgMeshoptimizerShader;
-  DbgMeshoptimizerMeshletsPass.SHADER_CODE =
-    texts.dbgMeshoptimizerMeshletsShader;
-}
-
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
   public readonly cameraCtrl: Camera;
