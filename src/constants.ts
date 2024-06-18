@@ -4,7 +4,7 @@ export const CAMERA_CFG = {
   // pos + rot
   position: {
     position: [1.5, 1.9, 2.3],
-    rotation: [0.3, -0.6],
+    rotation: [-0.6, 0.3], // [pitch, yaw]
   } satisfies CameraOpts,
   // projection
   fovDgr: 45,
@@ -44,6 +44,7 @@ export const CONFIG = {
   isTest: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   clearColor: [0.2, 0.2, 0.2],
+  // clearColor: [0.35, 0.35, 0.8], // if you need to check for holes TODO add to gui?
   rotationSpeed: 1,
   movementSpeed: 3,
   movementSpeedFaster: 20,
@@ -54,6 +55,7 @@ export const CONFIG = {
     preprocess: {
       meshletMaxVertices: 64,
       meshletMaxTriangles: 124,
+      meshletBackfaceCullingConeWeight: 1.0,
       /** Select algo. to use */
       useMapToFindAdjacentEdges: true,
       /** Go to Devtools->Performance to check Chrome's log */
@@ -61,9 +63,10 @@ export const CONFIG = {
     },
     render: {
       calcVisibilityDevice: 'gpu' as CalcVisibilityDevice,
-      // Hardware cull should be 'back'. Yet if some model has wrong winding
-      // I would refuse to spend hours debugging thinking it's a disappearing meshlet.
-      // Just use normal 3D software?
+      /** Hardware cull should be 'back'. Yet if some model has wrong winding
+       * I would refuse to spend hours debugging thinking it's a disappearing meshlet.
+       * Just use normal 3D software?
+       */
       allowHardwareBackfaceCull: true,
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.
@@ -73,6 +76,14 @@ export const CONFIG = {
        */
       pixelThreshold: 1.0,
       useFrustumCulling: true,
+      /** Software backface cull is not finished, as the gains seem limited. TODO:
+       * - handle instances. ATM only every instance assumes it has identity tfx matrix for purpose of culling
+       * - fix bugs. Some disappearing triangles at very oblique angles. Just a magic slider to scale condition by 1.1+?
+       * - use in GPU visiblity flow
+       * - test on dense meshes. Probably works better then
+       */
+      useSoftwareBackfaceCull: false,
+      /** Next frame will do an expensive GPU->CPU readback to check GPU visibility buffer */
       nextFrameDebugVisiblityBuffer: false,
     },
   },

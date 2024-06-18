@@ -62,7 +62,7 @@ export function initializeGUI(
       .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
       .name('Visibility test')
       .onFinishChange(()=>{
-        DrawNanitesPass.updateRenderStats(undefined, undefined, undefined);
+        DrawNanitesPass.updateRenderStats(undefined, undefined, undefined, undefined);
       })
 
     // profiler
@@ -75,6 +75,9 @@ export function initializeGUI(
 
     // culling
     dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
+    dir
+      .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
+      .name('SW backface cull');
   }
 
   function addDbgFolder() {

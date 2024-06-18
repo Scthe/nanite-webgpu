@@ -250,6 +250,7 @@ function createInstancesData(
         -y * grid.spacing,
       ]);
       const angleDgr = x == 0 && y == 0 ? 0 : randomBetween(0, 360);
+      // const angleDgr = x * -90; // use if you just want to have preview for other angles
       const rotMat = mat4.rotationY(dgr2rad(angleDgr));
       const tfxMat = mat4.multiply(moveMat, rotMat);
 

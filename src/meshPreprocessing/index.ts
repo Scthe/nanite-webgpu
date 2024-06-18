@@ -5,7 +5,11 @@ import {
   calcBoundingSphere,
   pluckVertices,
 } from '../utils/index.ts';
-import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
+import {
+  createMeshlets,
+  meshopt_Bounds,
+  splitIndicesPerMeshlets,
+} from './createMeshlets.ts';
 import {
   listAllEdges,
   findBoundaryEdges,
@@ -46,13 +50,16 @@ export interface MeshletWIP {
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
+  // TODO it should be used for culling instead of current $sharedSiblingsBounds?
+  ownBounds: meshopt_Bounds | undefined;
 
-  // Error calc:
+  // Nanite error calc:
   /** Error for this node */
   maxSiblingsError: number;
   /** Infinity for top tree level */
   parentError: number;
-  bounds: BoundingSphere;
+  /** Bounds (shared by all sibling meshlets). */
+  sharedSiblingsBounds: BoundingSphere; // TODO rename on GPU too
   parentBounds: BoundingSphere | undefined; // undefined at top level
 }
 
@@ -112,12 +119,12 @@ export async function createNaniteMeshlets(
       const totalError = errorNow + childrenError;
       const bounds = calculateBounds(simplifiedMesh.indexBuffer);
 
-      // 2.3 [GROUP] split into new meshlets. Share: simplificationError, bounds
+      // 2.3 [GROUP] split into new meshlets. Share: simplificationError, bounds (both are used in nanite to reproject the error)
       let newMeshlets: MeshletWIP[];
       if (partitioned.length === 1) {
         // this happens on last iteration, when < 4 meshlets
         // prettier-ignore
-        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds);
+        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds, undefined);
         newMeshlets = [rootMeshlet];
       } else {
         // prettier-ignore
@@ -158,19 +165,26 @@ export async function createNaniteMeshlets(
   async function splitIntoMeshlets(
     indices: Uint32Array,
     simplificationError: number,
-    bounds: BoundingSphere
+    sharedSiblingsBounds: BoundingSphere
   ) {
     const meshletsOpt = await createMeshlets(vertices, indices, {
       maxVertices: CONFIG.nanite.preprocess.meshletMaxVertices,
       maxTriangles: CONFIG.nanite.preprocess.meshletMaxTriangles,
+      coneWeight: CONFIG.nanite.preprocess.meshletBackfaceCullingConeWeight,
     });
     // during init: create tons of small meshlets
     // during iter: split simplified mesh into 2 meshlets
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
 
-    const meshlets: MeshletWIP[] = meshletsIndices.map((indices) =>
-      createMeshletWip(indices, simplificationError, bounds)
-    );
+    const meshlets: MeshletWIP[] = meshletsIndices.map((indices, i) => {
+      const ownBounds = meshletsOpt.meshlets[i].bounds;
+      return createMeshletWip(
+        indices,
+        simplificationError,
+        sharedSiblingsBounds,
+        ownBounds
+      );
+    });
 
     return meshlets;
   }
@@ -178,7 +192,8 @@ export async function createNaniteMeshlets(
   function createMeshletWip(
     indices: Uint32Array,
     simplificationError: number,
-    bounds: BoundingSphere
+    sharedSiblingsBounds: BoundingSphere,
+    ownBounds: meshopt_Bounds | undefined
   ): MeshletWIP {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
@@ -190,10 +205,11 @@ export async function createNaniteMeshlets(
       // we determine siblings in next iter
       maxSiblingsError: simplificationError,
       parentError: Infinity,
-      bounds,
+      sharedSiblingsBounds,
       parentBounds: undefined,
       lodLevel,
       createdFrom: [],
+      ownBounds,
     };
     NEXT_MESHLET_ID += 1;
     allMeshlets.push(m);

@@ -1,4 +1,4 @@
-import { Mat4 } from 'wgpu-matrix';
+import { Mat4, Vec3 } from 'wgpu-matrix';
 import { GpuProfiler } from '../gpuProfiler.ts';
 import { Dimensions } from '../utils/index.ts';
 import { Scene } from '../scene/scene.ts';
@@ -12,6 +12,7 @@ export interface PassCtx {
   viewMatrix: Mat4;
   projMatrix: Mat4;
   cameraFrustum: Frustum;
+  cameraPositionWorldSpace: Vec3;
   profiler: GpuProfiler | undefined;
   viewport: Dimensions;
   scene: Scene;

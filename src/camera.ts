@@ -1,4 +1,4 @@
-import { Mat4, mat4, vec3 } from 'wgpu-matrix';
+import { Mat4, mat4, vec3, vec4 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG } from './constants.ts';
 import { projectPoint } from './utils/index.ts';
@@ -19,6 +19,7 @@ export class Camera {
   private readonly _tmpMatrix = mat4.identity(); // cache to prevent alloc
   private readonly _angles: [number, number] = [0, 0]; // angles like in polar coords
   private readonly _position: [number, number, number] = [0, 0, 0];
+  public readonly positionWorldSpace = vec4.create();
 
   constructor(options: CameraOpts = CAMERA_CFG.position) {
     this.resetPosition(options);
@@ -31,8 +32,8 @@ export class Camera {
       this._position[2] = options.position[2];
     }
     if (options.rotation?.length === 2) {
-      this._angles[ANGLE_UP_DOWN] = options.rotation[0];
-      this._angles[ANGLE_LEFT_RIGHT] = options.rotation[1];
+      this._angles[ANGLE_UP_DOWN] = options.rotation[1];
+      this._angles[ANGLE_LEFT_RIGHT] = options.rotation[0];
     }
   };
 
@@ -40,14 +41,16 @@ export class Camera {
     this.applyMovement(deltaTime, input);
     this.applyRotation(deltaTime, input);
 
-    const fmt = (x: number) => x.toFixed(1);
-    const p = this._position;
-    const r = this._angles;
-    STATS.update('Camera pos', `[${fmt(p[0])}, ${fmt(p[1])}, ${fmt(p[2])}]`);
-    STATS.update(
-      'Camera rot',
-      `[${fmt(r[ANGLE_LEFT_RIGHT])}, ${fmt(r[ANGLE_UP_DOWN])}]`
+    // update world space position
+    vec4.set(0, 0, 0, 1, this.positionWorldSpace);
+    projectPoint(
+      this.viewMatrix,
+      this.positionWorldSpace,
+      this.positionWorldSpace
     );
+    // vec4.mulScalar(this.positionWorldSpace, -1, this.positionWorldSpace);
+
+    this.updateShownStats();
   }
 
   private applyMovement(deltaTime: number, input: Input) {
@@ -79,6 +82,21 @@ export class Camera {
       this._angles[ANGLE_UP_DOWN],
       -safePI,
       safePI
+    );
+  }
+
+  private updateShownStats() {
+    const fmt = (x: number) => x.toFixed(1);
+    const wx = -this.positionWorldSpace[0];
+    const wy = -this.positionWorldSpace[1];
+    const wz = -this.positionWorldSpace[2];
+    const p = this._position;
+    const r = this._angles;
+    STATS.update('Camera pos WS', `[${fmt(wx)}, ${fmt(wy)}, ${fmt(wz)}]`);
+    STATS.update('Camera pos LS', `[${fmt(p[0])}, ${fmt(p[1])}, ${fmt(p[2])}]`);
+    STATS.update(
+      'Camera rot',
+      `[${fmt(r[ANGLE_LEFT_RIGHT])}, ${fmt(r[ANGLE_UP_DOWN])}]`
     );
   }
 

@@ -54,6 +54,9 @@ export class NaniteVisibilityPass {
       naniteObject.meshletCount,
       SHADER_PARAMS.workgroupSizeX
     );
+    // TODO no, if you don't have enough space in only y, the use combination of y and z.
+    //      this way you don't have to iter inside the shader
+    // dispatchWorkgroups(workgroupsCntX, Math.ceil(naniteObject.instancesCount % (2 << 15)), Math.ceil(naniteObject.instancesCount / (2 << 15)));
     const workgroupsCntY = Math.min(
       naniteObject.instancesCount,
       SHADER_PARAMS.maxWorkgroupsY

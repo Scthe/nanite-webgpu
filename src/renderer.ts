@@ -102,6 +102,7 @@ export class Renderer {
       vpMatrix,
       projMatrix: this.projectionMat,
       cameraFrustum: this.cameraFrustum,
+      cameraPositionWorldSpace: this.cameraCtrl.positionWorldSpace,
       depthTexture: this.depthTextureView,
       globalUniforms: this.renderUniformBuffer,
     };

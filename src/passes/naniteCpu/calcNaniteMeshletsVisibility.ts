@@ -1,4 +1,4 @@
-import { Mat4, Vec3, vec4 } from 'wgpu-matrix';
+import { Mat4, Vec3, vec3, vec4 } from 'wgpu-matrix';
 import { PassCtx } from '../passCtx.ts';
 import {
   BoundingSphere,
@@ -20,7 +20,7 @@ import { Frustum } from '../../utils/frustum.ts';
  * 'check-children' - children have more appropriate LOD
  */
 export enum NaniteVisibilityStatus {
-  HIDDEN,
+  HIDDEN, // TODO is the used? swap to bool
   RENDERED,
   CHECK_CHILDREN,
 }
@@ -30,12 +30,13 @@ export function calcNaniteMeshletsVisibility(
   cotHalfFov: number,
   modelMat: Mat4,
   naniteObject: NaniteObject
-): number {
+): [number, number] {
   const root = naniteObject.root;
   // check: entire instance is visible
   // TODO is root.boundingSphere.r based on LOD6 (coarse)? or on the full-res model? Should be on full-res model, as LOD6 may remove vertices. TBH do not use root here, but naniteObj.boundingBox
-  if (!checkIsInsideFrustum(ctx.cameraFrustum, root, modelMat)) {
-    return 0;
+  // TODO frustum cull per-meshlet here too
+  if (!checkIsInsideFrustum(ctx.cameraFrustum, modelMat, root)) {
+    return [0, 0];
   }
 
   const meshletsToCheck = [root];
@@ -47,12 +48,18 @@ export function calcNaniteMeshletsVisibility(
     visibilityBuffer,
     modelMat
   );
+  let culledCount = 0;
 
   while (meshletsToCheck.length > 0) {
     // depth-first seems better as it has shorter avg $meshletsToCheck length.
     // const meshlet = meshletsToCheck.shift()!; // remove 1st from queue - breadth first
     const meshlet = meshletsToCheck.pop()!; // remove last from queue - depth first
     visibilityBuffer.setVisited(meshlet.id);
+
+    if (checkIsBackface(ctx, modelMat, meshlet)) {
+      culledCount += 1;
+      continue;
+    }
 
     const status = getVisibilityStatus(getProjectedError, meshlet);
 
@@ -72,29 +79,57 @@ export function calcNaniteMeshletsVisibility(
   }
 
   // console.log({ visitedMeshlets }); // debug how far the tree we went
-  return visibilityBuffer.drawnMesletsCount;
+  return [visibilityBuffer.drawnMeshletsCount, culledCount]; // TODO remove allocation
 }
 
 const TMP_CACHED_VEC4 = vec4.create();
 
 function checkIsInsideFrustum(
   frustum: Frustum,
-  meshlet: NaniteMeshletTreeNode,
-  modelMat: Mat4
+  modelMat: Mat4,
+  meshlet: NaniteMeshletTreeNode
 ): boolean {
   if (!CONFIG.nanite.render.useFrustumCulling) return true;
 
-  TMP_CACHED_VEC4[0] = meshlet.bounds.center[0];
-  TMP_CACHED_VEC4[1] = meshlet.bounds.center[1];
-  TMP_CACHED_VEC4[2] = meshlet.bounds.center[2];
+  TMP_CACHED_VEC4[0] = meshlet.sharedSiblingsBounds.center[0];
+  TMP_CACHED_VEC4[1] = meshlet.sharedSiblingsBounds.center[1];
+  TMP_CACHED_VEC4[2] = meshlet.sharedSiblingsBounds.center[2];
   TMP_CACHED_VEC4[3] = 1;
   const sphereWorldSpace = projectPoint(
     modelMat,
     TMP_CACHED_VEC4,
     TMP_CACHED_VEC4
   );
-  sphereWorldSpace[3] = meshlet.bounds.radius;
+  sphereWorldSpace[3] = meshlet.sharedSiblingsBounds.radius;
   return frustum.isInside(sphereWorldSpace);
+}
+
+/** WARNING: NOT FINISHED! SEE NOTE IN `src/constants.ts` for reasons and remaining scope. */
+function checkIsBackface(
+  ctx: PassCtx,
+  _modelMat: Mat4,
+  meshlet: NaniteMeshletTreeNode
+) {
+  const bounds = meshlet.ownBounds;
+  if (!CONFIG.nanite.render.useSoftwareBackfaceCull || !bounds) return false;
+
+  const negate = (v: Vec3, i: number) => {
+    v[i] = -v[i];
+  };
+  const cam = ctx.cameraPositionWorldSpace;
+  negate(cam, 0); // see camera.ts for similar ops
+  negate(cam, 1);
+  negate(cam, 2);
+
+  // TODO world space position? Or bring camera into model space pos? invModelMatrix * cameraPos
+  const cam2MeshletDir = vec3.normalize([
+    bounds.coneApex[0] - cam[0],
+    bounds.coneApex[1] - cam[1],
+    bounds.coneApex[2] - cam[2],
+  ]);
+
+  const angle = vec3.dot(cam2MeshletDir, bounds.coneApex);
+  return angle >= bounds.coneCutoff;
 }
 
 /**
@@ -116,7 +151,7 @@ export function getVisibilityStatus(
   meshlet: NaniteMeshletTreeNode
 ): NaniteVisibilityStatus {
   // prettier-ignore
-  const clusterError = getProjectedError(meshlet.bounds, meshlet.maxSiblingsError);
+  const clusterError = getProjectedError(meshlet.sharedSiblingsBounds, meshlet.maxSiblingsError);
   // prettier-ignore
   const parentError = getProjectedError(meshlet.parentBounds, meshlet.parentError);
 

@@ -106,4 +106,15 @@ declare namespace meshoptimizer {
     max_vertices: SizeT, // size_t max_vertices,
     max_triangles: SizeT // size_t max_triangles,
   ): SizeT;
+
+  /** https://github.com/zeux/meshoptimizer/blob/5bc5ed0b6f64d20f29342da9acaa27648fb45500/src/clusterizer.cpp#L865 */
+  export function meshopt_computeMeshletBounds(
+    returnValue_meshopt_Bounds: F32Ptr, // return value is put on heap. Bytes: sizeof(meshopt_Bounds)
+    meshlet_vertices: U32Ptr, // unsigned int* meshlet_vertices,
+    meshlet_triangles: U8Ptr, // unsigned char* meshlet_triangles,
+    triangle_count: SizeT, // size_t triangle_count,
+    vertex_positions: F32Ptr, // const float* vertex_positions,
+    vertex_count: SizeT, // size_t vertex_count,
+    vertex_positions_stride: SizeT // size_t vertex_positions_stride
+  ): SizeT;
 }

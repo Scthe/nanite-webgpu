@@ -115,17 +115,19 @@ export class DrawNanitesPass {
     let drawnTriangleCount = 0;
     let drawnMeshletsCount = 0;
     let culledInstances = 0;
+    let backfaceCulledMeshletsCount = 0;
     const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
     for (let instanceIdx = 0; instanceIdx < instances.length; instanceIdx++) {
       const instanceModelMat = instances[instanceIdx];
-      const toDrawCount = calcNaniteMeshletsVisibility(
+      const [toDrawCount, backfaceCulledCount] = calcNaniteMeshletsVisibility(
         ctx,
         cotHalfFov,
         instanceModelMat,
         naniteObject
       );
       drawnMeshletsCount += toDrawCount;
+      backfaceCulledMeshletsCount += backfaceCulledCount;
       if (toDrawCount === 0) {
         culledInstances += 1;
         continue;
@@ -150,7 +152,8 @@ export class DrawNanitesPass {
       naniteObject,
       drawnMeshletsCount,
       drawnTriangleCount,
-      culledInstances
+      culledInstances,
+      backfaceCulledMeshletsCount
     );
   }
 
@@ -179,7 +182,8 @@ export class DrawNanitesPass {
     naniteObject: NaniteObject | undefined,
     drawnMeshletsCount: number | undefined,
     drawnTriangleCount: number | undefined,
-    culledInstances: number | undefined
+    culledInstances: number | undefined,
+    backfaceCulledMeshletsCount?: number
   ) {
     if (!naniteObject) {
       STATS.update('Nanite meshlets', '-');
@@ -188,9 +192,10 @@ export class DrawNanitesPass {
     }
 
     const rawStats = getPreNaniteStats(naniteObject);
-    const fmt = (drawn: number, total: number) => {
+
+    const fmt = (drawn: number, total: number, decimals = 1) => {
       const percent = ((drawn / total) * 100.0) / naniteObject.instancesCount;
-      return `${formatNumber(drawn, 1)} (${percent.toFixed(1)}%)`;
+      return `${formatNumber(drawn, decimals)} (${percent.toFixed(1)}%)`;
     };
 
     if (drawnMeshletsCount !== undefined) {
@@ -201,6 +206,9 @@ export class DrawNanitesPass {
     }
     if (culledInstances !== undefined) {
       STATS.update('Culled instances', fmt(culledInstances, 1)); // prettier-ignore
+    }
+    if (backfaceCulledMeshletsCount !== undefined) {
+      STATS.update('Backface meshlets', fmt(backfaceCulledMeshletsCount, rawStats.meshletCount, 0)); // prettier-ignore
     }
   }
 }

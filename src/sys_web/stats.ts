@@ -16,7 +16,8 @@ type StatOpts = {
 const AvailableStats = {
   fps: { hideLabel: true } as StatOpts,
   ms: { hideLabel: true } as StatOpts,
-  'Camera pos': {} as StatOpts,
+  'Camera pos WS': {} as StatOpts,
+  'Camera pos LS': {} as StatOpts,
   'Camera rot': {} as StatOpts,
   // memory
   s0: { categoryName: 'Memory' } as StatOpts,
@@ -33,6 +34,7 @@ const AvailableStats = {
   'Nanite meshlets': {} as StatOpts,
   'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
   'Culled instances': { visibilityDevice: 'cpu' } as StatOpts,
+  'Backface meshlets': { visibilityDevice: 'cpu' } as StatOpts,
   'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;

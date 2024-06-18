@@ -158,7 +158,7 @@ export function createMeshlets_TESTS(
       id: idx,
       maxSiblingsError: 0.001,
       parentError: 0.002,
-      bounds: { center, radius: 1 },
+      sharedSiblingsBounds: { center, radius: 1 },
       parentBounds: { center, radius: 1 },
       // ignore fields below:
       boundaryEdges: [],

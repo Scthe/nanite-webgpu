@@ -15,6 +15,7 @@ import { SceneName } from './scene/sceneFiles.ts';
 
 const SCENE_FILE: SceneName = 'bunnyRow';
 // const SCENE_FILE: SceneName = 'singleBunny';
+// const SCENE_FILE: SceneName = 'planeSubdiv';
 // const SCENE_FILE: SceneName = 'lucy';
 // const SCENE_FILE: SceneName = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
 // const SCENE_FILE: SceneName = 'displacedPlane';

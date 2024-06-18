@@ -6,6 +6,7 @@ export const OBJECTS = {
   dragon: { file: 'xyzrgb_dragon.obj', scale: 1 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1 },
+  planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },
   displacedPlane: {
     file: 'displaced-plane.obj',
     scale: 0.2,
@@ -25,6 +26,7 @@ export const SCENES = {
   dragon: [sceneModel('dragon', 1, 1)],
   cube: [sceneModel('cube')],
   plane: [sceneModel('plane', 1, 1)],
+  planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
   displacedPlane: [sceneModel('displacedPlane', 1, 1)],
 };
 

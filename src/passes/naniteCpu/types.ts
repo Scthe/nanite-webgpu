@@ -11,7 +11,7 @@ import type {
 export class NaniteVisibilityBufferCPU {
   public visitedMeshlets: boolean[] = [];
   public drawnMeshlets: NaniteMeshletTreeNode[] = [];
-  public drawnMesletsCount = 0;
+  public drawnMeshletsCount = 0;
   public mvpMatrix: Mat4 = mat4.identity();
 
   initialize(meshletCount: number) {
@@ -24,7 +24,7 @@ export class NaniteVisibilityBufferCPU {
     for (let i = 0; i < this.visitedMeshlets.length; i++) {
       this.visitedMeshlets[i] = false;
     }
-    this.drawnMesletsCount = 0;
+    this.drawnMeshletsCount = 0;
   }
 
   wasVisited = (id: MeshletId): boolean => this.visitedMeshlets[id];
@@ -33,7 +33,7 @@ export class NaniteVisibilityBufferCPU {
   };
 
   setDrawn = (m: NaniteMeshletTreeNode) => {
-    this.drawnMeshlets[this.drawnMesletsCount] = m;
-    this.drawnMesletsCount += 1;
+    this.drawnMeshlets[this.drawnMeshletsCount] = m;
+    this.drawnMeshletsCount += 1;
   };
 }

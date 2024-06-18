@@ -17,7 +17,8 @@ export type NaniteMeshletTreeNode = Pick<
   MeshletWIP,
   | 'id'
   | 'lodLevel'
-  | 'bounds'
+  | 'ownBounds'
+  | 'sharedSiblingsBounds'
   | 'maxSiblingsError'
   | 'parentBounds'
   | 'parentError'
@@ -165,9 +166,9 @@ export class NaniteObject {
     const dataAsF32 = new Float32Array(data);
     const dataAsU32 = new Uint32Array(data);
     this.allMeshlets.forEach((m) => {
-      dataAsF32[0] = m.bounds.center[0];
-      dataAsF32[1] = m.bounds.center[1];
-      dataAsF32[2] = m.bounds.center[2];
+      dataAsF32[0] = m.sharedSiblingsBounds.center[0];
+      dataAsF32[1] = m.sharedSiblingsBounds.center[1];
+      dataAsF32[2] = m.sharedSiblingsBounds.center[2];
       dataAsF32[3] = m.maxSiblingsError;
       dataAsF32[4] = m.parentBounds?.center[0] || 0.0;
       dataAsF32[5] = m.parentBounds?.center[1] || 0.0;
@@ -177,7 +178,7 @@ export class NaniteObject {
       dataAsU32[8] = m.triangleCount;
       dataAsU32[9] = m.firstIndexOffset;
       // f32
-      dataAsF32[10] = m.bounds.radius;
+      dataAsF32[10] = m.sharedSiblingsBounds.radius;
       // write
       device.queue.writeBuffer(
         this.meshletsBuffer,
@@ -200,13 +201,14 @@ export class NaniteObject {
     const node: NaniteMeshletTreeNode = {
       id: m.id,
       lodLevel: m.lodLevel,
-      bounds: m.bounds,
+      sharedSiblingsBounds: m.sharedSiblingsBounds,
       maxSiblingsError: m.maxSiblingsError,
       parentBounds: m.parentBounds,
       parentError: m.parentError,
       firstIndexOffset,
       triangleCount: getTriangleCount(m.indices),
       createdFrom: [], // filled once all nodes created in the tree
+      ownBounds: m.ownBounds,
     };
 
     this.allMeshlets.push(node);

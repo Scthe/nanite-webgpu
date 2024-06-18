@@ -10,7 +10,7 @@ export async function getMeshOptimizerModule() {
   const MeshOpt = await MeshOptModule({
     locateFile: (e: string) => e,
   });
-  const module: WasmModule = await MeshOpt.ready;
+  const module: WasmModule = MeshOpt;
   MESHOPTIMIZER_MODULE = module;
   return module;
 }

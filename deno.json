@@ -16,5 +16,6 @@
   },
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable", "deno.window"]
-  }
+  },
+  "exclude": ["_references/"]
 }
