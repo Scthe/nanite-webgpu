@@ -63,6 +63,7 @@ export const createMockPassCtx = (
     vpMatrix,
     viewMatrix: cameraCtrl.viewMatrix,
     projMatrix,
+    cameraPositionWorldSpace: cameraCtrl.positionWorldSpace,
     profiler: undefined,
     viewport,
     scene: undefined!,
@@ -165,6 +166,8 @@ export function createMeshlets_TESTS(
       createdFrom: [],
       indices: new Uint32Array([0, 1, 2]),
       lodLevel: 0,
+      // deno-lint-ignore no-explicit-any
+      ownBounds: {} as any,
       ...m,
     })
   );

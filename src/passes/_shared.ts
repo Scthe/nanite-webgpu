@@ -2,10 +2,17 @@ import { CONFIG, DEPTH_FORMAT } from '../constants.ts';
 
 type PassClass = { NAME: string };
 
+const createLabel = (pass: PassClass, name = '') =>
+  `${pass.NAME}${name ? '-' + name : ''}`;
+
 export const labelShader = (pass: PassClass) => `${pass.NAME}-shader`;
-export const labelPipeline = (pass: PassClass) => `${pass.NAME}-pipeline`;
+export const labelPipeline = (pass: PassClass, name = '') =>
+  `${createLabel(pass, name)}-pipeline`;
 export const labelUniformBindings = (pass: PassClass, name = '') =>
-  `${pass.NAME}-${name ? name + '-' : ''}uniforms`;
+  `${createLabel(pass, name)}-uniforms`;
+
+export const getClearColorVec3 = () =>
+  CONFIG.useAlternativeClearColor ? CONFIG.clearColorAlt : CONFIG.clearColor;
 
 export const PIPELINE_PRIMITIVE_TRIANGLE_LIST: GPUPrimitiveState = {
   cullMode: CONFIG.nanite.render.allowHardwareBackfaceCull ? 'back' : 'none',

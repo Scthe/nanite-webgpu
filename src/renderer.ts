@@ -119,7 +119,10 @@ export class Renderer {
     } else {
       if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
         const { naniteObject } = ctx.scene;
-        this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+
+        if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
+          this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+        }
         this.drawNaniteGPUPass.draw(ctx, naniteObject);
       } else {
         this.drawMeshPass.draw(ctx);

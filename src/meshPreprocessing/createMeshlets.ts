@@ -1,4 +1,4 @@
-import { vec3 } from 'wgpu-matrix';
+import { vec3, Vec3 } from 'wgpu-matrix';
 import { BYTES_F32, BYTES_U32, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { copyToTypedArray } from '../utils/index.ts';
 import { WasmModule } from '../utils/wasm-types.d.ts';
@@ -9,11 +9,12 @@ import {
   MeshData,
 } from './meshoptimizerUtils.ts';
 
+/** https://github.com/zeux/meshoptimizer/blob/master/src/meshoptimizer.h#L511 */
 export interface meshopt_Bounds {
-  center: vec3.Vec3; // float center[3];
+  center: Vec3; // float center[3];
   radius: number; // float radius;
-  coneApex: vec3.Vec3; // float cone_apex[3];
-  coneAxis: vec3.Vec3; // float cone_axis[3];
+  coneApex: Vec3; // float cone_apex[3];
+  coneAxis: Vec3; // float cone_axis[3];
   coneCutoff: number; // float cone_cutoff; /* = cos(angle/2) */
 }
 const MESHOPT_BOUNDS_BYTES =

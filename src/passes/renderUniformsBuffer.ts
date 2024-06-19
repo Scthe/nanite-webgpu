@@ -18,7 +18,7 @@ export class RenderUniformsBuffer {
       projMatrix: mat4x4<f32>,
       viewport: vec4f,
       cameraFrustumPlane0: vec4f, // TODO there are much more efficient ways for frustum culling
-      cameraFrustumPlane1: vec4f,
+      cameraFrustumPlane1: vec4f, // https://github.com/zeux/niagara/blob/master/src/shaders/drawcull.comp.glsl#L72
       cameraFrustumPlane2: vec4f,
       cameraFrustumPlane3: vec4f,
       cameraFrustumPlane4: vec4f,

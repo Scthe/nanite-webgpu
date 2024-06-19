@@ -17,7 +17,8 @@ export type SceneObjectName = keyof typeof OBJECTS;
 export const SCENES = {
   singleBunny: [sceneModel('bunny', 1, 1)],
   bunny: [sceneModel('bunny')],
-  bunnyRow: [sceneModel('bunny', 1 << 17, 1)],
+  // bunnyRow: [sceneModel('bunny', 1 << 17, 1)],
+  bunnyRow: [sceneModel('bunny', 32768, 1)],
   bunny1b: [sceneModel('bunny', 500, 500)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
   singleLucy: [sceneModel('lucy', 1, 1)],

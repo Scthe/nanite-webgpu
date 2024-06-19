@@ -1,9 +1,9 @@
-import { CONFIG } from '../../constants.ts';
 import {
   BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
   assignResourcesToBindings2,
+  getClearColorVec3,
   labelPipeline,
   labelShader,
   useColorAttachment,
@@ -62,7 +62,9 @@ export class DrawNaniteGPUPass {
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawNaniteGPUPass.NAME,
-      colorAttachments: [useColorAttachment(screenTexture, CONFIG.clearColor)],
+      colorAttachments: [
+        useColorAttachment(screenTexture, getClearColorVec3()),
+      ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(DrawNaniteGPUPass.NAME),
     });

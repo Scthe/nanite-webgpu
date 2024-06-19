@@ -13,7 +13,7 @@ var<storage, ${access}> _drawnMeshletIds: array<vec2<u32>>;
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
-  maxWorkgroupsY: 1 << 15, // Spec says limit is 65535 (2^16 - 1),
+  maxWorkgroupsY: 1 << 15, // Spec says limit is 65535 (2^16 - 1), so we use 32768
   maxMeshletTriangles: `${CONFIG.nanite.preprocess.meshletMaxTriangles}u`,
   bindings: {
     renderUniforms: 0,
@@ -26,6 +26,10 @@ export const SHADER_PARAMS = {
 
 ///////////////////////////
 /// SHADER CODE
+/// We dispatch X=meshletCount, YZ=instance count
+/// There is limit of 65535 and instance count can go over.
+/// Either split instance ID between YZ (variant 1) and have tons of empty workgroups.
+/// Or Z=1 and iterate in shader (variant 2).
 ///////////////////////////
 const c = SHADER_PARAMS;
 const b = SHADER_PARAMS.bindings;
@@ -55,61 +59,91 @@ var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 const PARENT_ERROR_INFINITY: f32 = 99990.0f;
 
 
+
+///////////////////////////
+/// SHADER VARIANT 1: use (global_id.y, global_id.z) to get the instance id
+///////////////////////////
+
 @compute
 @workgroup_size(${c.workgroupSizeX}, 1, 1)
-fn main(
+fn main_SpreadYZ(
   @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
   // set rest of the indirect draw params. Has to be first line in the shader in case we ooopsie and do early return by accident somewhere.
+  resetOtherDrawParams(global_id);
+
+  // get meshlet
+  let meshletIdx: u32 = global_id.x;
+  if (meshletIdx >= arrayLength(&_meshlets)) {
+    return;
+  }
+  let meshlet = _meshlets[meshletIdx];
+
+  // reconstruct instanceId
+  let tfxIdx: u32 = (global_id.z * ${c.maxWorkgroupsY}u) + global_id.y;
+  if (tfxIdx >= arrayLength(&_instanceTransforms)) {
+    return;
+  }
+  let modelMat = _instanceTransforms[tfxIdx];
+
+  var isVisible = getVisibilityStatus(modelMat, meshlet);
+  if (isVisible){
+    registerDraw(tfxIdx, meshletIdx);
+  }
+}
+
+
+///////////////////////////
+/// SHADER VARIANT 2: iterate inside shader
+///////////////////////////
+
+@compute
+@workgroup_size(${c.workgroupSizeX}, 1, 1)
+fn main_Iter(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+) {
+  // set rest of the indirect draw params. Has to be first line in the shader in case we ooopsie and do early return by accident somewhere.
+  resetOtherDrawParams(global_id);
+
+  // get meshlet
+  let meshletIdx: u32 = global_id.x;
+  if (meshletIdx >= arrayLength(&_meshlets)) {
+    return;
+  }
+  let meshlet = _meshlets[meshletIdx];
+
+  // prepare iters
+  let instanceCount: u32 = arrayLength(&_instanceTransforms);
+  let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
+  let tfxOffset: u32 = global_id.y * iterCount;
+  for(var i: u32 = 0u; i < iterCount; i++){
+    let tfxIdx: u32 = tfxOffset + i;
+    let modelMat = _instanceTransforms[tfxIdx];
+
+    var isVisible = getVisibilityStatus(modelMat, meshlet);
+    if (isVisible){
+      registerDraw(tfxIdx, meshletIdx);
+    }
+  } 
+}
+
+///////////////////////////
+/// UTILS
+///////////////////////////
+
+fn resetOtherDrawParams(global_id: vec3<u32>){
   if (global_id.x == 0u) {
     // We always draw 'MAX_MESHLET_TRIANGLES * VERTS_PER_TRIANGLE(3)' verts. Draw pass will discard if the meshlet has less.
     _drawIndirectResult.vertexCount = ${c.maxMeshletTriangles} * 3u;
     _drawIndirectResult.firstVertex = 0u;
     _drawIndirectResult.firstInstance = 0u;
   }
-  if (global_id.x >= arrayLength(&_meshlets)) {
-    return;
-  }
+}
 
-  let threshold = _uniforms.viewport.z;
-  let screenHeight = _uniforms.viewport.y;
-  let cotHalfFov = _uniforms.viewport.w;
-  let meshletIdx: u32 = global_id.x;
-  let meshlet = _meshlets[meshletIdx];
-  let instanceCount: u32 = arrayLength(&_instanceTransforms);
-  let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
-  let tfxOffset: u32 = global_id.y * iterCount;
-
-  for(var i: u32 = 0u; i < iterCount; i++){
-    let tfxIdx: u32 = tfxOffset + i;
-    let modelMat = _instanceTransforms[tfxIdx];
-    if (!isInsideCameraFrustum(modelMat, meshlet)) {
-      continue;
-    }
-    let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
-
-    // getVisibilityStatus
-    let clusterError = getProjectedError(
-      mvpMatrix,
-      screenHeight,
-      cotHalfFov,
-      meshlet.boundsMidPointAndError,
-    );
-    let parentError = getProjectedError(
-      mvpMatrix,
-      screenHeight,
-      cotHalfFov,
-      meshlet.parentBoundsMidPointAndError,
-    );
-
-    var isVisible = parentError > threshold && clusterError <= threshold;
-
-    if (isVisible){
-      // TODO Aggregate atomic writes. Though we don't do much iters usually, so..
-      let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
-      _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
-    }
-  }
+fn registerDraw(tfxIdx: u32, meshletIdx: u32){
+   // TODO Aggregate atomic writes. Use ballot like [Wihlidal 2015]: Optimizing the Graphics Pipeline with Compute
+   let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
+   _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
 }
 
 fn isInsideCameraFrustum(
@@ -131,6 +165,36 @@ fn isInsideCameraFrustum(
   let r4 = dot(center, _uniforms.cameraFrustumPlane4) <= r;
   let r5 = dot(center, _uniforms.cameraFrustumPlane5) <= r;
   return r0 && r1 && r2 && r3 && r4 && r5;
+}
+
+fn getVisibilityStatus (
+  modelMat: mat4x4<f32>,
+  meshlet: NaniteMeshletTreeNode
+) -> bool {
+  if (!isInsideCameraFrustum(modelMat, meshlet)) {
+    return false;
+  }
+
+  let threshold = _uniforms.viewport.z;
+  let screenHeight = _uniforms.viewport.y;
+  let cotHalfFov = _uniforms.viewport.w;
+  let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
+
+  // getVisibilityStatus
+  let clusterError = getProjectedError(
+    mvpMatrix,
+    screenHeight,
+    cotHalfFov,
+    meshlet.boundsMidPointAndError,
+  );
+  let parentError = getProjectedError(
+    mvpMatrix,
+    screenHeight,
+    cotHalfFov,
+    meshlet.parentBoundsMidPointAndError,
+  );
+
+  return parentError > threshold && clusterError <= threshold;
 }
 
 

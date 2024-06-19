@@ -36,7 +36,7 @@ export interface NaniteInstancesData {
 
 export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
 struct NaniteMeshletTreeNode {
-  boundsMidPointAndError: vec4f, // bounds.xyz + maxSiblingsError
+  boundsMidPointAndError: vec4f, // sharedSiblingsBounds.xyz + maxSiblingsError
   parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
   triangleCount: u32,
   firstIndexOffset: u32,

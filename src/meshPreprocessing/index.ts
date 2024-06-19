@@ -59,7 +59,7 @@ export interface MeshletWIP {
   /** Infinity for top tree level */
   parentError: number;
   /** Bounds (shared by all sibling meshlets). */
-  sharedSiblingsBounds: BoundingSphere; // TODO rename on GPU too
+  sharedSiblingsBounds: BoundingSphere;
   parentBounds: BoundingSphere | undefined; // undefined at top level
 }
 

@@ -37,6 +37,7 @@ export function initializeGUI(
 
   // bg
   addColorController(CONFIG, 'clearColor', 'Bg color');
+  gui.add(CONFIG, 'useAlternativeClearColor').name('Alt. bg');
 
   // profiler
   gui.add(dummyObject, 'profile').name('Profile');
@@ -65,7 +66,7 @@ export function initializeGUI(
         DrawNanitesPass.updateRenderStats(undefined, undefined, undefined, undefined);
       })
 
-    // profiler
+    // profiler TODO GPU only
     dir.add(dummyObject, 'getGpuDrawStats').name('Get GPU visibility stats');
 
     // pixelThreshold
@@ -75,9 +76,19 @@ export function initializeGUI(
 
     // culling
     dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
+    // TODO CPU only
     dir
       .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
       .name('SW backface cull');
+
+    // TODO GPU only
+    dir
+      .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
+      .name('Visib. algo ITER');
+    // TODO GPU only
+    dir
+      .add(CONFIG.nanite.render, 'freezeGPU_Visibilty')
+      .name('Freeze visibilty');
   }
 
   function addDbgFolder() {

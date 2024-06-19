@@ -44,7 +44,8 @@ export const CONFIG = {
   isTest: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   clearColor: [0.2, 0.2, 0.2],
-  // clearColor: [0.35, 0.35, 0.8], // if you need to check for holes TODO add to gui?
+  clearColorAlt: [0.35, 0.35, 0.8], // if you need to check for holes
+  useAlternativeClearColor: false,
   rotationSpeed: 1,
   movementSpeed: 3,
   movementSpeedFaster: 20,
@@ -83,6 +84,10 @@ export const CONFIG = {
        * - test on dense meshes. Probably works better then
        */
       useSoftwareBackfaceCull: false,
+      /** See visiblity pass shader to compare 2 implementations */
+      useVisibilityImpl_Iter: true,
+      /** Stop updating visbilit buffer (for debug) */
+      freezeGPU_Visibilty: false,
       /** Next frame will do an expensive GPU->CPU readback to check GPU visibility buffer */
       nextFrameDebugVisiblityBuffer: false,
     },
