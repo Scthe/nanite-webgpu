@@ -73,6 +73,13 @@ export function getClassName(a: object) {
   return (a as any).constructor.name;
 }
 
+// deno-lint-ignore no-explicit-any
+export function getTypeName(a: any) {
+  if (Array.isArray(a)) return 'Array';
+  if (typeof a === 'object') return getClassName(a);
+  return typeof a;
+}
+
 export const createArray = (len: number) => Array(len).fill(0);
 
 type TypedArrayConstructor<T extends TypedArray> = new (len: number) => T;

@@ -76,6 +76,10 @@ export function initializeGUI(
 
     // culling
     dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
+    dir
+      .add(CONFIG.nanite.render, 'useOcclusionCulling')
+      .name('Occlusion culling');
+
     // TODO CPU only
     dir
       .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
@@ -101,6 +105,7 @@ export function initializeGUI(
       { label: 'DBG: lod', value: 'dbg-lod' },
       { label: 'DBG: lod meshlets', value: 'dbg-lod-meshlets' },
       { label: 'DBG: nanite meshlets', value: 'dbg-nanite-meshlets' },
+      { label: 'DBG: depth pyramid', value: 'dbg-depth-pyramid' },
     ]);
     const modeCtrl = dir
       .add(modeDummy, 'displayMode', modeDummy.values)
@@ -124,9 +129,20 @@ export function initializeGUI(
       maxLod,
       ['dbg-nanite-meshlets']
     );
+
+    const MAX_DEPTH_PYRAMID_LEVEL = 15;
+    const depthPyramidLevelToggle = addLODController(
+      dir,
+      'dbgDepthPyramidLevel',
+      'Pyramid level',
+      MAX_DEPTH_PYRAMID_LEVEL,
+      ['dbg-depth-pyramid']
+    );
+
     modeCtrl.onFinishChange(() => {
       toggleLodCtrl();
       naniteLodToggle();
+      depthPyramidLevelToggle();
     });
 
     // camera reset

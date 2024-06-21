@@ -36,7 +36,8 @@ export type DisplayMode =
   | 'nanite'
   | 'dbg-lod'
   | 'dbg-lod-meshlets'
-  | 'dbg-nanite-meshlets';
+  | 'dbg-nanite-meshlets'
+  | 'dbg-depth-pyramid';
 export type CalcVisibilityDevice = 'cpu' | 'gpu';
 
 export const CONFIG = {
@@ -51,6 +52,7 @@ export const CONFIG = {
   movementSpeedFaster: 20,
   displayMode: 'nanite' as DisplayMode,
   dbgMeshoptimizerLodLevel: 0,
+  dbgDepthPyramidLevel: 0,
   dbgNaniteLodLevel: 1,
   nanite: {
     preprocess: {
@@ -84,6 +86,7 @@ export const CONFIG = {
        * - test on dense meshes. Probably works better then
        */
       useSoftwareBackfaceCull: false,
+      useOcclusionCulling: false,
       /** See visiblity pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */

@@ -2,7 +2,7 @@ import { CONFIG, DEPTH_FORMAT } from '../constants.ts';
 
 type PassClass = { NAME: string };
 
-const createLabel = (pass: PassClass, name = '') =>
+export const createLabel = (pass: PassClass, name = '') =>
   `${pass.NAME}${name ? '-' + name : ''}`;
 
 export const labelShader = (pass: PassClass) => `${pass.NAME}-shader`;
@@ -70,7 +70,7 @@ export const useDepthStencilAttachment = (
 });
 
 export class BindingsCache {
-  private readonly cache: Record<string, GPUBindGroup | undefined> = {};
+  private cache: Record<string, GPUBindGroup | undefined> = {};
 
   getBindings(key: string, factory: () => GPUBindGroup): GPUBindGroup {
     const cachedVal = this.cache[key];
@@ -81,5 +81,12 @@ export class BindingsCache {
     const val = factory();
     this.cache[key] = val;
     return val;
+  }
+
+  clear() {
+    // Object.values(this.cache).forEach((bg) => {
+    // bg?.destroy(); // no such fn?
+    // });
+    this.cache = {};
   }
 }

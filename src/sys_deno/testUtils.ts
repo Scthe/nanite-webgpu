@@ -12,7 +12,7 @@ import { PassCtx } from '../passes/passCtx.ts';
 import { Camera } from '../camera.ts';
 import { mat4 } from 'wgpu-matrix';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
-import { CONFIG } from '../constants.ts';
+import { BYTES_F32, CONFIG } from '../constants.ts';
 import { Frustum } from '../utils/frustum.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
@@ -46,6 +46,13 @@ export const createMockPassCtx = (
     width: 800,
     height: 600,
   };
+  const dummyPyramidTexture = device.createTexture({
+    label: 'dummy-pyramid-texture',
+    dimension: '2d',
+    size: [viewport.width, viewport.height, 1],
+    format: 'r8unorm',
+    usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+  });
 
   const cameraCtrl = new Camera();
   const projMatrix = createCameraProjectionMat(viewport);
@@ -70,6 +77,7 @@ export const createMockPassCtx = (
     depthTexture: undefined!,
     screenTexture: undefined!,
     globalUniforms: undefined!,
+    prevFrameDepthPyramidTexture: dummyPyramidTexture.createView(),
     cameraFrustum,
   };
 };
@@ -84,7 +92,7 @@ export const assertSameArray = (
     `Different array length: ${actual.length} vs ${expected.length}`
   );
   const actualAsArr: number[] = [];
-  actual.forEach((e) => actualAsArr.push(e));
+  actual.forEach((e) => actualAsArr.push(e)); // Uint32Array | Float32Array -> number[]
   assertEquals(actualAsArr, expected);
 };
 
@@ -101,6 +109,100 @@ export function printTypedArray(
     `${preffix}${typeName}(len=${arr.length}, bytes=${arr.byteLength})`,
     data
   );
+}
+
+/** When reading data from texture to buffer, we need to provide alignments */
+export function getPaddedBytesPerRow(width: number, bytesPerPixel: number) {
+  const unpaddedBytesPerRow = width * bytesPerPixel;
+  const align = 256; // COPY_BYTES_PER_ROW_ALIGNMENT
+  const paddedBytesPerRowPadding =
+    (align - (unpaddedBytesPerRow % align)) % align;
+  return unpaddedBytesPerRow + paddedBytesPerRowPadding;
+}
+
+/** https://github.com/chirsz-ever/deno/blob/2cf21a4aea99ed8cb7530e43c8d68b9c4a84ea3e/tests/unit/webgpu_test.ts#L182 */
+export function createTextureReadbackBuffer(
+  device: GPUDevice,
+  dims: {
+    width: number;
+    height: number;
+    bytesPerPixel: number;
+  }
+) {
+  const paddedBytesPerRow = getPaddedBytesPerRow(
+    dims.width,
+    dims.bytesPerPixel
+  );
+  return device.createBuffer({
+    label: 'test-readback',
+    size: dims.height * paddedBytesPerRow,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+}
+
+/** https://github.com/chirsz-ever/deno/blob/2cf21a4aea99ed8cb7530e43c8d68b9c4a84ea3e/tests/unit/webgpu_test.ts#L182 */
+export function createTextureReadbackBuffer2(
+  device: GPUDevice,
+  texture: GPUTexture,
+  bytesPerPixel: number
+) {
+  return createTextureReadbackBuffer(device, {
+    width: texture.width,
+    height: texture.height,
+    bytesPerPixel,
+  });
+}
+
+export function cmdCopyTextureToBuffer(
+  cmdBuf: GPUCommandEncoder,
+  texture: GPUTexture,
+  bytesPerPixel: number,
+  buffer: GPUBuffer,
+  mipLevel?: {
+    miplevel: number;
+    width: number;
+    height: number;
+  }
+) {
+  const width = mipLevel?.width || texture.width;
+  const height = mipLevel?.height || texture.height;
+
+  const paddedBytesPerRow = getPaddedBytesPerRow(width, bytesPerPixel);
+  cmdBuf.copyTextureToBuffer(
+    { texture, mipLevel: mipLevel?.miplevel },
+    {
+      buffer,
+      bytesPerRow: paddedBytesPerRow,
+      rowsPerImage: height,
+    },
+    { width, height }
+  );
+}
+
+export function parseTextureBufferF32(
+  width: number,
+  height: number,
+  resultData: Float32Array
+): number[][] {
+  const result: number[][] = [];
+  const paddedBytesPerRow = getPaddedBytesPerRow(width, BYTES_F32);
+
+  for (let row = 0; row < width; row++) {
+    const offset = (paddedBytesPerRow * row) / BYTES_F32;
+    // let s = '';
+    const rowData: number[] = [];
+    result.push(rowData);
+    for (let col = 0; col < height; col++) {
+      const valAsF32 = resultData[offset + col];
+      const valAsU8 = Math.floor(valAsF32 * 256);
+      // console.log(`[${x},${y}]`, );
+      // s += Math.floor(valAsF32 * 256) + '   ';
+      rowData.push(valAsU8);
+    }
+    // console.log(s);
+  }
+
+  return result;
 }
 
 ///////////////

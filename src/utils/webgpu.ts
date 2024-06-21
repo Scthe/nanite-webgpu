@@ -1,5 +1,5 @@
 import { Mat4 } from 'wgpu-matrix';
-import { ensureTypedArray } from './index.ts';
+import { ensureTypedArray, getClassName, getTypeName } from './index.ts';
 import { BYTES_U32, CONFIG } from '../constants.ts';
 
 export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
@@ -24,7 +24,7 @@ export async function createGpuDevice() {
     }
 
     const canTimestamp = adapter.features.has('timestamp-query');
-    const requiredFeatures: GPUFeatureName[] = [];
+    const requiredFeatures: GPUFeatureName[] = ['float32-filterable'];
     if (canTimestamp) {
       requiredFeatures.push('timestamp-query');
     }
@@ -172,3 +172,17 @@ export async function downloadBuffer<T>(
     }
   }
 }
+
+// deno-lint-ignore no-explicit-any
+export const isGPUTextureView = (maybeTexView: any) =>
+  typeof maybeTexView === 'object' &&
+  getClassName(maybeTexView) === GPUTextureView.name;
+
+// deno-lint-ignore no-explicit-any
+export const assertIsGPUTextureView = (maybeTexView: any) => {
+  if (!isGPUTextureView(maybeTexView)) {
+    throw new Error(
+      `Expected ${GPUTextureView.name}, got ${getTypeName(maybeTexView)}`
+    );
+  }
+};
