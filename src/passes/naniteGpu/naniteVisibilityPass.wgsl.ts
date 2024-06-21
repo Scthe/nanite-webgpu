@@ -2,6 +2,7 @@ import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
 import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
 import { CONFIG } from '../../constants.ts';
+import { SNIPPET_OCCLUSION_CULLING } from './_snippetOcclusionCulling.wgsl.ts';
 
 export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
   bindingIdx: number,
@@ -21,6 +22,8 @@ export const SHADER_PARAMS = {
     drawnMeshletIds: 2,
     drawIndirectParams: 3,
     instancesTransforms: 4,
+    depthPyramidTexture: 5,
+    depthSampler: 6,
   },
 };
 
@@ -40,6 +43,14 @@ ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
 ${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
+${SNIPPET_OCCLUSION_CULLING}
+
+@group(0) @binding(${b.depthPyramidTexture})
+var _depthPyramidTexture: texture_2d<f32>;
+
+@group(0) @binding(${b.depthSampler})
+var _depthSampler: sampler;
+
 
 /** arg for https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder/drawIndirect */
 struct DrawIndirect{
@@ -151,27 +162,32 @@ fn isInsideCameraFrustum(
   meshlet: NaniteMeshletTreeNode
 ) -> bool {
   // check GUI flag
-  if ((_uniforms.flags & 1) == 0){
+  if (!useFrustumCulling()){
     return true;
   }
 
-  var center = vec4f(meshlet.boundsMidPointAndError.xyz, 1.);
+  var center = vec4f(meshlet.ownBoundingSphere.xyz, 1.);
   center = modelMat * center;
-  let r = meshlet.boundingSphereRadius;
+  let r = meshlet.ownBoundingSphere.w;
   let r0 = dot(center, _uniforms.cameraFrustumPlane0) <= r;
   let r1 = dot(center, _uniforms.cameraFrustumPlane1) <= r;
   let r2 = dot(center, _uniforms.cameraFrustumPlane2) <= r;
-  let r3 = dot(center, _uniforms.cameraFrustumPlane3) <= r;
+  let r3 = dot(center, _uniforms.cameraFrustumPlane3) <= r; // plane down is wrong?
   let r4 = dot(center, _uniforms.cameraFrustumPlane4) <= r;
   let r5 = dot(center, _uniforms.cameraFrustumPlane5) <= r;
   return r0 && r1 && r2 && r3 && r4 && r5;
 }
+
 
 fn getVisibilityStatus (
   modelMat: mat4x4<f32>,
   meshlet: NaniteMeshletTreeNode
 ) -> bool {
   if (!isInsideCameraFrustum(modelMat, meshlet)) {
+    return false;
+  }
+
+  if (!isPassingOcclusionCulling(modelMat, meshlet)) {
     return false;
   }
 

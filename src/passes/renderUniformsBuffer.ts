@@ -30,6 +30,11 @@ export class RenderUniformsBuffer {
     };
     @binding(0) @group(${group})
     var<uniform> _uniforms: Uniforms;
+
+    fn checkFlag(bit: u32) -> bool { return (_uniforms.flags & bit) > 0; } // TODO do not load the flag every time? Get it once at the start of the shader
+    fn useFrustumCulling() -> bool { return checkFlag(1u); }
+    fn useOcclusionCulling() -> bool { return checkFlag(2u); }
+    fn getDbgPyramidMipmapLevel() -> i32 { return i32(clamp(_uniforms.flags >> 8u, 0u, 15u)); }
   `;
 
   public static BUFFER_SIZE =
@@ -84,10 +89,7 @@ export class RenderUniformsBuffer {
       offsetBytes = this.writeF32(offsetBytes, cameraFrustum.planes[i]);
     }
     // misc
-    offsetBytes = this.writeU32(
-      offsetBytes,
-      CONFIG.nanite.render.useFrustumCulling ? 1 : 0
-    );
+    offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
     // padding
     offsetBytes += 3 * BYTES_U32;
 
@@ -116,5 +118,22 @@ export class RenderUniformsBuffer {
     const offset = offsetBytes / BYTES_U32;
     this.dataAsU32[offset] = Math.floor(v);
     return offsetBytes + BYTES_U32;
+  }
+
+  private encodeFlags() {
+    const naniteCfg = CONFIG.nanite.render;
+
+    let flags = 0;
+    flags = flags | (naniteCfg.useFrustumCulling ? 1 : 0);
+
+    // skip occlusion culling if we don't have depth pyramid yet
+    const occlCull =
+      naniteCfg.hasValidDepthPyramid && naniteCfg.useOcclusionCulling;
+    flags = flags | (occlCull ? 2 : 0);
+
+    // dbgDepthPyramidLevel
+    const dpLevelBits = CONFIG.dbgDepthPyramidLevel & 0b1111;
+    flags = flags | (dpLevelBits << 8);
+    return flags;
   }
 }

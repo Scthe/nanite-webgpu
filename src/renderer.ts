@@ -17,6 +17,9 @@ import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts
 import { GpuProfiler } from './gpuProfiler.ts';
 import { Scene } from './scene/scene.ts';
 import { Frustum } from './utils/frustum.ts';
+import { assertIsGPUTextureView } from './utils/webgpu.ts';
+import { DepthPyramidPass } from './passes/depthPyramid/depthPyramidPass.ts';
+import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDebugDrawPass.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -26,11 +29,14 @@ export class Renderer {
   private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
   private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
   private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
+  private frameIdx = 0;
 
   // passes
   private readonly drawMeshPass: DrawNanitesPass;
   private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
+  private readonly depthPyramidPass: DepthPyramidPass;
+  private readonly depthPyramidDebugDrawPass: DepthPyramidDebugDrawPass;
   private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
   private readonly dbgMeshoptimizerMeshletsPass: DbgMeshoptimizerMeshletsPass;
 
@@ -48,6 +54,13 @@ export class Renderer {
       preferredCanvasFormat
     );
     this.naniteVisibilityPass = new NaniteVisibilityPass(device);
+    this.depthPyramidPass = new DepthPyramidPass(device);
+    this.depthPyramidDebugDrawPass = new DepthPyramidDebugDrawPass(
+      device,
+      preferredCanvasFormat
+    );
+
+    // geometry debug passes
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
       preferredCanvasFormat,
@@ -84,6 +97,8 @@ export class Renderer {
     viewport: Dimensions,
     screenTexture: GPUTextureView
   ) {
+    assertIsGPUTextureView(screenTexture);
+
     const viewMatrix = this.cameraCtrl.viewMatrix;
     const vpMatrix = getViewProjectionMatrix(
       viewMatrix,
@@ -91,7 +106,14 @@ export class Renderer {
       this._viewMatrix
     );
     this.cameraFrustum.update(vpMatrix);
+    const [_depthPyramidTex, _depthPyramidTexView] =
+      this.depthPyramidPass.verifyResultTexture(
+        this.device,
+        this.depthTexture,
+        this.depthTextureView
+      );
     const ctx: PassCtx = {
+      frameIdx: this.frameIdx,
       cmdBuf,
       viewport,
       scene,
@@ -104,6 +126,7 @@ export class Renderer {
       cameraFrustum: this.cameraFrustum,
       cameraPositionWorldSpace: this.cameraCtrl.positionWorldSpace,
       depthTexture: this.depthTextureView,
+      prevFrameDepthPyramidTexture: _depthPyramidTexView,
       globalUniforms: this.renderUniformBuffer,
     };
 
@@ -124,23 +147,49 @@ export class Renderer {
           this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
         }
         this.drawNaniteGPUPass.draw(ctx, naniteObject);
+
+        this.depthPyramidPass.cmdCreateDepthPyramid(
+          ctx,
+          this.depthTexture,
+          this.depthTextureView
+        );
+        CONFIG.nanite.render.hasValidDepthPyramid = true;
+
+        if (CONFIG.displayMode === 'dbg-depth-pyramid') {
+          this.depthPyramidDebugDrawPass.cmdDraw(ctx);
+        }
       } else {
         this.drawMeshPass.draw(ctx);
       }
     }
+
+    this.frameIdx += 1;
   }
 
   private recreateDepthDexture = (viewportSize: Dimensions) => {
+    CONFIG.nanite.render.hasValidDepthPyramid = false;
     if (this.depthTexture) {
       this.depthTexture.destroy();
     }
 
     this.depthTexture = this.device.createTexture({
-      label: 'depth-texture',
+      label: `depth-texture-${viewportSize.width}x${viewportSize.height}`,
       size: [viewportSize.width, viewportSize.height],
       format: DEPTH_FORMAT,
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
     });
     this.depthTextureView = this.depthTexture.createView();
+
+    // reset bindings that used depth texture
+    // TODO [LOW] this still has some issues. Add debounce to .onCanvasResize() and render to own color attachment. Then blit to canvas
+    this.depthPyramidDebugDrawPass.onDepthTextureResize();
+    this.naniteVisibilityPass.onDepthTextureResize();
+    this.depthPyramidPass.verifyResultTexture(
+      this.device,
+      this.depthTexture,
+      this.depthTextureView,
+      true
+    );
   };
 }

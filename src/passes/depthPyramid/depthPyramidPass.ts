@@ -21,7 +21,6 @@ interface PyramidLevel {
 
 const getMipSize = (d: number) => Math.floor(d / 2);
 
-// TODO clear before first use, cuz first frame is scuffed. Or disable test during 1st frame!
 export class DepthPyramidPass {
   public static NAME: string = DepthPyramidPass.name;
 
@@ -57,7 +56,8 @@ export class DepthPyramidPass {
   verifyResultTexture(
     device: GPUDevice,
     textureSrc: GPUTexture,
-    textureSrcView: GPUTextureView
+    textureSrcView: GPUTextureView,
+    forceRecreate: boolean = false
   ): [GPUTexture, GPUTextureView] {
     assertIsGPUTextureView(textureSrcView);
     const dstW = getMipSize(textureSrc.width);
@@ -68,17 +68,19 @@ export class DepthPyramidPass {
       this.resultTexture?.width === dstW &&
       this.resultTexture?.height === dstH &&
       this.pyramidLevels.length > 0 &&
-      this.resultTextureView != undefined
+      this.resultTextureView != undefined &&
+      !forceRecreate
     ) {
       return [this.resultTexture, this.resultTextureView];
     }
 
     // create a new texture
-    const mipLevelCount = Math.ceil(Math.log2(Math.min(dstW, dstH)));
-    console.log(`${DepthPyramidPass.NAME}: Create depth pyramid: ${dstW}x${dstH} with ${mipLevelCount} mip levels`); // prettier-ignore
     if (this.resultTexture) {
       this.resultTexture.destroy();
     }
+
+    const mipLevelCount = Math.ceil(Math.log2(Math.min(dstW, dstH)));
+    console.log(`${DepthPyramidPass.NAME}: Create depth pyramid: ${dstW}x${dstH} with ${mipLevelCount} mip levels`); // prettier-ignore
 
     this.resultTexture = device.createTexture({
       label: createLabel(DepthPyramidPass, `result-${dstW}-${dstH}`),

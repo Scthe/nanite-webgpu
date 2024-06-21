@@ -1,7 +1,7 @@
 const MAT4 = 'mat4x4<f32>';
 
 /** I always forget the order. */
-export const GET_MVP_MAT = `
+export const GET_MVP_MAT = /* wgsl */ `
 fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} {
   let a = viewMat * modelMat;
   return projMat * a;
@@ -9,7 +9,7 @@ fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} 
 `;
 
 /** Object-space lighting. */
-export const FS_FAKE_LIGHTING = `
+export const FS_FAKE_LIGHTING = /* wgsl */ `
 fn fakeLighting(wsPosition: vec4f) -> f32{
   let AMBIENT_LIGHT = 0.1;
   let LIGHT_DIR = vec3(5., 5., 5.);
@@ -24,7 +24,7 @@ fn fakeLighting(wsPosition: vec4f) -> f32{
 `;
 
 /** Get random color based on index. Same index == same color every frame. */
-export const GET_RANDOM_COLOR = `
+export const GET_RANDOM_COLOR = /* wgsl */ `
 const COLOR_COUNT = 14u;
 const COLORS = array<vec3f, COLOR_COUNT>(
     vec3f(1., 1., 1.),
@@ -54,5 +54,12 @@ fn getRandomColor(idx: u32) -> vec3f {
   }*/
 
   return COLORS[idx % COLOR_COUNT];
+}
+`;
+
+export const CLAMP_TO_MIP_LEVELS = /* wgsl */ `
+fn clampToMipLevels(v: i32, _texture: texture_2d<f32>) -> i32 {
+  let mipLevels = textureNumLevels(_texture);
+  return clamp(v, 0, i32(mipLevels - 1)); // 8 mip levels mean indices 0-7
 }
 `;

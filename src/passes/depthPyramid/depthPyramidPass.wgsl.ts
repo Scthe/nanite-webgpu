@@ -10,6 +10,7 @@ export const SHADER_PARAMS = {
 ///////////////////////////
 /// SHADER CODE
 /// Requires device feature 'float32-filterable'
+/// https://www.youtube.com/watch?v=YCteLdYdZWQ&list=PL0JVLUVCkk-l7CWCn3-cdftR0oajugYvd&index=14
 ///////////////////////////
 const c = SHADER_PARAMS;
 const b = SHADER_PARAMS.bindings;

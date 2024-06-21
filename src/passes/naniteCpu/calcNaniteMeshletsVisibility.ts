@@ -128,6 +128,8 @@ function checkIsBackface(
     bounds.coneApex[2] - cam[2],
   ]);
 
+  // TODO return dot(center - camera_position, cone_axis) >= cone_cutoff * length(center - camera_position) + radius;
+  //      https://github.com/zeux/niagara/blob/master/src/shaders/math.h
   const angle = vec3.dot(cam2MeshletDir, bounds.coneApex);
   return angle >= bounds.coneCutoff;
 }
@@ -167,7 +169,15 @@ export function getVisibilityStatus(
     : NaniteVisibilityStatus.CHECK_CHILDREN;
 }
 
-/** Projected error in pixels. https://stackoverflow.com/a/21649403 */
+/**
+ * Projected error in pixels (https://stackoverflow.com/a/21649403).
+ * From Federico Ponchio's "Multiresolution structures for interactive
+ * visualization of very large 3D datasets":
+ *
+ * > 3.6.1 Screen Space Error Saturation
+ * >
+ * > "We use the screen projection error E which is simply the projection of the model space error λ on screen"
+ */
 export function createErrorMetric(
   ctx: PassCtx,
   cotHalfFov: number,

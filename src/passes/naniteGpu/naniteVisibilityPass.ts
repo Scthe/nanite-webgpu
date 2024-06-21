@@ -1,8 +1,12 @@
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import { getItemsPerThread } from '../../utils/webgpu.ts';
+import {
+  assertIsGPUTextureView,
+  getItemsPerThread,
+} from '../../utils/webgpu.ts';
 import {
   BindingsCache,
   assignResourcesToBindings2,
+  createLabel,
   labelPipeline,
   labelShader,
 } from '../_shared.ts';
@@ -13,6 +17,8 @@ import { CONFIG } from '../../constants.ts';
 
 export class NaniteVisibilityPass {
   public static NAME: string = NaniteVisibilityPass.name;
+
+  private readonly depthSampler: GPUSampler; // TODO is this sampler really needed? Maybe use textureLoad() instead of textureSample?
 
   // shader variant 1
   private readonly pipeline_SpreadYZ: GPUComputePipeline;
@@ -38,6 +44,15 @@ export class NaniteVisibilityPass {
       shaderModule,
       'main_Iter'
     );
+
+    this.depthSampler = device.createSampler({
+      label: createLabel(NaniteVisibilityPass, 'depth-sampler'),
+      magFilter: 'nearest',
+      minFilter: 'nearest',
+      mipmapFilter: 'nearest',
+      addressModeU: 'clamp-to-edge',
+      addressModeV: 'clamp-to-edge',
+    });
   }
 
   private static createPipeline(
@@ -54,6 +69,11 @@ export class NaniteVisibilityPass {
       },
     });
   }
+
+  onDepthTextureResize = () => {
+    this.bindingsCache_SpreadYZ.clear();
+    this.bindingsCache_Iter.clear();
+  };
 
   cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler } = ctx;
@@ -152,11 +172,12 @@ export class NaniteVisibilityPass {
   }
 
   private createBindings = (
-    { device, globalUniforms }: PassCtx,
+    { device, globalUniforms, prevFrameDepthPyramidTexture }: PassCtx,
     pipeline: GPUComputePipeline,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
+    assertIsGPUTextureView(prevFrameDepthPyramidTexture);
 
     return assignResourcesToBindings2(
       NaniteVisibilityPass,
@@ -169,6 +190,11 @@ export class NaniteVisibilityPass {
         naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
         naniteObject.bufferBindingIndirectDrawParams(b.drawIndirectParams),
         naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
+        {
+          binding: b.depthPyramidTexture,
+          resource: prevFrameDepthPyramidTexture,
+        },
+        { binding: b.depthSampler, resource: this.depthSampler },
       ]
     );
   };

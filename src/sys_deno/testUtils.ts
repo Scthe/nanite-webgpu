@@ -65,6 +65,7 @@ export const createMockPassCtx = (
   cameraFrustum.update(vpMatrix);
 
   return {
+    frameIdx: 0,
     device,
     cmdBuf,
     vpMatrix,

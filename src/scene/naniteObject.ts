@@ -38,15 +38,16 @@ export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
 struct NaniteMeshletTreeNode {
   boundsMidPointAndError: vec4f, // sharedSiblingsBounds.xyz + maxSiblingsError
   parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
+  ownBoundingSphere: vec4f, // ownBounds
   triangleCount: u32,
   firstIndexOffset: u32,
-  boundingSphereRadius: f32,
   padding0: u32, // required to fill uvec4
+  padding1: u32, // required to fill uvec4
 }
 @group(0) @binding(${bindingIdx})
 var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
 `;
-export const GPU_MESHLET_SIZE_BYTES = 2 * BYTES_VEC4 + BYTES_UVEC4;
+export const GPU_MESHLET_SIZE_BYTES = 3 * BYTES_VEC4 + BYTES_UVEC4;
 
 export const BOTTOM_LEVEL_NODE = 0;
 
@@ -174,11 +175,15 @@ export class NaniteObject {
       dataAsF32[5] = m.parentBounds?.center[1] || 0.0;
       dataAsF32[6] = m.parentBounds?.center[2] || 0.0;
       dataAsF32[7] = m.parentError === Infinity ? 9999999.0 : m.parentError;
+      // own bounds
+      dataAsF32[8] = m.ownBounds?.center?.[0] || m.sharedSiblingsBounds.center[0]; // prettier-ignore
+      dataAsF32[9] = m.ownBounds?.center?.[1] || m.sharedSiblingsBounds.center[1]; // prettier-ignore
+      dataAsF32[10] = m.ownBounds?.center?.[2] || m.sharedSiblingsBounds.center[2]; // prettier-ignore
+      dataAsF32[11] = m.ownBounds?.radius || m.sharedSiblingsBounds.radius;
       // u32's:
-      dataAsU32[8] = m.triangleCount;
-      dataAsU32[9] = m.firstIndexOffset;
-      // f32
-      dataAsF32[10] = m.sharedSiblingsBounds.radius;
+      dataAsU32[12] = m.triangleCount;
+      dataAsU32[13] = m.firstIndexOffset;
+
       // write
       device.queue.writeBuffer(
         this.meshletsBuffer,

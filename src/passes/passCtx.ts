@@ -6,6 +6,7 @@ import { RenderUniformsBuffer } from './renderUniformsBuffer.ts';
 import { Frustum } from '../utils/frustum.ts';
 
 export interface PassCtx {
+  frameIdx: number;
   device: GPUDevice;
   cmdBuf: GPUCommandEncoder;
   vpMatrix: Mat4;
@@ -17,6 +18,7 @@ export interface PassCtx {
   viewport: Dimensions;
   scene: Scene;
   depthTexture: GPUTextureView;
+  prevFrameDepthPyramidTexture: GPUTextureView;
   screenTexture: GPUTextureView;
   globalUniforms: RenderUniformsBuffer;
 }

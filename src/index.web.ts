@@ -13,8 +13,8 @@ import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 import { FileTextReader, Scene, loadScene } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 
-const SCENE_FILE: SceneName = 'bunnyRow';
-// const SCENE_FILE: SceneName = 'bunny1b';
+// const SCENE_FILE: SceneName = 'bunnyRow';
+const SCENE_FILE: SceneName = 'bunny1b';
 // const SCENE_FILE: SceneName = 'planeSubdiv';
 // const SCENE_FILE: SceneName = 'lucy';
 // const SCENE_FILE: SceneName = 'dragon'; // crashes WebAssembly cuz WebAssembly is..

@@ -6,6 +6,9 @@
  * https://webgpu.github.io/webgpu-samples/?sample=cameras
  */
 
+import { CONFIG } from '../constants.ts';
+import { setDisplayMode } from './gui.ts';
+
 const Key = {
   CAMERA_FORWARD: 'w',
   CAMERA_BACK: 's',
@@ -14,6 +17,7 @@ const Key = {
   CAMERA_UP: ' ',
   CAMERA_DOWN: 'z',
   CAMERA_GO_FASTER: 'shift',
+  DEBUG_DEPTH: 'e',
 };
 
 // Input holds as snapshot of input state
@@ -102,6 +106,19 @@ export function createInputHandler(
         e.preventDefault();
         e.stopPropagation();
         break;
+      case Key.DEBUG_DEPTH: {
+        if (!value) {
+          // on 'up' event - toggle depth preview
+          setDisplayMode?.(
+            CONFIG.displayMode === 'dbg-depth-pyramid'
+              ? 'nanite'
+              : 'dbg-depth-pyramid'
+          );
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        break;
+      }
     }
   };
 

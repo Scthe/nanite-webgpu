@@ -10,6 +10,9 @@ import { showHtmlEl } from '../utils/index.ts';
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
+export let setDisplayMode: undefined | ((e: DisplayMode) => unknown) =
+  undefined;
+
 export function initializeGUI(
   profiler: GpuProfiler,
   scene: Scene,
@@ -110,6 +113,11 @@ export function initializeGUI(
     const modeCtrl = dir
       .add(modeDummy, 'displayMode', modeDummy.values)
       .name('Display mode');
+    setDisplayMode = (e) => {
+      CONFIG.displayMode = e;
+      // deno-lint-ignore no-explicit-any
+      (modeCtrl as any).__onFinishChange();
+    };
 
     let maxLod = scene.debugMeshes.meshoptimizerLODs.length - 1;
     const toggleLodCtrl = addLODController(

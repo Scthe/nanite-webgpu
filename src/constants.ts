@@ -86,7 +86,9 @@ export const CONFIG = {
        * - test on dense meshes. Probably works better then
        */
       useSoftwareBackfaceCull: false,
-      useOcclusionCulling: false,
+      useOcclusionCulling: true,
+      /** Need 1st render first! */
+      hasValidDepthPyramid: false,
       /** See visiblity pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */
