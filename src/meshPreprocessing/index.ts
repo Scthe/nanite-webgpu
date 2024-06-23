@@ -1,8 +1,9 @@
-import { CONFIG } from '../constants.ts';
+import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletId } from '../scene/naniteObject.ts';
 import {
   BoundingSphere,
   calcBoundingSphere,
+  clamp,
   pluckVertices,
 } from '../utils/index.ts';
 import {
@@ -17,7 +18,7 @@ import {
   findAdjacentMeshlets_Iter,
   findAdjacentMeshlets_Map,
 } from './edgesUtils.ts';
-import { partitionGraph } from './partitionGraph.ts';
+import { metisFreeAllocations, partitionGraph } from './partitionGraph.ts';
 import { simplifyMesh } from './simplifyMesh.ts';
 
 const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
@@ -28,11 +29,14 @@ const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
  * $2^{MAX_LODS}*124$. E.g. MAX_LODS=15 gives 4M. Vertices above would
  * lead to many top-level tree nodes. Suboptimal, but not incorrect.
  */
-const MAX_LODS = 15;
+const MAX_LODS = 20;
 
 /** Reduce triangle count per each level. */
 const DECIMATE_FACTOR = 2;
 const TARGET_SIMPLIFY_ERROR = 0.05;
+
+/** Progress [0..1]. Promise, so you can yield thread (for DOM updates) if you want */
+export type MeshPreprocessProgressCb = (progress: number) => Promise<void>;
 
 let NEXT_MESHLET_ID = 0;
 
@@ -65,9 +69,11 @@ export interface MeshletWIP {
 
 export async function createNaniteMeshlets(
   vertices: Float32Array,
-  indices: Uint32Array
+  indices: Uint32Array,
+  progressCb?: MeshPreprocessProgressCb
 ): Promise<MeshletWIP[]> {
   NEXT_MESHLET_ID = 0;
+  const estimatedMeshletCount = estimateFinalMeshletCount(indices); // guess for progress stats
 
   const allMeshlets: MeshletWIP[] = [];
   let lodLevel = 0;
@@ -124,7 +130,7 @@ export async function createNaniteMeshlets(
       if (partitioned.length === 1) {
         // this happens on last iteration, when < 4 meshlets
         // prettier-ignore
-        const rootMeshlet = createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds, undefined);
+        const rootMeshlet = await createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds, undefined);
         newMeshlets = [rootMeshlet];
       } else {
         // prettier-ignore
@@ -157,6 +163,9 @@ export async function createNaniteMeshlets(
     );
   }
 
+  // mass free the memory, see the JSDocs of the fn.
+  metisFreeAllocations();
+
   return allMeshlets;
 
   /////////////
@@ -173,28 +182,30 @@ export async function createNaniteMeshlets(
       coneWeight: CONFIG.nanite.preprocess.meshletBackfaceCullingConeWeight,
     });
     // during init: create tons of small meshlets
-    // during iter: split simplified mesh into 2 meshlets
+    // during iter: split simplified mesh into 2+ meshlets
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
 
-    const meshlets: MeshletWIP[] = meshletsIndices.map((indices, i) => {
-      const ownBounds = meshletsOpt.meshlets[i].bounds;
-      return createMeshletWip(
-        indices,
-        simplificationError,
-        sharedSiblingsBounds,
-        ownBounds
-      );
-    });
+    const meshlets: MeshletWIP[] = await Promise.all(
+      meshletsIndices.map((indices, i) => {
+        const ownBounds = meshletsOpt.meshlets[i].bounds;
+        return createMeshletWip(
+          indices,
+          simplificationError,
+          sharedSiblingsBounds,
+          ownBounds
+        );
+      })
+    );
 
     return meshlets;
   }
 
-  function createMeshletWip(
+  async function createMeshletWip(
     indices: Uint32Array,
     simplificationError: number,
     sharedSiblingsBounds: BoundingSphere,
     ownBounds: meshopt_Bounds | undefined
-  ): MeshletWIP {
+  ): Promise<MeshletWIP> {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
     const m: MeshletWIP = {
@@ -213,11 +224,18 @@ export async function createNaniteMeshlets(
     };
     NEXT_MESHLET_ID += 1;
     allMeshlets.push(m);
+    await reportProgress();
     return m;
   }
 
   function calculateBounds(indices: Uint32Array) {
     return calcBoundingSphere(pluckVertices(vertices, indices));
+  }
+
+  async function reportProgress() {
+    const progress = clamp(allMeshlets.length / estimatedMeshletCount, 0, 1);
+    // console.log({ now: allMeshlets.length, estimatedMeshletCount, progress });
+    await progressCb?.(progress);
   }
 }
 
@@ -235,4 +253,29 @@ function mergeMeshlets(...meshletGroup: MeshletWIP[]): Uint32Array {
   });
 
   return result;
+}
+
+/**
+ * Guesses how many meshlets from indices. Not exact,
+ * but seems ~OK from the experiments/
+ */
+function estimateFinalMeshletCount(indices: Uint32Array) {
+  const EXTRA_BOTTOM_LEVEL_MESHLETS = 1.5;
+  const AVG_MESHLET_REDUCTION_PER_LEVEL = 0.66;
+
+  const triCnt = indices.length / VERTS_IN_TRIANGLE;
+  let lastLevelMeshlets =
+    Math.ceil(triCnt / CONFIG.nanite.preprocess.meshletMaxTriangles) *
+    EXTRA_BOTTOM_LEVEL_MESHLETS;
+  let totalMeshlets = lastLevelMeshlets;
+
+  while (lastLevelMeshlets > 1) {
+    const nextLevelMeshlets = Math.floor(
+      lastLevelMeshlets * AVG_MESHLET_REDUCTION_PER_LEVEL
+    );
+    totalMeshlets += nextLevelMeshlets;
+    lastLevelMeshlets = nextLevelMeshlets;
+  }
+
+  return totalMeshlets;
 }

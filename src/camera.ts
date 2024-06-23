@@ -1,7 +1,7 @@
 import { Mat4, mat4, vec3, vec4 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG } from './constants.ts';
-import { projectPoint } from './utils/index.ts';
+import { clamp, projectPoint } from './utils/index.ts';
 import { STATS } from './sys_web/stats.ts';
 
 export type CameraOpts = {
@@ -120,8 +120,4 @@ export class Camera {
       this._viewMatrix
     );
   }
-}
-
-function clamp(x: number, min: number, max: number): number {
-  return Math.min(Math.max(x, min), max);
 }

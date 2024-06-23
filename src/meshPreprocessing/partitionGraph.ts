@@ -21,6 +21,14 @@ export async function getMetisModule() {
 }
 
 /**
+ * Clear the reference so GC can collect the Instance and free the memory.
+ * I am too lazy to re-Emscripten metis with free().
+ */
+export function metisFreeAllocations() {
+  METIS_MODULE = undefined;
+}
+
+/**
  * Metis manual section 5.4
  *
  * https://github.com/KarypisLab/METIS/blob/e0f1b88b8efcb24ffa0ec55eabb78fbe61e58ae7/include/metis.h#L263

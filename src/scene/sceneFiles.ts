@@ -3,7 +3,7 @@ import { ValueOf } from '../utils/index.ts';
 export const OBJECTS = {
   bunny: { file: 'bunny.obj', scale: 8 },
   lucy: { file: 'lucy.obj', scale: 1 },
-  dragon: { file: 'xyzrgb_dragon.obj', scale: 1 },
+  dragon: { file: 'xyzrgb_dragon.obj', scale: 0.01 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1 },
   planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },

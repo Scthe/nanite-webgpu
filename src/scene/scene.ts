@@ -28,6 +28,12 @@ import {
 
 export type FileTextReader = (filename: string) => Promise<string>;
 
+/** Progress [0..1] or status */
+export type ObjectLoadingProgressCb = (
+  name: string,
+  msg: number | string
+) => Promise<void>;
+
 export interface Scene {
   naniteObject: NaniteObject;
   debugMeshes: DebugMeshes;
@@ -36,7 +42,8 @@ export interface Scene {
 export async function loadScene(
   device: GPUDevice,
   objTextReaderFn: FileTextReader,
-  sceneName: SceneName
+  sceneName: SceneName,
+  progressCb?: ObjectLoadingProgressCb
 ): Promise<Scene> {
   const scene = SCENES[sceneName];
 
@@ -45,7 +52,8 @@ export async function loadScene(
     device,
     objTextReaderFn,
     objDef.model,
-    objDef.instances
+    objDef.instances,
+    progressCb
   );
 
   // create debug meshes if needed
@@ -63,8 +71,10 @@ async function loadObject(
   device: GPUDevice,
   objTextReaderFn: FileTextReader,
   name: SceneObjectName,
-  instancesDesc: InstancesGrid
+  instancesDesc: InstancesGrid,
+  progressCb?: ObjectLoadingProgressCb
 ) {
+  await progressCb?.(name, `Loading object: '${name}'`);
   const start = getProfilerTimestamp();
   const timers: string[] = [];
   const addTimer = (name: string, start: number) =>
@@ -100,12 +110,17 @@ async function loadObject(
     originalIndices
   );
 
-  // create nanite object
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
     originalVertices,
-    originalIndices
+    originalIndices,
+    progressCb != undefined ? (p) => progressCb(name, p) : undefined
   );
+  addTimer('Nanite LOD tree build', timerStart);
+
+  // create nanite object
+  await progressCb?.(name, `Uploading '${name}' data to the GPU`);
+  timerStart = getProfilerTimestamp();
   const naniteObject = createNaniteObject(
     device,
     name,
@@ -114,7 +129,7 @@ async function loadObject(
     naniteMeshlets,
     instancesDesc
   );
-  addTimer('Nanite LOD build', timerStart);
+  addTimer('Finalize nanite object', timerStart);
 
   // end
   const delta = getDeltaFromTimestampMS(start);

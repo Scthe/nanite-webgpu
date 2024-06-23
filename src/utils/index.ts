@@ -249,3 +249,7 @@ export const hideHtmlEl = (el: HTMLElement | null) => {
 export const randomBetween = (start: number, end: number) => {
   return lerp(start, end, Math.random());
 };
+
+export function clamp(x: number, min: number, max: number): number {
+  return Math.min(Math.max(x, min), max);
+}

@@ -10,14 +10,20 @@ import { createErrorSystem } from './utils/errors.ts';
 import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
 import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
-import { FileTextReader, Scene, loadScene } from './scene/scene.ts';
+import {
+  FileTextReader,
+  ObjectLoadingProgressCb,
+  Scene,
+  loadScene,
+} from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 
+// const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
 const SCENE_FILE: SceneName = 'bunny1b';
 // const SCENE_FILE: SceneName = 'planeSubdiv';
-// const SCENE_FILE: SceneName = 'lucy';
-// const SCENE_FILE: SceneName = 'dragon'; // crashes WebAssembly cuz WebAssembly is..
+// const SCENE_FILE: SceneName = 'singleLucy';
+// const SCENE_FILE: SceneName = 'dragon';
 // const SCENE_FILE: SceneName = 'displacedPlane';
 // const SCENE_FILE: SceneName = 'cube';
 // const SCENE_FILE: SceneName = 'plane';
@@ -52,6 +58,7 @@ const SCENE_FILE: SceneName = 'bunny1b';
     showHtmlEl(loaderEl);
     scene = await loadSceneFile(device, SCENE_FILE);
   } catch (e) {
+    showErrorMessage(e.message);
     throw e;
   } finally {
     hideHtmlEl(loaderEl);
@@ -168,7 +175,26 @@ function loadSceneFile(device: GPUDevice, sceneName: SceneName) {
     return objFileResp.text();
   };
 
-  return loadScene(device, fileTextReader, sceneName);
+  const reportEl = document.getElementById('loader-text');
+  const setReportText = (msg: string) => {
+    // console.log(msg);
+    if (reportEl != undefined) reportEl.textContent = msg;
+    return new Promise((resolve) => setTimeout(resolve));
+  };
+  let lastReportedPercent = -1;
+  const progCb: ObjectLoadingProgressCb = async (objName, p): Promise<void> => {
+    if (typeof p === 'string') {
+      await setReportText(p);
+    } else {
+      const percent = Math.floor(p * 100);
+      if (percent !== lastReportedPercent && percent % 10 === 0) {
+        lastReportedPercent = percent;
+        await setReportText(`Loading '${objName}': ${percent}%`);
+      }
+    }
+  };
+
+  return loadScene(device, fileTextReader, sceneName, progCb);
 }
 
 function showErrorMessage(msg?: string) {

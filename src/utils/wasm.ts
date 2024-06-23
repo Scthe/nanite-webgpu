@@ -1,3 +1,4 @@
+import { getTypeName } from './index.ts';
 import type {
   WasmHeap,
   WasmArray,
@@ -6,6 +7,26 @@ import type {
   WasmBasicTypeName,
   WasmModule,
 } from './wasm-types.d.ts';
+
+// Some references:
+// - https://marcoselvatici.github.io/WASM_tutorial/
+// - https://radu-matei.com/blog/practical-guide-to-wasm-memory/
+
+const DEBUG_ALLOC = false;
+// TODO [HIGH] re-Emscripten metis with free(). ATM we use metisFreeAllocations()
+// to mass free() the memory at the end of object processing.
+// Metis does not allocate much memory, so you will not alloc >2GB.
+// Meshoptimizer on the other hand... each I've exported _free() and hope it works.
+const SILENCE_MEMORY_LEAKS = true;
+
+const heapPtr2str = <T extends WasmArray>(
+  module: WasmModule,
+  arr: T,
+  ptr: number
+) => {
+  const moduleName = module['_meshopt_buildMeshlets'] == undefined ? 'metis' : 'meshoptimizer' // prettier-ignore
+  return `${moduleName}@0x${ptr.toString(16)}: ${arr.byteLength} bytes (${getTypeName(arr)}: ${arr.length} items)`; // prettier-ignore
+};
 
 // https://stackoverflow.com/questions/41875728/pass-a-javascript-array-as-argument-to-a-webassembly-function
 export const wasmPtr = (arr: WasmArray, inout: WasmPtrInout = 'in') => ({
@@ -21,6 +42,9 @@ function copyToWasmHeap<T extends WasmArray>(
   const mallocFn = '_create_buffer' in module ? '_create_buffer' : '_malloc';
   const heapPointer = module[mallocFn](arr.length * arr.BYTES_PER_ELEMENT);
   module[heap].set(arr, heapPointer / arr.BYTES_PER_ELEMENT);
+  if (DEBUG_ALLOC) {
+    console.log(`Alloc ${heapPtr2str(module, arr, heapPointer)}`);
+  }
   return heapPointer;
 }
 
@@ -71,23 +95,36 @@ export const wasmCall = <RetType>(
   }
 
   argsJS.forEach((arg, i) => {
-    let wasmHeapAddr = argsWasm[i];
+    const rawHeapAddr = argsWasm[i];
     if (
       typeof arg === 'number' ||
       typeof arg === 'string' ||
-      typeof wasmHeapAddr === 'string' ||
-      arg === null ||
-      arg.inout !== 'out'
+      typeof rawHeapAddr === 'string' ||
+      arg === null
     ) {
       return;
     }
 
     // copy back from wasm's heap to JS TypedArray
     const heap = getMemoryHeapForJsArray(arg.arr)!;
-    // console.log(`${fnName} HEAP`, module[heap]);
-    wasmHeapAddr = wasmHeapAddr! / arg.arr.BYTES_PER_ELEMENT; // convert to emscripten
-    const length = arg.arr.length;
-    arg.arr.set(module[heap].subarray(wasmHeapAddr, wasmHeapAddr + length));
+    const wasmHeapAddr = rawHeapAddr! / arg.arr.BYTES_PER_ELEMENT; // convert to emscripten
+
+    if (arg.inout === 'out') {
+      // console.log(`${fnName} HEAP`, module[heap]);
+      const length = arg.arr.length;
+      // copy into the user-provided array
+      arg.arr.set(module[heap].subarray(wasmHeapAddr, wasmHeapAddr + length));
+    }
+
+    // free the allocated heap memory
+    if (DEBUG_ALLOC) {
+      console.log(`[${fnName}] Will free  ${heapPtr2str(module, arg.arr, rawHeapAddr)}`); // prettier-ignore
+    }
+    if (module._free !== undefined) {
+      module._free(rawHeapAddr);
+    } else if (!SILENCE_MEMORY_LEAKS) {
+      console.error(`Memory leak [${fnName}]: ${heapPtr2str(module, arg.arr, rawHeapAddr)}`, { module, fnName }); // prettier-ignore
+    }
   });
 
   return result;

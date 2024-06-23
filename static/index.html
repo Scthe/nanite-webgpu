@@ -81,6 +81,12 @@
         top: 0;
         display: none;
       }
+      #loader-text {
+        text-align: center;
+        font-size: 2em;
+        color: white;
+        font-family: monospace;
+      }
       .loader {
         width: 80px;
         aspect-ratio: 0.577;
@@ -129,6 +135,7 @@
 
     <div id="loader-wrapper">
       <div class="loader"></div>
+      <p id="loader-text"></p>
     </div>
 
     <script src="index.web.js" defer></script>
