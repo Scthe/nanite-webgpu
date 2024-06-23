@@ -13,11 +13,18 @@ import { showHtmlEl } from '../utils/index.ts';
 export let setDisplayMode: undefined | ((e: DisplayMode) => unknown) =
   undefined;
 
+type GuiCtrl = dat.GUIController<Record<string, unknown>>;
+
 export function initializeGUI(
   profiler: GpuProfiler,
   scene: Scene,
   camera: Camera
 ) {
+  let getGPUStatsCtrl: GuiCtrl;
+  let softwareBackfaceCullCtrl: GuiCtrl;
+  let gpuFreezeVisiblityCtrl: GuiCtrl;
+  let gpuVisiblityImplCtrl: GuiCtrl;
+
   const gui = new dat.GUI();
 
   const dummyObject = {
@@ -46,7 +53,29 @@ export function initializeGUI(
   gui.add(dummyObject, 'profile').name('Profile');
 
   addNaniteFolder();
+  addCullingFolder();
   addDbgFolder();
+
+  // init visiblity
+  onVisiblityDeviceSwap();
+
+  function onVisiblityDeviceSwap() {
+    const nextDevice = CONFIG.nanite.render.calcVisibilityDevice;
+
+    DrawNanitesPass.updateRenderStats(
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
+
+    // gpu
+    setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
+    setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
+    setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
+    // cpu
+    setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
+  }
 
   //////////////
   /// subdirs
@@ -65,37 +94,45 @@ export function initializeGUI(
     dir
       .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
       .name('Visibility test')
-      .onFinishChange(()=>{
-        DrawNanitesPass.updateRenderStats(undefined, undefined, undefined, undefined);
-      })
-
-    // profiler TODO GPU only
-    dir.add(dummyObject, 'getGpuDrawStats').name('Get GPU visibility stats');
+      .onFinishChange(onVisiblityDeviceSwap);
 
     // pixelThreshold
     dir
       .add(CONFIG.nanite.render, 'pixelThreshold', 0, 10)
       .name('Error threshold [px]');
 
-    // culling
+    // Visib. algo
+    gpuVisiblityImplCtrl = dir
+      .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
+      .name('Visib. algo ITER');
+
+    // freeze visibilty
+    gpuFreezeVisiblityCtrl = dir
+      .add(CONFIG.nanite.render, 'freezeGPU_Visibilty')
+      .name('Freeze visibilty');
+
+    // GPU stats
+    getGPUStatsCtrl = dir
+      .add(dummyObject, 'getGpuDrawStats')
+      .name('Get GPU visibility stats');
+  }
+
+  function addCullingFolder() {
+    const dir = gui.addFolder('Culling');
+    dir.open();
+
+    // Frustum culling
     dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
+
+    // Occlusion culling
     dir
       .add(CONFIG.nanite.render, 'useOcclusionCulling')
       .name('Occlusion culling');
 
-    // TODO CPU only
-    dir
+    // SW backface cull
+    softwareBackfaceCullCtrl = dir
       .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
       .name('SW backface cull');
-
-    // TODO GPU only
-    dir
-      .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
-      .name('Visib. algo ITER');
-    // TODO GPU only
-    dir
-      .add(CONFIG.nanite.render, 'freezeGPU_Visibilty')
-      .name('Freeze visibilty');
   }
 
   function addDbgFolder() {
@@ -120,41 +157,42 @@ export function initializeGUI(
     };
 
     let maxLod = scene.debugMeshes.meshoptimizerLODs.length - 1;
-    const toggleLodCtrl = addLODController(
-      dir,
-      'dbgMeshoptimizerLodLevel',
-      'LOD level',
-      maxLod,
-      ['dbg-lod', 'dbg-lod-meshlets']
-    );
+    const lodCtrl = dir
+      .add(CONFIG, 'dbgMeshoptimizerLodLevel', 0, maxLod)
+      .step(1)
+      .name('LOD level');
 
     maxLod = scene.naniteObject.lodLevelCount - 1; // 7 levels mean 0-6 on GUI
-
-    const naniteLodToggle = addLODController(
-      dir,
-      'dbgNaniteLodLevel',
-      'Nanite LOD',
-      maxLod,
-      ['dbg-nanite-meshlets']
-    );
+    const naniteLodCtrl = dir
+      .add(CONFIG, 'dbgNaniteLodLevel', 0, maxLod)
+      .step(1)
+      .name('Nanite LOD');
 
     const MAX_DEPTH_PYRAMID_LEVEL = 15;
-    const depthPyramidLevelToggle = addLODController(
-      dir,
-      'dbgDepthPyramidLevel',
-      'Pyramid level',
-      MAX_DEPTH_PYRAMID_LEVEL,
-      ['dbg-depth-pyramid']
-    );
+    const depthPyramidLevelCtrl = dir
+      .add(CONFIG, 'dbgDepthPyramidLevel', 0, MAX_DEPTH_PYRAMID_LEVEL)
+      .step(1)
+      .name('Pyramid level');
 
-    modeCtrl.onFinishChange(() => {
-      toggleLodCtrl();
-      naniteLodToggle();
-      depthPyramidLevelToggle();
-    });
+    modeCtrl.onFinishChange(onDisplayModeChange);
 
     // camera reset
     dir.add(dummyObject, 'resetCamera').name('Reset camera');
+
+    // init
+    onDisplayModeChange();
+
+    function onDisplayModeChange() {
+      // in case camera moves when in !nanite mode and depth buffer is obsolete
+      // also executes during init, but should not crash anything
+      CONFIG.nanite.render.hasValidDepthPyramid = false;
+
+      const mode = CONFIG.displayMode;
+      const showLod = ['dbg-lod', 'dbg-lod-meshlets'].includes(mode);
+      setVisible(lodCtrl, showLod);
+      setVisible(naniteLodCtrl, mode === 'dbg-nanite-meshlets');
+      setVisible(depthPyramidLevelCtrl, mode === 'dbg-depth-pyramid');
+    }
   }
 
   //////////////
@@ -188,47 +226,20 @@ export function initializeGUI(
   }
 }
 
-function addLODController(
-  gui: dat.GUI,
-  propName: keyof typeof CONFIG,
-  name: string,
-  maxLod: number,
-  visibility: DisplayMode[]
-) {
-  gui.add(CONFIG, propName, 0, maxLod).step(1).name(name);
-  const toggleLodCtrl = () => {
-    setVisible(gui, propName, visibility.includes(CONFIG.displayMode));
-  };
-  toggleLodCtrl(); // set initial visibility
-  return toggleLodCtrl;
-}
-
-function getController(gui: dat.GUI, name: string) {
-  let controller = null;
-  const controllers = gui.__controllers;
-
-  for (let i = 0; i < controllers.length; i++) {
-    const c = controllers[i];
-    if (c.property == name) {
-      controller = c;
-      break;
-    }
-  }
-  return controller;
-}
-
-function setVisible(gui: dat.GUI, name: string, isVisible: boolean) {
-  // deno-lint-ignore no-explicit-any
-  const ctrl = getController(gui, name) as any; // uses non public API
+function setVisible(ctrl: GuiCtrl, isVisible: boolean) {
   if (!ctrl) {
-    console.error(`Not controller for '${name}' found`);
+    // use stacktrace/debugger to identify which..
+    console.error(`Not controller for gui element found!`);
     return;
   }
 
+  // deno-lint-ignore no-explicit-any
+  const parentEl: HTMLElement = (ctrl as any).__li;
+
   if (isVisible) {
-    ctrl.__li.style.display = '';
+    parentEl.style.display = '';
   } else {
-    ctrl.__li.style.display = 'none';
+    parentEl.style.display = 'none';
   }
 }
 
