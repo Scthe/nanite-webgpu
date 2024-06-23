@@ -1,5 +1,5 @@
 import { CAMERA_CFG } from '../../constants.ts';
-import { CLAMP_TO_MIP_LEVELS } from '../_shaderSnippets.ts';
+import { CLAMP_TO_MIP_LEVELS } from './shaderSnippets.wgls.ts';
 
 export const SNIPPET_OCCLUSION_CULLING = /* wgsl */ `
 
@@ -11,7 +11,6 @@ ${CLAMP_TO_MIP_LEVELS}
  * https://www.youtube.com/watch?v=5sBpo5wKmEM - meshlets
  * 
  * TODO [CRTICIAL] fix flicker on closest bunnies
- * TODO [CRTICIAL] on the very right/bottom edge it flickers. Tho this is camera frustum fault?
  * TODO Dbg use slider to override MIP level
  * TODO Choose in GUI which occlus. algo use (project sphere OR view-space AABB)
 */

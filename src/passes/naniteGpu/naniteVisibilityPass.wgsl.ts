@@ -1,8 +1,10 @@
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
 import { CONFIG } from '../../constants.ts';
-import { SNIPPET_OCCLUSION_CULLING } from './_snippetOcclusionCulling.wgsl.ts';
+import { SNIPPET_OCCLUSION_CULLING } from '../_shaderSnippets/cullOcclusion.wgsl.ts';
+import { SNIPPET_FRUSTUM_CULLING } from '../_shaderSnippets/cullFrustum.wgsl.ts';
+import { SNIPPET_NANITE_LOD_CULLING } from '../_shaderSnippets/nanite.wgsl.ts';
 
 export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
   bindingIdx: number,
@@ -44,6 +46,8 @@ ${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
 ${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SNIPPET_OCCLUSION_CULLING}
+${SNIPPET_FRUSTUM_CULLING}
+${SNIPPET_NANITE_LOD_CULLING}
 
 @group(0) @binding(${b.depthPyramidTexture})
 var _depthPyramidTexture: texture_2d<f32>;
@@ -152,123 +156,18 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
 }
 
 fn registerDraw(tfxIdx: u32, meshletIdx: u32){
-   // TODO Aggregate atomic writes. Use ballot like [Wihlidal 2015]: Optimizing the Graphics Pipeline with Compute
+   // TODO [LOW] Aggregate atomic writes. Use ballot like [Wihlidal 2015]:
+   // "Optimizing the Graphics Pipeline with Compute"
+   // 
+   // TBH this *could* be optimized by the shader compiler. It can assume that
+   // some threads in warp add 1 to the atomic. It *COULD* then add
+   // to the global atomic the sum ONCE and re-distribute result among the threads.
+   // See NV_shader_thread_group, functionality 4.
    let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
    _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
-}
-
-fn isInsideCameraFrustum(
-  modelMat: mat4x4<f32>,
-  meshlet: NaniteMeshletTreeNode
-) -> bool {
-  // check GUI flag
-  if (!useFrustumCulling()){
-    return true;
-  }
-
-  var center = vec4f(meshlet.ownBoundingSphere.xyz, 1.);
-  center = modelMat * center;
-  let r = meshlet.ownBoundingSphere.w;
-  let r0 = dot(center, _uniforms.cameraFrustumPlane0) <= r;
-  let r1 = dot(center, _uniforms.cameraFrustumPlane1) <= r;
-  let r2 = dot(center, _uniforms.cameraFrustumPlane2) <= r;
-  let r3 = dot(center, _uniforms.cameraFrustumPlane3) <= r; // plane down is wrong?
-  let r4 = dot(center, _uniforms.cameraFrustumPlane4) <= r;
-  let r5 = dot(center, _uniforms.cameraFrustumPlane5) <= r;
-  return r0 && r1 && r2 && r3 && r4 && r5;
-}
-
-
-fn getVisibilityStatus (
-  modelMat: mat4x4<f32>,
-  meshlet: NaniteMeshletTreeNode
-) -> bool {
-  if (!isInsideCameraFrustum(modelMat, meshlet)) {
-    return false;
-  }
-
-  if (!isPassingOcclusionCulling(modelMat, meshlet)) {
-    return false;
-  }
-
-  let threshold = _uniforms.viewport.z;
-  let screenHeight = _uniforms.viewport.y;
-  let cotHalfFov = _uniforms.viewport.w;
-  let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
-
-  // getVisibilityStatus
-  let clusterError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.boundsMidPointAndError,
-  );
-  let parentError = getProjectedError(
-    mvpMatrix,
-    screenHeight,
-    cotHalfFov,
-    meshlet.parentBoundsMidPointAndError,
-  );
-
-  return parentError > threshold && clusterError <= threshold;
-}
-
-
-fn getProjectedError(
-  mvpMatrix: mat4x4<f32>,
-  screenHeight: f32,
-  cotHalfFov: f32,
-  boundsMidPointAndError: vec4f
-) -> f32 {
-  // return 1000.0 * boundsMidPointAndError.w; // used to debug tests, see calcs at the top of 'naniteVisibilityPass.test.ts'
-  
-  let r = boundsMidPointAndError.w; // error
-  
-  // WARNING: .parentError is INFINITY at top level
-  // This is implemented as GPU meshlet just having some absurd high value
-  if (r >= PARENT_ERROR_INFINITY) {
-    return PARENT_ERROR_INFINITY;
-  }
-
-  let center = mvpMatrix * vec4f(boundsMidPointAndError.xyz, 1.0f);
-  let d2 = dot(center.xyz, center.xyz); // 
-  let projectedR = (cotHalfFov * r) / sqrt(d2 - r * r);
-  return (projectedR * screenHeight) / 2.0;
 }
 
 fn ceilDivideU32(numerator: u32, denominator: u32) -> u32 {
   return (numerator + denominator - 1) / denominator;
 }
-
-  // START: DEBUG HARDCODE
-  /*var boundsMidPointAndError = vec4f(0.,0.,0.,0.,);
-  var parentBoundsMidPointAndError = vec4f(0.,0.,0.,0.,);
-  boundsMidPointAndError.x = 0.;
-  parentBoundsMidPointAndError.x = 0.;
-  boundsMidPointAndError.y = 0.;
-  parentBoundsMidPointAndError.y = 0.;
-  boundsMidPointAndError.z = -1.2;
-  parentBoundsMidPointAndError.z = -1.2;
-  let gt = 0.002; let lt = 0.001; let inf = 999999.0;
-  if (global_id.x == 1u) {
-    boundsMidPointAndError.w = gt;
-    parentBoundsMidPointAndError.w = inf;
-  }
-  if (global_id.x == 2u) {
-    boundsMidPointAndError.w = lt;
-    parentBoundsMidPointAndError.w = inf;
-  }
-  if (global_id.x == 3u) {
-    boundsMidPointAndError.w = lt;
-    parentBoundsMidPointAndError.w = lt;
-  }
-  if (global_id.x == 4u) {
-    boundsMidPointAndError.w = gt;
-    parentBoundsMidPointAndError.w = gt;
-  }
-  if (global_id.x == 5u) {
-    boundsMidPointAndError.w = lt;
-    parentBoundsMidPointAndError.w = gt;
-  }*/
-  // END: DEBUG HARDCODE
 `;

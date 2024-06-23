@@ -1,4 +1,4 @@
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 
 export const SHADER_PARAMS = {

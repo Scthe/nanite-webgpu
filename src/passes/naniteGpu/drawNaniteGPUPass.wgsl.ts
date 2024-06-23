@@ -1,4 +1,4 @@
-import * as SHADER_SNIPPETS from '../_shaderSnippets.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { SHADER_SNIPPET_DRAWN_MESHLETS_LIST } from './naniteVisibilityPass.wgsl.ts';
 import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
