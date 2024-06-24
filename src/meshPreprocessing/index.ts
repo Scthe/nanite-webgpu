@@ -1,16 +1,13 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletId } from '../scene/naniteObject.ts';
+import { clamp } from '../utils/index.ts';
 import {
+  BoundingBox,
   BoundingSphere,
+  calcBoundingBoxIndex,
   calcBoundingSphere,
-  clamp,
-  pluckVertices,
-} from '../utils/index.ts';
-import {
-  createMeshlets,
-  meshopt_Bounds,
-  splitIndicesPerMeshlets,
-} from './createMeshlets.ts';
+} from '../utils/calcBounds.ts';
+import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
   findBoundaryEdges,
@@ -54,8 +51,10 @@ export interface MeshletWIP {
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
-  // TODO it should be used for culling instead of current $sharedSiblingsBounds?
-  ownBounds: meshopt_Bounds | undefined;
+  ownBounds: {
+    sphere: BoundingSphere;
+    box: BoundingBox;
+  };
 
   // Nanite error calc:
   /** Error for this node */
@@ -66,6 +65,8 @@ export interface MeshletWIP {
   sharedSiblingsBounds: BoundingSphere;
   parentBounds: BoundingSphere | undefined; // undefined at top level
 }
+
+export type MeshletBounds = MeshletWIP['ownBounds'];
 
 export async function createNaniteMeshlets(
   vertices: Float32Array,
@@ -80,7 +81,10 @@ export async function createNaniteMeshlets(
   const bottomMeshlets = await splitIntoMeshlets(
     indices,
     0.0,
-    calculateBounds(indices)
+    // does not matter, bottom meshlets have error 0, so they always pass
+    // the 'has error < threshold' check. They only depend on the parent's error.
+    // If the parent also passes the check, the parent should be rendered instead
+    calculateBounds(vertices, indices).sphere
   );
   let currentMeshlets = bottomMeshlets;
   lodLevel += 1;
@@ -123,14 +127,14 @@ export async function createNaniteMeshlets(
         ...childMeshletGroup.map((m) => m.maxSiblingsError)
       );
       const totalError = errorNow + childrenError;
-      const bounds = calculateBounds(simplifiedMesh.indexBuffer);
+      const bounds = calculateBounds(vertices, megaMeshlet).sphere;
 
       // 2.3 [GROUP] split into new meshlets. Share: simplificationError, bounds (both are used in nanite to reproject the error)
       let newMeshlets: MeshletWIP[];
       if (partitioned.length === 1) {
         // this happens on last iteration, when < 4 meshlets
         // prettier-ignore
-        const rootMeshlet = await createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds, undefined);
+        const rootMeshlet = await createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds);
         newMeshlets = [rootMeshlet];
       } else {
         // prettier-ignore
@@ -186,13 +190,11 @@ export async function createNaniteMeshlets(
     const meshletsIndices = splitIndicesPerMeshlets(meshletsOpt);
 
     const meshlets: MeshletWIP[] = await Promise.all(
-      meshletsIndices.map((indices, i) => {
-        const ownBounds = meshletsOpt.meshlets[i].bounds;
+      meshletsIndices.map((indices) => {
         return createMeshletWip(
           indices,
           simplificationError,
-          sharedSiblingsBounds,
-          ownBounds
+          sharedSiblingsBounds
         );
       })
     );
@@ -203,11 +205,11 @@ export async function createNaniteMeshlets(
   async function createMeshletWip(
     indices: Uint32Array,
     simplificationError: number,
-    sharedSiblingsBounds: BoundingSphere,
-    ownBounds: meshopt_Bounds | undefined
+    sharedSiblingsBounds: BoundingSphere
   ): Promise<MeshletWIP> {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
+    const ownBounds = calculateBounds(vertices, indices);
     const m: MeshletWIP = {
       id: NEXT_MESHLET_ID,
       indices,
@@ -228,15 +230,19 @@ export async function createNaniteMeshlets(
     return m;
   }
 
-  function calculateBounds(indices: Uint32Array) {
-    return calcBoundingSphere(pluckVertices(vertices, indices));
-  }
-
   async function reportProgress() {
     const progress = clamp(allMeshlets.length / estimatedMeshletCount, 0, 1);
     // console.log({ now: allMeshlets.length, estimatedMeshletCount, progress });
     await progressCb?.(progress);
   }
+}
+
+function calculateBounds(
+  vertices: Float32Array,
+  indices: Uint32Array
+): MeshletBounds {
+  const box = calcBoundingBoxIndex(vertices, indices);
+  return { box, sphere: calcBoundingSphere(box) };
 }
 
 function mergeMeshlets(...meshletGroup: MeshletWIP[]): Uint32Array {

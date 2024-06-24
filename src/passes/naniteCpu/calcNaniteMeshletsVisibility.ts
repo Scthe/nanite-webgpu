@@ -1,11 +1,11 @@
-import { Mat4, Vec3, vec3, vec4 } from 'wgpu-matrix';
+import { Mat4, Vec3, vec4 } from 'wgpu-matrix';
 import { PassCtx } from '../passCtx.ts';
 import {
-  BoundingSphere,
   dgr2rad,
   getModelViewProjectionMatrix,
   projectPoint,
 } from '../../utils/index.ts';
+import { BoundingSphere } from '../../utils/calcBounds.ts';
 import { CAMERA_CFG, CONFIG } from '../../constants.ts';
 import {
   NaniteObject,
@@ -30,13 +30,13 @@ export function calcNaniteMeshletsVisibility(
   cotHalfFov: number,
   modelMat: Mat4,
   naniteObject: NaniteObject
-): [number, number] {
+): number {
   const root = naniteObject.root;
   // check: entire instance is visible
   // TODO is root.boundingSphere.r based on LOD6 (coarse)? or on the full-res model? Should be on full-res model, as LOD6 may remove vertices. TBH do not use root here, but naniteObj.boundingBox
   // TODO frustum cull per-meshlet here too
   if (!checkIsInsideFrustum(ctx.cameraFrustum, modelMat, root)) {
-    return [0, 0];
+    return 0;
   }
 
   const meshletsToCheck = [root];
@@ -48,7 +48,6 @@ export function calcNaniteMeshletsVisibility(
     visibilityBuffer,
     modelMat
   );
-  let culledCount = 0;
 
   while (meshletsToCheck.length > 0) {
     // depth-first seems better as it has shorter avg $meshletsToCheck length.
@@ -56,10 +55,10 @@ export function calcNaniteMeshletsVisibility(
     const meshlet = meshletsToCheck.pop()!; // remove last from queue - depth first
     visibilityBuffer.setVisited(meshlet.id);
 
-    if (checkIsBackface(ctx, modelMat, meshlet)) {
-      culledCount += 1;
-      continue;
-    }
+    // if (checkIsBackface(ctx, modelMat, meshlet)) {
+    // culledCount += 1;
+    // continue;
+    // }
 
     const status = getVisibilityStatus(getProjectedError, meshlet);
 
@@ -79,7 +78,7 @@ export function calcNaniteMeshletsVisibility(
   }
 
   // console.log({ visitedMeshlets }); // debug how far the tree we went
-  return [visibilityBuffer.drawnMeshletsCount, culledCount]; // TODO remove allocation
+  return visibilityBuffer.drawnMeshletsCount;
 }
 
 const TMP_CACHED_VEC4 = vec4.create();
@@ -105,6 +104,7 @@ function checkIsInsideFrustum(
 }
 
 /** WARNING: NOT FINISHED! SEE NOTE IN `src/constants.ts` for reasons and remaining scope. */
+/*
 function checkIsBackface(
   ctx: PassCtx,
   _modelMat: Mat4,
@@ -121,18 +121,18 @@ function checkIsBackface(
   negate(cam, 1);
   negate(cam, 2);
 
-  // TODO world space position? Or bring camera into model space pos? invModelMatrix * cameraPos
+  // TODO [IGNORE] world space position? Or bring camera into model space pos? invModelMatrix * cameraPos
   const cam2MeshletDir = vec3.normalize([
     bounds.coneApex[0] - cam[0],
     bounds.coneApex[1] - cam[1],
     bounds.coneApex[2] - cam[2],
   ]);
 
-  // TODO return dot(center - camera_position, cone_axis) >= cone_cutoff * length(center - camera_position) + radius;
+  // TODO [IGNORE] return dot(center - camera_position, cone_axis) >= cone_cutoff * length(center - camera_position) + radius;
   //      https://github.com/zeux/niagara/blob/master/src/shaders/math.h
   const angle = vec3.dot(cam2MeshletDir, bounds.coneApex);
   return angle >= bounds.coneCutoff;
-}
+}*/
 
 /**
  * Returns visiblity status so we can skip processing children.

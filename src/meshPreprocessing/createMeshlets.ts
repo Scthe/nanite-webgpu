@@ -35,7 +35,7 @@ export interface meshopt_Meshlet {
   triangleOffset: number; // unsigned int
   /** number of triangles in the meshlet */
   triangleCount: number; // unsigned int
-  bounds: meshopt_Bounds;
+  // bounds?: meshopt_Bounds;
 }
 const U32_IN_MESHOPT_MESHLET = 4;
 
@@ -110,17 +110,17 @@ export async function createMeshlets(
       vertexCount: meshletsRaw[idx + 2],
       triangleCount: meshletsRaw[idx + 3],
     };
-    const bounds = computeMeshletBounds(
+    /*const bounds = computeMeshletBounds(
       module,
       vertices,
       meshData,
       meshletVertices,
       meshletTriangles,
       meshlet
-    );
+    );*/
     // console.log('bounds', bounds);
 
-    meshlets.push({ ...meshlet, bounds });
+    meshlets.push(meshlet);
   }
 
   const lastMeshlet = meshlets.at(-1)!;

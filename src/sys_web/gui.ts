@@ -21,7 +21,7 @@ export function initializeGUI(
   camera: Camera
 ) {
   let getGPUStatsCtrl: GuiCtrl;
-  let softwareBackfaceCullCtrl: GuiCtrl;
+  // let softwareBackfaceCullCtrl: GuiCtrl;
   let gpuFreezeVisiblityCtrl: GuiCtrl;
   let gpuVisiblityImplCtrl: GuiCtrl;
 
@@ -74,7 +74,7 @@ export function initializeGUI(
     setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
     setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
     // cpu
-    setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
+    // setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
   }
 
   //////////////
@@ -130,9 +130,9 @@ export function initializeGUI(
       .name('Occlusion culling');
 
     // SW backface cull
-    softwareBackfaceCullCtrl = dir
-      .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
-      .name('SW backface cull');
+    // softwareBackfaceCullCtrl = dir
+    // .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
+    // .name('SW backface cull');
   }
 
   function addDbgFolder() {

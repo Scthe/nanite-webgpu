@@ -1,4 +1,4 @@
-import { Mat4, mat4, vec3, vec4, Vec4, Vec3 } from 'wgpu-matrix';
+import { Mat4, mat4, vec4, Vec4, Vec3 } from 'wgpu-matrix';
 import {
   BYTES_U32,
   CAMERA_CFG,
@@ -110,63 +110,6 @@ export const lerp = (a: number, b: number, fac: number) => {
   return a * (1 - fac) + b * fac;
 };
 
-function iterVertices(
-  vertices: Float32Array,
-  coPerVert = CO_PER_VERTEX,
-  cb: (v: [number, number, number]) => void
-) {
-  const vertCount = vertices.length / coPerVert;
-  const v: [number, number, number] = [0, 0, 0];
-
-  for (let i = 0; i < vertCount; i++) {
-    const offset = i * coPerVert;
-    v[0] = vertices[offset];
-    v[1] = vertices[offset + 1];
-    v[2] = vertices[offset + 2];
-    cb(v);
-  }
-}
-
-export function calcBoundingBox(
-  vertices: Float32Array,
-  coPerVert = CO_PER_VERTEX
-) {
-  const maxCo = [vertices[0], vertices[1], vertices[2]];
-  const minCo = [vertices[0], vertices[1], vertices[2]];
-  iterVertices(vertices, coPerVert, (v) => {
-    for (let co = 0; co < 3; co++) {
-      maxCo[co] = Math.max(maxCo[co], v[co]);
-      minCo[co] = Math.min(minCo[co], v[co]);
-    }
-  });
-  return [minCo, maxCo];
-}
-
-export type BoundingSphere = { center: Vec3; radius: number };
-
-export function calcBoundingSphere(
-  vertices: Float32Array,
-  coPerVert = CO_PER_VERTEX
-): BoundingSphere {
-  const [minCo, maxCo] = calcBoundingBox(vertices, coPerVert);
-  const center = vec3.midpoint(minCo, maxCo);
-  let r = 0;
-  iterVertices(vertices, coPerVert, (v) => {
-    r = Math.max(r, vec3.distance(v, center));
-  });
-  return { center, radius: r };
-}
-
-export function printBoundingBox(
-  vertices: Float32Array,
-  coPerVert = CO_PER_VERTEX
-) {
-  const [minCo, maxCo] = calcBoundingBox(vertices, coPerVert);
-  const p = (a: number[]) => '[' + a.map((x) => x.toFixed(2)).join(',') + ']';
-  console.log(`Bounding box min:`, p(minCo));
-  console.log(`Bounding box max:`, p(maxCo));
-}
-
 export const getTriangleCount = (indices: Uint32Array | number) =>
   typeof indices === 'number'
     ? indices / VERTS_IN_TRIANGLE
@@ -182,19 +125,6 @@ export const getBytesForTriangles = (triCnt: number) =>
 
 export function printMinMax(name: string, arr: TypedArray | number[]) {
   console.log(name, `min(${Math.min(...arr)})`, `max(${Math.max(...arr)})`);
-}
-
-export function pluckVertices(
-  vertices: Float32Array,
-  indices: Uint32Array
-): Float32Array {
-  const data: number[] = [];
-  indices.forEach((idx) => {
-    data.push(vertices[3 * idx]);
-    data.push(vertices[3 * idx + 1]);
-    data.push(vertices[3 * idx + 2]);
-  });
-  return new Float32Array(data);
 }
 
 export function formatBytes(bytes: number, decimals = 2) {

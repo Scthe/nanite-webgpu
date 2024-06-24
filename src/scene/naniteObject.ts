@@ -176,10 +176,11 @@ export class NaniteObject {
       dataAsF32[6] = m.parentBounds?.center[2] || 0.0;
       dataAsF32[7] = m.parentError === Infinity ? 9999999.0 : m.parentError;
       // own bounds
-      dataAsF32[8] = m.ownBounds?.center?.[0] || m.sharedSiblingsBounds.center[0]; // prettier-ignore
-      dataAsF32[9] = m.ownBounds?.center?.[1] || m.sharedSiblingsBounds.center[1]; // prettier-ignore
-      dataAsF32[10] = m.ownBounds?.center?.[2] || m.sharedSiblingsBounds.center[2]; // prettier-ignore
-      dataAsF32[11] = m.ownBounds?.radius || m.sharedSiblingsBounds.radius;
+      const ownBoundSph = m.ownBounds.sphere;
+      dataAsF32[8] = ownBoundSph.center?.[0];
+      dataAsF32[9] = ownBoundSph.center?.[1];
+      dataAsF32[10] = ownBoundSph.center?.[2];
+      dataAsF32[11] = ownBoundSph.radius;
       // u32's:
       dataAsU32[12] = m.triangleCount;
       dataAsU32[13] = m.firstIndexOffset;

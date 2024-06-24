@@ -9,7 +9,7 @@ export const CAMERA_CFG = {
   // projection
   fovDgr: 45,
   near: 0.01,
-  far: 100,
+  far: 100.0,
 };
 
 export const BYTES_U8 = 1;
@@ -85,7 +85,7 @@ export const CONFIG = {
        * - use in GPU visiblity flow
        * - test on dense meshes. Probably works better then
        */
-      useSoftwareBackfaceCull: false,
+      // useSoftwareBackfaceCull: false,
       useOcclusionCulling: true,
       /** Need 1st render first! */
       hasValidDepthPyramid: false,

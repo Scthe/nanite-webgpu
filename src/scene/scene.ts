@@ -5,11 +5,8 @@ import {
 } from '../gpuProfiler.ts';
 import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
 import { STATS } from '../sys_web/stats.ts';
-import {
-  getVertexCount,
-  getTriangleCount,
-  printBoundingBox,
-} from '../utils/index.ts';
+import { getVertexCount, getTriangleCount } from '../utils/index.ts';
+import { printBoundingBox } from '../utils/calcBounds.ts';
 import {
   createGPU_VertexBuffer,
   createGPU_IndexBuffer,
