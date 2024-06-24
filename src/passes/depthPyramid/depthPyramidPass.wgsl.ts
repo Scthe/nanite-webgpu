@@ -37,12 +37,12 @@ fn main(
   }
 
   // sample
-  // TODO textureGather?
   var depth = 0.0;
   let pos = index * 2;
   // max cause we have: depthCompare='less',
   // so everything closer (less depth) will be rendered.
   // "Culled if the closest mesh vertex is still further than depthmap"
+  // TBH we could also use textureGather() here
   depth = max(depth, textureLoad(_textureSrc, pos                , 0).x);
   depth = max(depth, textureLoad(_textureSrc, pos + vec2u(0u, 1u), 0).x);
   depth = max(depth, textureLoad(_textureSrc, pos + vec2u(1u, 0u), 0).x);

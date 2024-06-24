@@ -118,13 +118,13 @@ export async function partitionGraphImpl(
     i32Arr(adjncy), // idx_t *adjncy,
     null, // idx_t *vwgt,
     null, // idx_t *vsize,
-    // TODO UE5 adjwgt: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L63
+    // TODO [IGNORE] UE5 adjwgt: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L63
     // https://youtu.be/eviSykqSUUw?si=GttgyFXof02ENUa4&t=1095
     null, // idx_t *adjwgt,
     i32(nparts), // idx_t *nparts,
     null, // real_t *tpwgts,
     null, // real_t *ubvec,
-    // TODO UE5 options: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L50
+    // TODO [IGNORE] UE5 options: https://github.com/EpicGames/UnrealEngine/blob/ue5-main/Engine/Source/Developer/NaniteBuilder/Private/GraphPartitioner.cpp#L50
     wasmPtr(options), // idx_t *options,
     wasmPtr(objval, 'out'), // idx_t *objval,
     wasmPtr(parts, 'out'), // idx_t *part

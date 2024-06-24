@@ -101,8 +101,8 @@ fn main_SpreadYZ(
   }
   let modelMat = _instanceTransforms[tfxIdx];
 
-  var isVisible = getVisibilityStatus(modelMat, meshlet);
-  if (isVisible){
+  let settingsFlags = _uniforms.flags;
+  if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
     registerDraw(tfxIdx, meshletIdx);
   }
 }
@@ -126,6 +126,7 @@ fn main_Iter(
     return;
   }
   let meshlet = _meshlets[meshletIdx];
+  let settingsFlags = _uniforms.flags;
 
   // prepare iters
   let instanceCount: u32 = arrayLength(&_instanceTransforms);
@@ -135,8 +136,7 @@ fn main_Iter(
     let tfxIdx: u32 = tfxOffset + i;
     let modelMat = _instanceTransforms[tfxIdx];
 
-    var isVisible = getVisibilityStatus(modelMat, meshlet);
-    if (isVisible){
+    if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
       registerDraw(tfxIdx, meshletIdx);
     }
   } 
@@ -145,6 +145,29 @@ fn main_Iter(
 ///////////////////////////
 /// UTILS
 ///////////////////////////
+
+fn isMeshletRendered(
+  settingsFlags: u32,
+  modelMat: mat4x4<f32>,
+  meshlet: NaniteMeshletTreeNode
+) -> bool {
+  if (
+    useFrustumCulling(settingsFlags) &&
+    !isInsideCameraFrustum(modelMat, meshlet.ownBoundingSphere)
+  ) {
+    return false;
+  }
+
+  let overrideMipmap = getOverrideOcclusionCullMipmap(settingsFlags);
+  if (
+    useOcclusionCulling(settingsFlags) &&
+    !isPassingOcclusionCulling(modelMat, meshlet.ownBoundingSphere, overrideMipmap)
+  ) {
+    return false;
+  }
+
+  return isCorrectNaniteLOD(modelMat, meshlet);
+}
 
 fn resetOtherDrawParams(global_id: vec3<u32>){
   if (global_id.x == 0u) {

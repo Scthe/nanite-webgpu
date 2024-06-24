@@ -66,11 +66,6 @@ export const CONFIG = {
     },
     render: {
       calcVisibilityDevice: 'gpu' as CalcVisibilityDevice,
-      /** Hardware cull should be 'back'. Yet if some model has wrong winding
-       * I would refuse to spend hours debugging thinking it's a disappearing meshlet.
-       * Just use normal 3D software?
-       */
-      allowHardwareBackfaceCull: true,
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.
@@ -78,23 +73,33 @@ export const CONFIG = {
        * In pixels.
        */
       pixelThreshold: 1.0,
-      useFrustumCulling: true,
-      /** Software backface cull is not finished, as the gains seem limited. TODO:
-       * - handle instances. ATM only every instance assumes it has identity tfx matrix for purpose of culling
-       * - fix bugs. Some disappearing triangles at very oblique angles. Just a magic slider to scale condition by 1.1+?
-       * - use in GPU visiblity flow
-       * - test on dense meshes. Probably works better then
-       */
-      // useSoftwareBackfaceCull: false,
-      useOcclusionCulling: true,
-      /** Need 1st render first! */
-      hasValidDepthPyramid: false,
       /** See visiblity pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */
       freezeGPU_Visibilty: false,
       /** Next frame will do an expensive GPU->CPU readback to check GPU visibility buffer */
       nextFrameDebugVisiblityBuffer: false,
+
+      //////////////////////////
+      // Culling
+      /** Software backface cull is not finished, as the gains seem limited. TODO:
+       * - handle instances. ATM only every instance assumes it has identity tfx matrix for purpose of culling
+       * - fix bugs. Some disappearing triangles at very oblique angles. Just a magic slider to scale condition by 1.1+?
+       * - use in GPU visiblity flow
+       * - test on dense meshes. Probably works better then
+       */
+      useFrustumCulling: true,
+      // useSoftwareBackfaceCull: false,
+      useOcclusionCulling: true,
+      isOverrideOcclusionCullMipmap: false,
+      occlusionCullOverrideMipmapLevel: 0,
+      /** Need 1st render first! */
+      hasValidDepthPyramid: false,
+      /** Hardware cull should be 'back'. Yet if some model has wrong winding
+       * I would refuse to spend hours debugging thinking it's a disappearing meshlet.
+       * Just use normal 3D software?
+       */
+      allowHardwareBackfaceCull: true,
     },
   },
 };

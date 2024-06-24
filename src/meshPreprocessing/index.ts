@@ -2,10 +2,9 @@ import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletId } from '../scene/naniteObject.ts';
 import { clamp } from '../utils/index.ts';
 import {
-  BoundingBox,
   BoundingSphere,
-  calcBoundingBoxIndex,
-  calcBoundingSphere,
+  Bounds3d,
+  calculateBounds,
 } from '../utils/calcBounds.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
@@ -51,10 +50,7 @@ export interface MeshletWIP {
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
-  ownBounds: {
-    sphere: BoundingSphere;
-    box: BoundingBox;
-  };
+  ownBounds: Bounds3d;
 
   // Nanite error calc:
   /** Error for this node */
@@ -65,8 +61,6 @@ export interface MeshletWIP {
   sharedSiblingsBounds: BoundingSphere;
   parentBounds: BoundingSphere | undefined; // undefined at top level
 }
-
-export type MeshletBounds = MeshletWIP['ownBounds'];
 
 export async function createNaniteMeshlets(
   vertices: Float32Array,
@@ -235,14 +229,6 @@ export async function createNaniteMeshlets(
     // console.log({ now: allMeshlets.length, estimatedMeshletCount, progress });
     await progressCb?.(progress);
   }
-}
-
-function calculateBounds(
-  vertices: Float32Array,
-  indices: Uint32Array
-): MeshletBounds {
-  const box = calcBoundingBoxIndex(vertices, indices);
-  return { box, sphere: calcBoundingSphere(box) };
 }
 
 function mergeMeshlets(...meshletGroup: MeshletWIP[]): Uint32Array {

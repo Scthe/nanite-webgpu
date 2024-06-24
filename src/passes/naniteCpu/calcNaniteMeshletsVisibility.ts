@@ -5,7 +5,7 @@ import {
   getModelViewProjectionMatrix,
   projectPoint,
 } from '../../utils/index.ts';
-import { BoundingSphere } from '../../utils/calcBounds.ts';
+import { BoundingSphere, Bounds3d } from '../../utils/calcBounds.ts';
 import { CAMERA_CFG, CONFIG } from '../../constants.ts';
 import {
   NaniteObject,
@@ -15,12 +15,10 @@ import { NaniteVisibilityBufferCPU } from './types.ts';
 import { Frustum } from '../../utils/frustum.ts';
 
 /**
- * 'hidden' - skip subtree
  * 'rendered' - this is the correct level to render
  * 'check-children' - children have more appropriate LOD
  */
 export enum NaniteVisibilityStatus {
-  HIDDEN, // TODO is the used? swap to bool
   RENDERED,
   CHECK_CHILDREN,
 }
@@ -33,9 +31,7 @@ export function calcNaniteMeshletsVisibility(
 ): number {
   const root = naniteObject.root;
   // check: entire instance is visible
-  // TODO is root.boundingSphere.r based on LOD6 (coarse)? or on the full-res model? Should be on full-res model, as LOD6 may remove vertices. TBH do not use root here, but naniteObj.boundingBox
-  // TODO frustum cull per-meshlet here too
-  if (!checkIsInsideFrustum(ctx.cameraFrustum, modelMat, root)) {
+  if (!checkIsInsideFrustum(ctx.cameraFrustum, modelMat, naniteObject.bounds)) {
     return 0;
   }
 
@@ -86,20 +82,20 @@ const TMP_CACHED_VEC4 = vec4.create();
 function checkIsInsideFrustum(
   frustum: Frustum,
   modelMat: Mat4,
-  meshlet: NaniteMeshletTreeNode
+  bounds: Bounds3d
 ): boolean {
   if (!CONFIG.nanite.render.useFrustumCulling) return true;
 
-  TMP_CACHED_VEC4[0] = meshlet.sharedSiblingsBounds.center[0];
-  TMP_CACHED_VEC4[1] = meshlet.sharedSiblingsBounds.center[1];
-  TMP_CACHED_VEC4[2] = meshlet.sharedSiblingsBounds.center[2];
+  TMP_CACHED_VEC4[0] = bounds.sphere.center[0];
+  TMP_CACHED_VEC4[1] = bounds.sphere.center[1];
+  TMP_CACHED_VEC4[2] = bounds.sphere.center[2];
   TMP_CACHED_VEC4[3] = 1;
   const sphereWorldSpace = projectPoint(
     modelMat,
     TMP_CACHED_VEC4,
     TMP_CACHED_VEC4
   );
-  sphereWorldSpace[3] = meshlet.sharedSiblingsBounds.radius;
+  sphereWorldSpace[3] = bounds.sphere.radius;
   return frustum.isInside(sphereWorldSpace);
 }
 
@@ -145,8 +141,6 @@ function checkIsBackface(
  * `ParentError > threshold && ClusterError <= threshold`
  * This is used in non-parellel from-root rendering. On GPU, when going from bottom,
  * use: isCulled = `parentError <= threshold`, which decide if we are skipped in favour of parent.
- *
- * TODO use the meshoptimizer's cone setting for culling. Remember about transform matrices
  */
 export function getVisibilityStatus(
   getProjectedError: ReturnType<typeof createErrorMetric>,

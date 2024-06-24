@@ -10,6 +10,8 @@ import { showHtmlEl } from '../utils/index.ts';
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
+const MAX_DEPTH_PYRAMID_LEVEL = 14;
+
 export let setDisplayMode: undefined | ((e: DisplayMode) => unknown) =
   undefined;
 
@@ -120,14 +122,23 @@ export function initializeGUI(
   function addCullingFolder() {
     const dir = gui.addFolder('Culling');
     dir.open();
+    const { render } = CONFIG.nanite;
 
     // Frustum culling
-    dir.add(CONFIG.nanite.render, 'useFrustumCulling').name('Frustum culling');
+    dir.add(render, 'useFrustumCulling').name('Frustum culling');
 
     // Occlusion culling
+    dir.add(render, 'useOcclusionCulling').name('Occlusion culling');
+    dir.add(render, 'isOverrideOcclusionCullMipmap').name('OC override');
     dir
-      .add(CONFIG.nanite.render, 'useOcclusionCulling')
-      .name('Occlusion culling');
+      .add(
+        render,
+        'occlusionCullOverrideMipmapLevel',
+        0,
+        MAX_DEPTH_PYRAMID_LEVEL
+      )
+      .step(1)
+      .name('OC ov-ride lvl');
 
     // SW backface cull
     // softwareBackfaceCullCtrl = dir
@@ -168,7 +179,6 @@ export function initializeGUI(
       .step(1)
       .name('Nanite LOD');
 
-    const MAX_DEPTH_PYRAMID_LEVEL = 15;
     const depthPyramidLevelCtrl = dir
       .add(CONFIG, 'dbgDepthPyramidLevel', 0, MAX_DEPTH_PYRAMID_LEVEL)
       .step(1)

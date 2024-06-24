@@ -1,7 +1,7 @@
 import { VERTS_IN_TRIANGLE } from '../constants.ts';
 import { createArray, getTriangleCount } from '../utils/index.ts';
 
-// TODO This should find vertices that have same *positions*, not indices.
+// TODO [NORMALS, UVs] This should find vertices that have same *positions*, not indices.
 //      I.e. vertices with same position and different normals
 //      count as 2 vertices, but we should count them
 //      as the same vertex.

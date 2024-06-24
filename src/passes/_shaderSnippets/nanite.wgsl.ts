@@ -1,16 +1,10 @@
 export const SNIPPET_NANITE_LOD_CULLING = /* wgsl */ `
 
-fn getVisibilityStatus (
+fn isCorrectNaniteLOD (
   modelMat: mat4x4<f32>,
   meshlet: NaniteMeshletTreeNode
 ) -> bool {
-  if (!isInsideCameraFrustum(modelMat, meshlet)) {
-    return false;
-  }
-
-  if (!isPassingOcclusionCulling(modelMat, meshlet)) {
-    return false;
-  }
+  let flags = _uniforms.flags;
 
   let threshold = _uniforms.viewport.z;
   let screenHeight = _uniforms.viewport.y;

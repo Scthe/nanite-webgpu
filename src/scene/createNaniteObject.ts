@@ -24,6 +24,7 @@ import {
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { STATS } from '../sys_web/stats.ts';
 import { InstancesGrid, getInstancesCount } from './sceneFiles.ts';
+import { calculateBounds } from '../utils/calcBounds.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -55,8 +56,10 @@ export function createNaniteObject(
     getInstancesCount(instancesGrid)
   );
   const instances = createInstancesData(device, name, instancesGrid);
+  const bounds = calculateBounds(rawVertices);
   const naniteObject = new NaniteObject(
     name,
+    bounds,
     vertexBuffer,
     vertexBufferForStorageAsVec4,
     indexBuffer,

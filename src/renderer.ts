@@ -140,30 +140,35 @@ export class Renderer {
     ) {
       this.dbgMeshoptimizerMeshletsPass.draw(ctx);
     } else {
+      // draw nanite - calc visibility either CPU or GPU
       if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
-        const { naniteObject } = ctx.scene;
-
-        if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
-          this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
-        }
-        this.drawNaniteGPUPass.draw(ctx, naniteObject);
-
-        this.depthPyramidPass.cmdCreateDepthPyramid(
-          ctx,
-          this.depthTexture,
-          this.depthTextureView
-        );
-        CONFIG.nanite.render.hasValidDepthPyramid = true;
-
-        if (CONFIG.displayMode === 'dbg-depth-pyramid') {
-          this.depthPyramidDebugDrawPass.cmdDraw(ctx);
-        }
+        this.cmdDrawNaniteGPU(ctx);
       } else {
         this.drawMeshPass.draw(ctx);
       }
     }
 
     this.frameIdx += 1;
+  }
+
+  private cmdDrawNaniteGPU(ctx: PassCtx) {
+    const { naniteObject } = ctx.scene;
+
+    if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
+      this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+    }
+    this.drawNaniteGPUPass.draw(ctx, naniteObject);
+
+    this.depthPyramidPass.cmdCreateDepthPyramid(
+      ctx,
+      this.depthTexture,
+      this.depthTextureView
+    );
+    CONFIG.nanite.render.hasValidDepthPyramid = true;
+
+    if (CONFIG.displayMode === 'dbg-depth-pyramid') {
+      this.depthPyramidDebugDrawPass.cmdDraw(ctx);
+    }
   }
 
   private recreateDepthDexture = (viewportSize: Dimensions) => {

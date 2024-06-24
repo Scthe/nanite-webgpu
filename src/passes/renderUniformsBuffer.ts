@@ -10,19 +10,30 @@ import { GPU_BUFFER_USAGE_UNIFORM } from '../utils/webgpu.ts';
 import { calcCotHalfFov } from './naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { PassCtx } from './passCtx.ts';
 
+const FLAG_FRUSTUM_CULLING = 1;
+const FLAG_OCCLUSION_CULLING = 2;
+
 export class RenderUniformsBuffer {
   public static SHADER_SNIPPET = (group: number) => `
+    const b1111 = 15u; // binary 0b1111
+
     struct Uniforms {
       vpMatrix: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
       projMatrix: mat4x4<f32>,
       viewport: vec4f,
-      cameraFrustumPlane0: vec4f, // TODO there are much more efficient ways for frustum culling
+      cameraFrustumPlane0: vec4f, // TODO [LOW] there are much more efficient ways for frustum culling
       cameraFrustumPlane1: vec4f, // https://github.com/zeux/niagara/blob/master/src/shaders/drawcull.comp.glsl#L72
       cameraFrustumPlane2: vec4f,
       cameraFrustumPlane3: vec4f,
       cameraFrustumPlane4: vec4f,
       cameraFrustumPlane5: vec4f,
+      // b1 - frustom cull
+      // b2 - occlusion cull
+      // b3,4,5,6,7 - not used
+      // b8,9,10,11 - debug render depty pyramid level (value 0-15)
+      // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
+      // b16..32 - not used
       flags: u32,
       padding0: u32,
       padding1: u32,
@@ -31,10 +42,17 @@ export class RenderUniformsBuffer {
     @binding(0) @group(${group})
     var<uniform> _uniforms: Uniforms;
 
-    fn checkFlag(bit: u32) -> bool { return (_uniforms.flags & bit) > 0; } // TODO do not load the flag every time? Get it once at the start of the shader
-    fn useFrustumCulling() -> bool { return checkFlag(1u); }
-    fn useOcclusionCulling() -> bool { return checkFlag(2u); }
-    fn getDbgPyramidMipmapLevel() -> i32 { return i32(clamp(_uniforms.flags >> 8u, 0u, 15u)); }
+    fn checkFlag(flags: u32, bit: u32) -> bool { return (flags & bit) > 0; }
+    fn useFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_FRUSTUM_CULLING}u); }
+    fn useOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_OCCLUSION_CULLING}u); }
+    fn getDbgPyramidMipmapLevel(flags: u32) -> i32 {
+      return i32(clamp((flags >> 8u) & b1111, 0u, 15u));
+    }
+    fn getOverrideOcclusionCullMipmap(flags: u32) -> i32 {
+      let v: u32 = clamp((flags >> 12u) & b1111, 0u, 15u);
+      if (v == 15u) { return -1; }
+      return i32(v);
+    }
   `;
 
   public static BUFFER_SIZE =
@@ -124,16 +142,23 @@ export class RenderUniformsBuffer {
     const naniteCfg = CONFIG.nanite.render;
 
     let flags = 0;
-    flags = flags | (naniteCfg.useFrustumCulling ? 1 : 0);
+    flags = flags | (naniteCfg.useFrustumCulling ? FLAG_FRUSTUM_CULLING : 0);
 
     // skip occlusion culling if we don't have depth pyramid yet
     const occlCull =
       naniteCfg.hasValidDepthPyramid && naniteCfg.useOcclusionCulling;
-    flags = flags | (occlCull ? 2 : 0);
+    flags = flags | (occlCull ? FLAG_OCCLUSION_CULLING : 0);
 
     // dbgDepthPyramidLevel
-    const dpLevelBits = CONFIG.dbgDepthPyramidLevel & 0b1111;
-    flags = flags | (dpLevelBits << 8);
+    let bits = CONFIG.dbgDepthPyramidLevel & 0b1111;
+    flags = flags | (bits << 8);
+
+    // occlusionCullOverrideMipmapLevel
+    bits = naniteCfg.isOverrideOcclusionCullMipmap
+      ? naniteCfg.occlusionCullOverrideMipmapLevel & 0b1111
+      : 0b1111;
+    flags = flags | (bits << 12);
+
     return flags;
   }
 }

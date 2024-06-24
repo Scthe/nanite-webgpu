@@ -51,7 +51,7 @@ fn main_fs(
   @builtin(position) coord: vec4<f32>
 ) -> @location(0) vec4<f32> {
   let viewportSize = vec2f(_uniforms.viewport.x, _uniforms.viewport.y);
-  var mipLevel: i32 = getDbgPyramidMipmapLevel();
+  var mipLevel: i32 = getDbgPyramidMipmapLevel(_uniforms.flags);
   mipLevel = clampToMipLevels(mipLevel, _depthPyramidTexture);
   let mipSize = vec2f(textureDimensions(_depthPyramidTexture, mipLevel));
   let mipCoord = coord.xy / viewportSize * mipSize;

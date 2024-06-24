@@ -1,41 +1,55 @@
 import { CAMERA_CFG } from '../../constants.ts';
+import { LINEAR_DEPTH } from './linearDepth.wgsl.ts';
 import { CLAMP_TO_MIP_LEVELS } from './shaderSnippets.wgls.ts';
 
 export const SNIPPET_OCCLUSION_CULLING = /* wgsl */ `
 
 ${CLAMP_TO_MIP_LEVELS}
+${LINEAR_DEPTH}
 
+/**
+ * Everything closer than this will always pass the occlusion culling.
+ * This fixes the AABB projection problems when sphere is near/intersecting zNear.
+ * Most 'simple' sphere projection formulas just do not work in that case.
+ * Technically we could test in view-space, smth like:
+ *    'sphere.z < zNear && sphere.z + r > zNear'.
+ * You will get flicker and instabilities.
+ * 
+ * Look, 1h ago I have rewritten bounding sphere radius calc and had 1e-9
+ * differences to old approach. The math sometimes..
+ * 
+ * I DON'T HAVE TO DEAL WITH THIS.
+ * 
+ * Exact value choosen cause I say so.
+ */
+const CLOSE_RANGE_NEAR_CAMERA: f32 = 4.0;
 
 /** 
  * https://www.youtube.com/live/Fj1E1A4CPCM?si=PJmBhKd_TQk1GMOb&t=2462 - triangles
  * https://www.youtube.com/watch?v=5sBpo5wKmEM - meshlets
- * 
- * TODO [CRTICIAL] fix flicker on closest bunnies
- * TODO Dbg use slider to override MIP level
- * TODO Choose in GUI which occlus. algo use (project sphere OR view-space AABB)
 */
 fn isPassingOcclusionCulling(
   modelMat: mat4x4<f32>,
-  meshlet: NaniteMeshletTreeNode
+  boundingSphere: vec4f,
+  dbgOverrideMipmapLevel: i32 // if >=0 then overrides mipmap level for debug
 ) -> bool {
-  // check GUI flag
-  if (!useOcclusionCulling()){
-    return true;
-  }
-
   let viewportSize = _uniforms.viewport.xy;
   let viewMat = _uniforms.viewMatrix;
   let projMat = _uniforms.projMatrix;
 
   // project meshlet's center to view space
   // NOTE: view space is weird, e.g. .z is NEGATIVE!
-  let boundingSphere = meshlet.ownBoundingSphere;
   let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
   let r = boundingSphere.w;
 
   // if is close to near plane, it's always visible
   // abs cause view space is ???
-  if (abs(center.z) < r + ${CAMERA_CFG.near}){ // TODO needs more testing
+  const zNear = ${CAMERA_CFG.near};
+  // if (abs(center.z) < r + ${CAMERA_CFG.near}){
+  // let distanceToNearPlane = abs(center.z) - zNear;
+  // if (distanceToNearPlane < r){
+  let closestPointZ = abs(center.z) - r;
+  if (closestPointZ < zNear + CLOSE_RANGE_NEAR_CAMERA){
     return true;
   }
 
@@ -52,7 +66,7 @@ fn isPassingOcclusionCulling(
   // Calc. mip level. If meshlet spans 50px, we round it to 64px and then sample log2(64) = 6 mip.
   // But, we calculated span in fullscreen, and pyramid level 0 is half. So add extra 1 level.
   var mipLevel = i32(ceil(log2(pixelSpan))); // i32 cause wgpu/deno
-  // mipLevel = 9; // debug very high level
+  if (dbgOverrideMipmapLevel >= 0) { mipLevel = dbgOverrideMipmapLevel; } // debug
   mipLevel = clampToMipLevels(mipLevel + 1, _depthPyramidTexture);
   // return mipLevel == 8; // 4 - far, 5/6 - far/mid, 8 - close
 
@@ -64,13 +78,17 @@ fn isPassingOcclusionCulling(
   // let depthFromDepthBuffer = 1.0;
   // return depthFromDepthBuffer == 1.0;
 
+  /*
   // project the bounding sphere
   // PP[10 or 2|2] = -1.000100016593933
   // PP[14 or 3|2] = -0.010001000016927719
-  let d = center.z - r; // +/- to get closest?
+  let d = center.z - r; // INVESTIGATE: +/- to get closest?
   var depthMeshlet = (projMat[2][2] * d + projMat[3][2]) / -d; // in [0, 1]
   
   return depthMeshlet <= depthFromDepthBuffer;
+  */
+  let depthFromDepthBufferVS = linearizeDepth(depthFromDepthBuffer); // range [zNear .. zFar]
+  return closestPointZ <= depthFromDepthBufferVS; // if there is any pixel that is closer than 'prepass-like' depth
 }
 
 /** project view-space AABB */
@@ -98,7 +116,7 @@ fn getAABBfrom8ProjectedPoints(projMat: mat4x4f, center: vec3f, r: f32) -> vec4f
 fn getBB(projMat: mat4x4f, center: vec3f, r: f32, dir: vec3f) -> vec4f {
   let p = center + r * dir;
   let pProj = projMat * vec4f(p, 1.);
-  return pProj / pProj.w; // TODO was it [-1,1] or [0,1]? This does not matter of px diff, just might be x2 too high
+  return pProj / pProj.w;
 }
 
 /**

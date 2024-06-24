@@ -13,7 +13,7 @@ import type {
 // - https://radu-matei.com/blog/practical-guide-to-wasm-memory/
 
 const DEBUG_ALLOC = false;
-// TODO [HIGH] re-Emscripten metis with free(). ATM we use metisFreeAllocations()
+// TODO [LOW] re-Emscripten metis with free(). ATM we use metisFreeAllocations()
 // to mass free() the memory at the end of object processing.
 // Metis does not allocate much memory, so you will not alloc >2GB.
 // Meshoptimizer on the other hand... each I've exported _free() and hope it works.

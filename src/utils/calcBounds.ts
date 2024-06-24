@@ -1,6 +1,21 @@
 import { vec3, Vec3 } from 'wgpu-matrix';
 import { CO_PER_VERTEX, VERTS_IN_TRIANGLE } from '../constants.ts';
 
+export interface Bounds3d {
+  sphere: BoundingSphere;
+  box: BoundingBox;
+}
+
+export function calculateBounds(
+  vertices: Float32Array,
+  indices?: Uint32Array
+): Bounds3d {
+  const box = indices
+    ? calcBoundingBoxIndex(vertices, indices)
+    : calcBoundingBox(vertices);
+  return { box, sphere: calcBoundingSphere(box) };
+}
+
 type BoundingBoxPoint = [number, number, number];
 export type BoundingBox = [BoundingBoxPoint, BoundingBoxPoint];
 

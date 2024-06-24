@@ -10,6 +10,7 @@ import { createArray, getTriangleCount } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
 import { downloadBuffer } from '../utils/webgpu.ts';
 import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
+import { Bounds3d } from '../utils/calcBounds.ts';
 
 export type MeshletId = number;
 
@@ -57,6 +58,7 @@ export class NaniteObject {
 
   constructor(
     public readonly name: string,
+    public readonly bounds: Bounds3d,
     public readonly vertexBuffer: GPUBuffer,
     /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
     private readonly vertexBufferForStorageAsVec4: GPUBuffer,
@@ -177,9 +179,9 @@ export class NaniteObject {
       dataAsF32[7] = m.parentError === Infinity ? 9999999.0 : m.parentError;
       // own bounds
       const ownBoundSph = m.ownBounds.sphere;
-      dataAsF32[8] = ownBoundSph.center?.[0];
-      dataAsF32[9] = ownBoundSph.center?.[1];
-      dataAsF32[10] = ownBoundSph.center?.[2];
+      dataAsF32[8] = ownBoundSph.center[0];
+      dataAsF32[9] = ownBoundSph.center[1];
+      dataAsF32[10] = ownBoundSph.center[2];
       dataAsF32[11] = ownBoundSph.radius;
       // u32's:
       dataAsU32[12] = m.triangleCount;
