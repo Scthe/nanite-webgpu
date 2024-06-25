@@ -5,6 +5,8 @@ export const CAMERA_CFG = {
   position: {
     position: [1.5, 1.9, 2.3],
     rotation: [-0.6, 0.3], // [pitch, yaw]
+    // position: [1.2, 0.8, 0.2],
+    // rotation: [-1.4, 0.1], // [pitch, yaw]
   } satisfies CameraOpts,
   // projection
   fovDgr: 45,
@@ -40,6 +42,11 @@ export type DisplayMode =
   | 'dbg-depth-pyramid';
 export type CalcVisibilityDevice = 'cpu' | 'gpu';
 
+export const SHADING_MODE_PBR = 0;
+export const SHADING_MODE_TRIANGLE = 1;
+export const SHADING_MODE_MESHLET = 2;
+export const SHADING_MODE_LOD_LEVEL = 3;
+
 export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
   isTest: false,
@@ -54,6 +61,7 @@ export const CONFIG = {
   dbgMeshoptimizerLodLevel: 0,
   dbgDepthPyramidLevel: 0,
   dbgNaniteLodLevel: 1,
+  lightsCount: 2,
   nanite: {
     preprocess: {
       meshletMaxVertices: 64,
@@ -79,6 +87,7 @@ export const CONFIG = {
       freezeGPU_Visibilty: false,
       /** Next frame will do an expensive GPU->CPU readback to check GPU visibility buffer */
       nextFrameDebugVisiblityBuffer: false,
+      shadingMode: SHADING_MODE_PBR,
 
       //////////////////////////
       // Culling

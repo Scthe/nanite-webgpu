@@ -1,6 +1,13 @@
 // @deno-types="npm:@types/dat.gui@0.7.9"
 import * as dat from 'dat.gui';
-import { CONFIG, DisplayMode } from '../constants.ts';
+import {
+  CONFIG,
+  DisplayMode,
+  SHADING_MODE_LOD_LEVEL,
+  SHADING_MODE_MESHLET,
+  SHADING_MODE_PBR,
+  SHADING_MODE_TRIANGLE,
+} from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
 import { Scene } from '../scene/scene.ts';
 import { Camera } from '../camera.ts';
@@ -26,6 +33,7 @@ export function initializeGUI(
   // let softwareBackfaceCullCtrl: GuiCtrl;
   let gpuFreezeVisiblityCtrl: GuiCtrl;
   let gpuVisiblityImplCtrl: GuiCtrl;
+  let gpuShadingMode: GuiCtrl;
 
   const gui = new dat.GUI();
 
@@ -75,6 +83,7 @@ export function initializeGUI(
     setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
     setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
     setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
+    setVisible(gpuShadingMode, nextDevice == 'gpu');
     // cpu
     // setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
   }
@@ -107,6 +116,19 @@ export function initializeGUI(
     gpuVisiblityImplCtrl = dir
       .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
       .name('Visib. algo ITER');
+
+    // shading mode
+    // prettier-ignore
+    const shadingDummy = createDummy(CONFIG.nanite.render, 'shadingMode', [
+      { label: 'Normal', value: SHADING_MODE_PBR },
+      { label: 'Triangles', value: SHADING_MODE_TRIANGLE },
+      { label: 'Meshlets', value: SHADING_MODE_MESHLET },
+      { label: 'LOD levels', value: SHADING_MODE_LOD_LEVEL },
+    ]);
+    // prettier-ignore
+    gpuShadingMode = dir
+      .add(shadingDummy, 'shadingMode', shadingDummy.values) // prettier-ignore
+      .name('Shading mode');
 
     // freeze visibilty
     gpuFreezeVisiblityCtrl = dir

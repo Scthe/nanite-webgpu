@@ -42,8 +42,8 @@ struct NaniteMeshletTreeNode {
   ownBoundingSphere: vec4f, // ownBounds
   triangleCount: u32,
   firstIndexOffset: u32,
-  padding0: u32, // required to fill uvec4
-  padding1: u32, // required to fill uvec4
+  lodLevel: u32, // meshlet level + padding
+  padding1: u32, // padding to fill uvec4
 }
 @group(0) @binding(${bindingIdx})
 var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
@@ -186,6 +186,7 @@ export class NaniteObject {
       // u32's:
       dataAsU32[12] = m.triangleCount;
       dataAsU32[13] = m.firstIndexOffset;
+      dataAsU32[14] = m.lodLevel;
 
       // write
       device.queue.writeBuffer(

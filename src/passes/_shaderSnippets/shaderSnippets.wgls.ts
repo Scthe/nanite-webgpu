@@ -8,15 +8,21 @@ fn getMVP_Mat(modelMat: ${MAT4}, viewMat: ${MAT4}, projMat: ${MAT4}) -> ${MAT4} 
 }
 `;
 
+export const FS_NORMAL_FROM_DERIVATIVES = /* wgsl */ `
+fn normalFromDerivatives(wsPosition: vec4f) -> vec3f{
+  let posWsDx = dpdxFine(wsPosition);
+  let posWsDy = dpdyFine(wsPosition);
+  return normalize(cross(posWsDy.xyz, posWsDx.xyz));
+}
+`;
+
 /** Object-space lighting. */
 export const FS_FAKE_LIGHTING = /* wgsl */ `
 fn fakeLighting(wsPosition: vec4f) -> f32{
   let AMBIENT_LIGHT = 0.1;
   let LIGHT_DIR = vec3(5., 5., 5.);
 
-  let posWsDx = dpdxFine(wsPosition);
-  let posWsDy = dpdyFine(wsPosition);
-  let normal = normalize(cross(posWsDy.xyz, posWsDx.xyz));
+  let normal = normalFromDerivatives(wsPosition);
   let lightDir = normalize(LIGHT_DIR);
   let NdotL = max(0.0, dot(normal.xyz, lightDir));
   return mix(AMBIENT_LIGHT, 1.0, NdotL);

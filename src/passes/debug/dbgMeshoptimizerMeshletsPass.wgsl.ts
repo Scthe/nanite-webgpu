@@ -17,6 +17,7 @@ export const SHADER_CODE = () => /* wgsl */ `
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
+${SHADER_SNIPPETS.FS_NORMAL_FROM_DERIVATIVES}
 
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,

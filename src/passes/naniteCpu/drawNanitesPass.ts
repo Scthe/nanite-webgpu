@@ -138,12 +138,15 @@ export class DrawNanitesPass {
         const m = naniteObject.naniteVisibilityBufferCPU.drawnMeshlets[mIdx];
         const triangleCount = m.triangleCount;
         const vertexCount = triangleCount * VERTS_IN_TRIANGLE;
+        // we draw 1 instance, but we can use 'firstInstance'
+        // to send additional data to the GPU for free.
+        // Can only use for transformId. No meshletId in shader.
         renderPass.drawIndexed(
           vertexCount,
           1, // instance count
           m.firstIndexOffset, // first index
           0, // base vertex
-          instanceIdx // meshletId // first instance TODO encode [meshletId+objectId]?
+          instanceIdx // first instance
         );
         drawnTriangleCount += triangleCount;
       }

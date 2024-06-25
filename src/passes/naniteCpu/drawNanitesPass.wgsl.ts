@@ -1,4 +1,6 @@
+import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
+import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 
 export const SHADER_PARAMS = {
@@ -17,8 +19,10 @@ export const SHADER_CODE = () => /* wgsl */ `
 
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
-${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
+${SHADER_SNIPPETS.FS_NORMAL_FROM_DERIVATIVES}
+${SNIPPET_SHADING_PBR}
+${SNIPPET_SHADING}
 
 @group(0) @binding(${b.instancesTransforms})
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
@@ -26,7 +30,7 @@ var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) wsPosition: vec4f,
-  @location(1) @interpolate(flat) instanceIndex: u32,
+  @location(1) @interpolate(flat) instanceIdx: u32,
 };
 
 
@@ -40,12 +44,12 @@ fn main_vs(
 
   let modelMat = _instanceTransforms[inInstanceIndex];
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix); // either here or upload from CPU
-  let worldPos = vec4<f32>(inWorldPos.xyz, 1.0);
-  var projectedPosition = mvpMatrix * worldPos;
-  // projectedPosition /= projectedPosition.w; // ?! Am I just getting old?
+  let vertexPos = vec4<f32>(inWorldPos.xyz, 1.0);
+  var projectedPosition = mvpMatrix * vertexPos;
+  let positionWS = modelMat * vertexPos;
   result.position = projectedPosition;
-  result.wsPosition = worldPos; // skips multiply with model matrix for non-world-space ligthing
-  result.instanceIndex = inInstanceIndex;
+  result.wsPosition = positionWS;
+  result.instanceIdx = inInstanceIndex;
 
   return result;
 }
@@ -53,9 +57,15 @@ fn main_vs(
 
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
-  let c = fakeLighting(fragIn.wsPosition);
-  var color = getRandomColor(fragIn.instanceIndex);
-  color = color * c;
+  // not enough data for debug modes
+  var material: Material;
+  createDefaultMaterial(&material, fragIn.wsPosition);
+  
+  // shading
+  var lights = array<Light, LIGHT_COUNT>();
+  fillLightsData(&lights);
+  let color = doShading(material, AMBIENT_LIGHT, lights);
+
   return vec4(color.xyz, 1.0);
 }
 `;

@@ -16,12 +16,14 @@ const FLAG_OCCLUSION_CULLING = 2;
 export class RenderUniformsBuffer {
   public static SHADER_SNIPPET = (group: number) => `
     const b1111 = 15u; // binary 0b1111
+    const b11 = 3u; // binary 0b11
 
     struct Uniforms {
       vpMatrix: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
       projMatrix: mat4x4<f32>,
       viewport: vec4f,
+      cameraPosition: vec4f,
       cameraFrustumPlane0: vec4f, // TODO [LOW] there are much more efficient ways for frustum culling
       cameraFrustumPlane1: vec4f, // https://github.com/zeux/niagara/blob/master/src/shaders/drawcull.comp.glsl#L72
       cameraFrustumPlane2: vec4f,
@@ -30,7 +32,8 @@ export class RenderUniformsBuffer {
       cameraFrustumPlane5: vec4f,
       // b1 - frustom cull
       // b2 - occlusion cull
-      // b3,4,5,6,7 - not used
+      // b3,4 - shading mode
+      // b5,6,7 - not used
       // b8,9,10,11 - debug render depty pyramid level (value 0-15)
       // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
       // b16..32 - not used
@@ -45,6 +48,9 @@ export class RenderUniformsBuffer {
     fn checkFlag(flags: u32, bit: u32) -> bool { return (flags & bit) > 0; }
     fn useFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_FRUSTUM_CULLING}u); }
     fn useOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_OCCLUSION_CULLING}u); }
+    fn getShadingMode(flags: u32) -> u32 {
+      return (flags >> 2u) & b11;
+    }
     fn getDbgPyramidMipmapLevel(flags: u32) -> i32 {
       return i32(clamp((flags >> 8u) & b1111, 0u, 15u));
     }
@@ -60,6 +66,7 @@ export class RenderUniformsBuffer {
     BYTES_MAT4 + // viewMatrix
     BYTES_MAT4 + // projMatrix
     BYTES_VEC4 + // viewport
+    BYTES_VEC4 + // cameraPosition
     6 * BYTES_VEC4 + // camera frustum planes
     4 * BYTES_U32; // flags + padding
 
@@ -91,6 +98,7 @@ export class RenderUniformsBuffer {
       projMatrix,
       viewport,
       cameraFrustum,
+      cameraPositionWorldSpace,
     } = ctx;
 
     let offsetBytes = 0;
@@ -102,6 +110,12 @@ export class RenderUniformsBuffer {
     offsetBytes = this.writeF32(offsetBytes, viewport.height);
     offsetBytes = this.writeF32(offsetBytes, CONFIG.nanite.render.pixelThreshold); // prettier-ignore
     offsetBytes = this.writeF32(offsetBytes, calcCotHalfFov());
+    // camera position
+    const camPos = cameraPositionWorldSpace;
+    offsetBytes = this.writeF32(offsetBytes, camPos[0]);
+    offsetBytes = this.writeF32(offsetBytes, camPos[1]);
+    offsetBytes = this.writeF32(offsetBytes, camPos[2]);
+    offsetBytes = this.writeF32(offsetBytes, 0.0); // padding
     // camera frustum planes
     for (let i = 0; i < cameraFrustum.planes.length; i++) {
       offsetBytes = this.writeF32(offsetBytes, cameraFrustum.planes[i]);
@@ -142,15 +156,20 @@ export class RenderUniformsBuffer {
     const naniteCfg = CONFIG.nanite.render;
 
     let flags = 0;
+    // frustum cull
     flags = flags | (naniteCfg.useFrustumCulling ? FLAG_FRUSTUM_CULLING : 0);
 
-    // skip occlusion culling if we don't have depth pyramid yet
+    // occlusion culling: skip if we don't have depth pyramid yet
     const occlCull =
       naniteCfg.hasValidDepthPyramid && naniteCfg.useOcclusionCulling;
     flags = flags | (occlCull ? FLAG_OCCLUSION_CULLING : 0);
 
+    // b3,4 - shading mode
+    let bits = naniteCfg.shadingMode & 0b11;
+    flags = flags | (bits << 2);
+
     // dbgDepthPyramidLevel
-    let bits = CONFIG.dbgDepthPyramidLevel & 0b1111;
+    bits = CONFIG.dbgDepthPyramidLevel & 0b1111;
     flags = flags | (bits << 8);
 
     // occlusionCullOverrideMipmapLevel
