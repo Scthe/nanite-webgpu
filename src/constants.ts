@@ -18,10 +18,12 @@ export const BYTES_U8 = 1;
 export const BYTES_F32 = 4;
 export const BYTES_U32 = 4;
 export const BYTES_U64 = 8;
+export const BYTES_VEC2 = BYTES_F32 * 2;
 export const BYTES_VEC3 = BYTES_F32 * 3;
 export const BYTES_VEC4 = BYTES_F32 * 4;
 export const BYTES_UVEC2 = BYTES_U32 * 2;
 export const BYTES_UVEC4 = BYTES_U32 * 4;
+export const BYTES_U8_VEC4 = BYTES_U8 * 4;
 export const BYTES_MAT4 = BYTES_F32 * 16;
 
 export const NANO_TO_MILISECONDS = 0.000001;

@@ -8,6 +8,8 @@ export const SHADER_PARAMS = {
   bindings: {
     renderUniforms: 0,
     instancesTransforms: 1,
+    diffuseTexture: 2,
+    sampler: 3,
   },
 };
 
@@ -29,11 +31,19 @@ ${SNIPPET_SHADING}
 @group(0) @binding(${b.instancesTransforms})
 var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
+@group(0) @binding(${b.diffuseTexture})
+var _diffuseTexture: texture_2d<f32>;
+
+@group(0) @binding(${b.sampler})
+var _sampler: sampler;
+
+
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) positionWS: vec4f,
   @location(1) normalWS: vec3f,
-  @location(2) @interpolate(flat) instanceIdx: u32,
+  @location(2) uv: vec2f,
+  @location(3) @interpolate(flat) instanceIdx: u32,
 };
 
 
@@ -41,6 +51,7 @@ struct VertexOutput {
 fn main_vs(
   @location(0) inWorldPos : vec3f,
   @location(1) inNormal : vec3f,
+  @location(2) inUV : vec2f,
   @builtin(vertex_index) inVertexIndex: u32,
   @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
@@ -55,6 +66,7 @@ fn main_vs(
   result.positionWS = positionWS;
   result.instanceIdx = inInstanceIndex;
   result.normalWS = transformNormalToWorldSpace(modelMat, inNormal);
+  result.uv = inUV;
 
   return result;
 }
@@ -73,6 +85,7 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
     var material: Material;
     createDefaultMaterial(&material, fragIn.positionWS);
     material.normal = normalize(fragIn.normalWS);
+    material.albedo = textureSample(_diffuseTexture, _sampler, fragIn.uv).rgb;
     
     // shading
     var lights = array<Light, LIGHT_COUNT>();

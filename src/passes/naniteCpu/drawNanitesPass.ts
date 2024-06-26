@@ -1,4 +1,4 @@
-import { BYTES_VEC3, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { BYTES_VEC2, BYTES_VEC3, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import {
   BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
@@ -19,6 +19,8 @@ import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { formatNumber } from '../../utils/index.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './drawNanitesPass.wgsl.ts';
+import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
+import { getDiffuseTexture } from '../../scene/scene.ts';
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
   {
@@ -37,10 +39,21 @@ export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
       {
         shaderLocation: 1, // normals
         offset: 0,
-        format: 'float32x3',
+        format: 'float32x3', // only nanite object uses octahedron normals
       },
     ],
     arrayStride: BYTES_VEC3,
+    stepMode: 'vertex',
+  },
+  {
+    attributes: [
+      {
+        shaderLocation: 2, // uv
+        offset: 0,
+        format: 'float32x2',
+      },
+    ],
+    arrayStride: BYTES_VEC2,
     stepMode: 'vertex',
   },
 ];
@@ -125,6 +138,7 @@ export class DrawNanitesPass {
     renderPass.setBindGroup(0, bindings);
     renderPass.setVertexBuffer(0, naniteObject.originalMesh.vertexBuffer);
     renderPass.setVertexBuffer(1, naniteObject.originalMesh.normalsBuffer);
+    renderPass.setVertexBuffer(2, naniteObject.originalMesh.uvBuffer);
     renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
 
     let drawnTriangleCount = 0;
@@ -173,10 +187,12 @@ export class DrawNanitesPass {
   }
 
   private createBindings = (
-    { device, globalUniforms }: PassCtx,
+    { device, globalUniforms, scene }: PassCtx,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
+    const diffuseTextureView = getDiffuseTexture(scene, naniteObject);
+    assertIsGPUTextureView(diffuseTextureView);
 
     return assignResourcesToBindings2(
       DrawNanitesPass,
@@ -189,6 +205,8 @@ export class DrawNanitesPass {
           binding: b.instancesTransforms,
           resource: { buffer: naniteObject.instances.transformsBuffer },
         },
+        { binding: b.diffuseTexture, resource: diffuseTextureView },
+        { binding: b.sampler, resource: scene.defaultSampler },
       ]
     );
   };

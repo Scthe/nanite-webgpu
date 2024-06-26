@@ -69,13 +69,14 @@ export function createGPUBuffer<T extends TypedArray>(
 export function createGPU_VertexBuffer(
   device: GPUDevice,
   label: string,
-  data: Float32Array | number[]
+  data: Float32Array | number[],
+  extraUsage: GPUBufferUsage = 0
 ) {
   const dataTypedArr = ensureTypedArray(Float32Array, data);
   return createGPUBuffer(
     device,
     label,
-    GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+    GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST | (extraUsage as number),
     dataTypedArr
   );
 }

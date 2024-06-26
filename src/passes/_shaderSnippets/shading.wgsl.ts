@@ -2,6 +2,8 @@ import { CONFIG } from '../../constants.ts';
 
 const LIGHT_COUNT = CONFIG.lightsCount;
 
+export const DEFAULT_COLOR: [number, number, number] = [0.9, 0.9, 0.9];
+
 /** https://github.com/Scthe/WebFX/blob/master/src/shaders/sintel.frag.glsl#L135 */
 export const SNIPPET_SHADING = /* wgsl */ `
 
@@ -83,7 +85,7 @@ fn createDefaultMaterial(
   material.normal = normalFromDerivatives(positionWS);
   material.toEye = normalize(cameraPos - positionWS.xyz);
   // brdf params:
-  material.albedo = vec3f(0.9, 0.9, 0.9);
+  material.albedo = vec3f(${DEFAULT_COLOR[0]}, ${DEFAULT_COLOR[1]}, ${DEFAULT_COLOR[2]});
   material.roughness = 0.7;
   material.isMetallic = 0.3; // oops!
   // material.ao = 1.0;

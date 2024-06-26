@@ -5,7 +5,7 @@ export const OBJECTS = {
   lucy: { file: 'lucy.obj', scale: 1 },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 0.01 },
   cube: { file: 'cube.obj', scale: 1 },
-  plane: { file: 'plane.obj', scale: 1 },
+  plane: { file: 'plane.obj', scale: 1, texture: 'test-texture.png' },
   planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },
   displacedPlane: {
     file: 'displaced-plane.obj',

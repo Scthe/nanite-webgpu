@@ -19,7 +19,10 @@ export const SHADER_PARAMS = {
     instancesTransforms: 3,
     vertexPositions: 4,
     vertexNormals: 5,
-    indexBuffer: 6,
+    vertexUV: 6,
+    indexBuffer: 7,
+    diffuseTexture: 8,
+    sampler: 9,
   },
 };
 
@@ -52,17 +55,26 @@ var<storage, read> _vertexPositions: array<vec4f>;
 @group(0) @binding(${b.vertexNormals})
 var<storage, read> _vertexNormals: array<vec2f>;
 
+@group(0) @binding(${b.vertexUV})
+var<storage, read> _vertexUV: array<vec2f>;
+
 @group(0) @binding(${b.indexBuffer})
 var<storage, read> _indexBuffer: array<u32>;
 
+@group(0) @binding(${b.diffuseTexture})
+var _diffuseTexture: texture_2d<f32>;
+
+@group(0) @binding(${b.sampler})
+var _sampler: sampler;
 
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) positionWS: vec4f,
   @location(1) normalWS: vec3f,
-  @location(2) @interpolate(flat) instanceIdx: u32,
-  @location(3) @interpolate(flat) meshletId: u32,
-  @location(4) @interpolate(flat) triangleIdx: u32,
+  @location(2) uv: vec2f,
+  @location(3) @interpolate(flat) instanceIdx: u32,
+  @location(4) @interpolate(flat) meshletId: u32,
+  @location(5) @interpolate(flat) triangleIdx: u32,
 };
 
 const OUT_OF_SIGHT = 9999999.0;
@@ -90,6 +102,7 @@ fn main_vs(
   let vertexIdx = _indexBuffer[meshlet.firstIndexOffset + inVertexIndex];
   let vertexPos = _vertexPositions[vertexIdx]; // assumes .w=1
   let vertexN = decodeOctahedronNormal(_vertexNormals[vertexIdx]);
+  let vertexUV = _vertexUV[vertexIdx];
 
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
   let projectedPosition = mvpMatrix * vertexPos;
@@ -97,6 +110,7 @@ fn main_vs(
   result.position = projectedPosition;
   result.positionWS = positionWS;
   result.normalWS = transformNormalToWorldSpace(modelMat, vertexN);
+  result.uv = vertexUV;
   result.instanceIdx = meshletId.x;
   result.triangleIdx = inVertexIndex;
 
@@ -127,7 +141,8 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
     var material: Material;
     createDefaultMaterial(&material, fragIn.positionWS);
     material.normal = normalize(fragIn.normalWS);
-    
+    material.albedo = textureSample(_diffuseTexture, _sampler, fragIn.uv).rgb;
+
     // shading
     var lights = array<Light, LIGHT_COUNT>();
     fillLightsData(&lights);

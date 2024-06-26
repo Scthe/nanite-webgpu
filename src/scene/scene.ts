@@ -22,6 +22,11 @@ import {
   SCENES,
   OBJECTS,
 } from './sceneFiles.ts';
+import {
+  createFallbackTexture,
+  createTextureFromFile,
+} from '../utils/textures.ts';
+import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
 
 export type FileTextReader = (filename: string) => Promise<string>;
 
@@ -34,7 +39,13 @@ export type ObjectLoadingProgressCb = (
 export interface Scene {
   naniteObject: NaniteObject;
   debugMeshes: DebugMeshes;
+  fallbackDiffuseTexture: GPUTexture;
+  fallbackDiffuseTextureView: GPUTextureView;
+  defaultSampler: GPUSampler;
 }
+
+export const getDiffuseTexture = (scene: Scene, naniteObject: NaniteObject) =>
+  naniteObject.diffuseTextureView || scene.fallbackDiffuseTextureView;
 
 export async function loadScene(
   device: GPUDevice,
@@ -61,7 +72,25 @@ export async function loadScene(
     obj.originalIndices
   );
 
-  return { naniteObject: obj.naniteObject, debugMeshes };
+  // fallback texture
+  const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
+  const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
+  const defaultSampler = device.createSampler({
+    label: 'default-sampler',
+    magFilter: 'nearest',
+    minFilter: 'nearest',
+    mipmapFilter: 'nearest',
+    addressModeU: 'clamp-to-edge',
+    addressModeV: 'clamp-to-edge',
+  });
+
+  return {
+    naniteObject: obj.naniteObject,
+    debugMeshes,
+    fallbackDiffuseTexture,
+    fallbackDiffuseTextureView,
+    defaultSampler,
+  };
 }
 
 async function loadObject(
@@ -96,6 +125,17 @@ async function loadObject(
   console.log(`Object '${name}': ${getVertexCount(loadedObj.vertices)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);
   printBoundingBox(loadedObj.vertices);
 
+  // load texture if needed
+  // Do it now so it fails early if you have typo in the path
+  let diffuseTexture: GPUTexture | undefined = undefined;
+  let diffuseTextureView: GPUTextureView | undefined = undefined;
+  if ('texture' in modelDesc) {
+    timerStart = getProfilerTimestamp();
+    diffuseTexture = await createTextureFromFile(device, modelDesc.texture);
+    diffuseTextureView = diffuseTexture.createView();
+    addTimer('Load texture', timerStart);
+  }
+
   // create original mesh
   const originalMesh = createOriginalMesh(device, name, loadedObj);
 
@@ -118,6 +158,8 @@ async function loadObject(
     naniteMeshlets,
     instancesDesc
   );
+  naniteObject.diffuseTexture = diffuseTexture;
+  naniteObject.diffuseTextureView = diffuseTextureView;
   addTimer('Finalize nanite object', timerStart);
 
   // end
@@ -155,7 +197,8 @@ function createOriginalMesh(
   const uvBuffer = createGPU_VertexBuffer(
     device,
     `${sceneName}-original-uvs`,
-    mesh.uv
+    mesh.uv,
+    GPUBufferUsage.STORAGE
   );
   const indexBuffer = createGPU_IndexBuffer(
     device,

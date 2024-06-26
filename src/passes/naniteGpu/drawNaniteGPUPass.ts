@@ -12,6 +12,8 @@ import {
 import { PassCtx } from '../passCtx.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './drawNaniteGPUPass.wgsl.ts';
+import { getDiffuseTexture } from '../../scene/scene.ts';
+import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 
 export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [];
 
@@ -113,10 +115,12 @@ export class DrawNaniteGPUPass {
   */
 
   private createBindings = (
-    { device, globalUniforms }: PassCtx,
+    { device, globalUniforms, scene }: PassCtx,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
+    const diffuseTextureView = getDiffuseTexture(scene, naniteObject);
+    assertIsGPUTextureView(diffuseTextureView);
 
     return assignResourcesToBindings2(
       DrawNaniteGPUPass,
@@ -132,7 +136,10 @@ export class DrawNaniteGPUPass {
           b.vertexPositions
         ),
         naniteObject.bufferBindingOctahedronNormals(b.vertexNormals),
+        naniteObject.bufferBindingUV(b.vertexUV),
         naniteObject.bufferBindingIndexBuffer(b.indexBuffer),
+        { binding: b.diffuseTexture, resource: diffuseTextureView },
+        { binding: b.sampler, resource: scene.defaultSampler },
       ]
     );
   };

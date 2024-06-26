@@ -56,6 +56,8 @@ export const BOTTOM_LEVEL_NODE = 0;
 export class NaniteObject {
   public readonly allMeshlets: Array<NaniteMeshletTreeNode> = [];
   public readonly naniteVisibilityBufferCPU = new NaniteVisibilityBufferCPU();
+  public diffuseTexture: GPUTexture | undefined = undefined;
+  public diffuseTextureView: GPUTextureView | undefined = undefined;
 
   constructor(
     public readonly name: string,
@@ -129,6 +131,11 @@ export class NaniteObject {
   bufferBindingOctahedronNormals = (bindingIdx: number): GPUBindGroupEntry => ({
     binding: bindingIdx,
     resource: { buffer: this.octahedronNormals },
+  });
+
+  bufferBindingUV = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.originalMesh.uvBuffer },
   });
 
   bufferBindingIndexBuffer = (bindingIdx: number): GPUBindGroupEntry => ({
