@@ -44,7 +44,7 @@ fn isPassingOcclusionCulling(
 
   // if is close to near plane, it's always visible
   // abs cause view space is ???
-  const zNear = ${CAMERA_CFG.near};
+  let zNear: f32 = ${CAMERA_CFG.near};
   // if (abs(center.z) < r + ${CAMERA_CFG.near}){
   // let distanceToNearPlane = abs(center.z) - zNear;
   // if (distanceToNearPlane < r){

@@ -269,8 +269,13 @@ export function createMeshlets_TESTS(
       createdFrom: [],
       indices: new Uint32Array([0, 1, 2]),
       lodLevel: 0,
-      // deno-lint-ignore no-explicit-any
-      ownBounds: {} as any,
+      ownBounds: {
+        box: [
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        sphere: { center: [], radius: 0 },
+      },
       ...m,
     })
   );

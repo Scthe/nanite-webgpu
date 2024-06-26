@@ -4,8 +4,8 @@ import { CAMERA_CFG } from '../../constants.ts';
 export const LINEAR_DEPTH = /* wgsl */ `
 /** Returns value [zNear, zFar] */
 fn linearizeDepth(depth: f32) -> f32 {
-  let zNear: f32 = ${CAMERA_CFG.near};
-  let zFar: f32 = ${CAMERA_CFG.far};
+  let zNear: f32 = ${CAMERA_CFG.near}f;
+  let zFar: f32 = ${CAMERA_CFG.far}f;
   
   // PP := projection matrix
   // PP[10] = zFar / (zNear - zFar);
@@ -25,8 +25,8 @@ fn linearizeDepth(depth: f32) -> f32 {
 
 /** Returns value [0, 1] */
 fn linearizeDepth_0_1(depth: f32) -> f32 {
-  let zNear: f32 = ${CAMERA_CFG.near};
-  let zFar: f32 = ${CAMERA_CFG.far};
+  let zNear: f32 = ${CAMERA_CFG.near}f;
+  let zFar: f32 = ${CAMERA_CFG.far}f;
   let d2 = linearizeDepth(depth);
   return d2 / (zFar - zNear);
 }
