@@ -131,6 +131,7 @@ export class DrawNaniteGPUPass {
         naniteObject.bufferBindingVertexBufferForStorageAsVec4(
           b.vertexPositions
         ),
+        naniteObject.bufferBindingOctahedronNormals(b.vertexNormals),
         naniteObject.bufferBindingIndexBuffer(b.indexBuffer),
       ]
     );

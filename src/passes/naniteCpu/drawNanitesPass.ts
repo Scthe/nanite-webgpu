@@ -32,6 +32,17 @@ export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
     arrayStride: BYTES_VEC3,
     stepMode: 'vertex',
   },
+  {
+    attributes: [
+      {
+        shaderLocation: 1, // normals
+        offset: 0,
+        format: 'float32x3',
+      },
+    ],
+    arrayStride: BYTES_VEC3,
+    stepMode: 'vertex',
+  },
 ];
 
 export class DrawNanitesPass {
@@ -112,7 +123,8 @@ export class DrawNanitesPass {
     );
 
     renderPass.setBindGroup(0, bindings);
-    renderPass.setVertexBuffer(0, naniteObject.vertexBuffer);
+    renderPass.setVertexBuffer(0, naniteObject.originalMesh.vertexBuffer);
+    renderPass.setVertexBuffer(1, naniteObject.originalMesh.normalsBuffer);
     renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
 
     let drawnTriangleCount = 0;

@@ -12,9 +12,9 @@ import {
   createGPU_IndexBuffer,
 } from '../utils/webgpu.ts';
 import { createNaniteObject } from './createNaniteObject.ts';
-import { DebugMeshes, Mesh, createDebugMeshes } from './debugMeshes.ts';
+import { DebugMeshes, GPUMesh, createDebugMeshes } from './debugMeshes.ts';
 import { NaniteObject } from './naniteObject.ts';
-import { loadObjFile } from './objLoader.ts';
+import { ParsedMesh, loadObjFile } from './objLoader.ts';
 import {
   SceneName,
   SceneObjectName,
@@ -90,27 +90,19 @@ async function loadObject(
 
   // parse OBJ file
   let timerStart = getProfilerTimestamp();
-  const [originalVertices, originalIndices] = await loadObjFile(
-    objFileText,
-    modelDesc.scale
-  );
+  const loadedObj = await loadObjFile(objFileText, modelDesc.scale);
   addTimer('OBJ parsing', timerStart);
   // prettier-ignore
-  console.log(`Object '${name}': ${getVertexCount(originalVertices)} vertices, ${getTriangleCount(originalIndices)} triangles`);
-  printBoundingBox(originalVertices);
+  console.log(`Object '${name}': ${getVertexCount(loadedObj.vertices)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);
+  printBoundingBox(loadedObj.vertices);
 
   // create original mesh
-  const originalMesh = createOriginalMesh(
-    device,
-    name,
-    originalVertices,
-    originalIndices
-  );
+  const originalMesh = createOriginalMesh(device, name, loadedObj);
 
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
-    originalVertices,
-    originalIndices,
+    loadedObj.vertices,
+    loadedObj.indices,
     progressCb != undefined ? (p) => progressCb(name, p) : undefined
   );
   addTimer('Nanite LOD tree build', timerStart);
@@ -121,8 +113,8 @@ async function loadObject(
   const naniteObject = createNaniteObject(
     device,
     name,
-    originalMesh.vertexBuffer,
-    originalVertices,
+    originalMesh,
+    loadedObj,
     naniteMeshlets,
     instancesDesc
   );
@@ -137,29 +129,45 @@ async function loadObject(
     console.profileEnd();
   }
 
-  return { originalMesh, originalVertices, originalIndices, naniteObject };
+  return {
+    originalMesh,
+    originalVertices: loadedObj.vertices,
+    originalIndices: loadedObj.indices,
+    naniteObject,
+  };
 }
 
 function createOriginalMesh(
   device: GPUDevice,
   sceneName: string,
-  vertices: Float32Array,
-  indices: Uint32Array
-): Mesh {
+  mesh: ParsedMesh
+): GPUMesh {
   const vertexBuffer = createGPU_VertexBuffer(
     device,
     `${sceneName}-original-vertices`,
-    vertices
+    mesh.vertices
+  );
+  const normalsBuffer = createGPU_VertexBuffer(
+    device,
+    `${sceneName}-original-normals`,
+    mesh.normals
+  );
+  const uvBuffer = createGPU_VertexBuffer(
+    device,
+    `${sceneName}-original-uvs`,
+    mesh.uv
   );
   const indexBuffer = createGPU_IndexBuffer(
     device,
     `${sceneName}-original-indices`,
-    indices
+    mesh.indices
   );
   return {
     indexBuffer,
+    uvBuffer,
+    normalsBuffer,
     vertexBuffer,
-    vertexCount: getVertexCount(vertices),
-    triangleCount: getTriangleCount(indices),
+    vertexCount: getVertexCount(mesh.vertices),
+    triangleCount: getTriangleCount(mesh.indices),
   };
 }

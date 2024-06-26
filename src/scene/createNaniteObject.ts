@@ -1,4 +1,4 @@
-import { Mat4, mat4 } from 'wgpu-matrix';
+import { Mat4, mat4, vec3 } from 'wgpu-matrix';
 import { BYTES_MAT4, BYTES_U32, BYTES_UVEC2, CONFIG } from '../constants.ts';
 import {
   BOTTOM_LEVEL_NODE,
@@ -25,12 +25,14 @@ import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { STATS } from '../sys_web/stats.ts';
 import { InstancesGrid, getInstancesCount } from './sceneFiles.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
+import { GPUMesh } from './debugMeshes.ts';
+import { ParsedMesh } from './objLoader.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
   name: string,
-  vertexBuffer: GPUBuffer,
-  rawVertices: Float32Array,
+  originalMesh: GPUMesh,
+  loadedObj: ParsedMesh,
   allWIPMeshlets: MeshletWIP[],
   instancesGrid: InstancesGrid
 ): NaniteObject {
@@ -46,7 +48,12 @@ export function createNaniteObject(
   const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
     device,
     name,
-    rawVertices
+    loadedObj.vertices
+  );
+  const octahedronNormals = createOctahedronNormals(
+    device,
+    name,
+    loadedObj.normals
   );
   const meshletsBuffer = createMeshletsDataBuffer(device, name, allWIPMeshlets);
   const visiblityBuffer = createMeshletsVisiblityBuffer(
@@ -56,12 +63,13 @@ export function createNaniteObject(
     getInstancesCount(instancesGrid)
   );
   const instances = createInstancesData(device, name, instancesGrid);
-  const bounds = calculateBounds(rawVertices);
+  const bounds = calculateBounds(loadedObj.vertices);
   const naniteObject = new NaniteObject(
     name,
     bounds,
-    vertexBuffer,
+    originalMesh,
     vertexBufferForStorageAsVec4,
+    octahedronNormals,
     indexBuffer,
     meshletsBuffer,
     visiblityBuffer,
@@ -147,7 +155,7 @@ export function createNaniteObject(
   }
 
   // in-browser stats
-  STATS.update('Vertex buffer', formatBytes(vertexBuffer.size));
+  STATS.update('Vertex buffer', formatBytes(originalMesh.vertexBuffer.size));
   STATS.update('Vertex buffer2', formatBytes(vertexBufferForStorageAsVec4.size)); // prettier-ignore
   STATS.update('Index buffer', formatBytes(indexBuffer.size));
   STATS.update('Meshlets data', formatBytes(meshletsBuffer.size));
@@ -192,6 +200,38 @@ function createVertexBufferForStorageAsVec4(
   return createGPUBuffer(
     device,
     `${name}-nanite-vertex-buffer-vec4`,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    data
+  );
+}
+
+/** https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/ */
+function createOctahedronNormals(
+  device: GPUDevice,
+  name: string,
+  normals: Float32Array
+): GPUBuffer {
+  const vertexCount = normals.length / 3;
+  const data = new Float32Array(vertexCount * 2);
+  const n = vec3.create();
+
+  for (let i = 0; i < vertexCount; i++) {
+    vec3.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2], n);
+    const a = Math.abs(n[0]) + Math.abs(n[1]) + Math.abs(n[2]);
+    vec3.mulScalar(n, 1 / a, n);
+    if (n[2] < 0) {
+      // OctWrap
+      const x = n[0];
+      const y = n[1];
+      n[0] = (1.0 - Math.abs(y)) * (x >= 0.0 ? 1.0 : -1.0);
+      n[1] = (1.0 - Math.abs(x)) * (y >= 0.0 ? 1.0 : -1.0);
+    }
+    data[2 * i] = n[0] * 0.5 + 0.5;
+    data[2 * i + 1] = n[1] * 0.5 + 0.5;
+  }
+  return createGPUBuffer(
+    device,
+    `${name}-nanite-octahedron-normals`,
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     data
   );

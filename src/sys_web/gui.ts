@@ -5,6 +5,7 @@ import {
   DisplayMode,
   SHADING_MODE_LOD_LEVEL,
   SHADING_MODE_MESHLET,
+  SHADING_MODE_NORMALS,
   SHADING_MODE_PBR,
   SHADING_MODE_TRIANGLE,
 } from '../constants.ts';
@@ -33,7 +34,7 @@ export function initializeGUI(
   // let softwareBackfaceCullCtrl: GuiCtrl;
   let gpuFreezeVisiblityCtrl: GuiCtrl;
   let gpuVisiblityImplCtrl: GuiCtrl;
-  let gpuShadingMode: GuiCtrl;
+  let _gpuShadingMode: GuiCtrl;
 
   const gui = new dat.GUI();
 
@@ -83,7 +84,7 @@ export function initializeGUI(
     setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
     setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
     setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
-    setVisible(gpuShadingMode, nextDevice == 'gpu');
+    // setVisible(gpuShadingMode, nextDevice == 'gpu'); // normals preview works on the CPU
     // cpu
     // setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
   }
@@ -120,13 +121,14 @@ export function initializeGUI(
     // shading mode
     // prettier-ignore
     const shadingDummy = createDummy(CONFIG.nanite.render, 'shadingMode', [
-      { label: 'Normal', value: SHADING_MODE_PBR },
+      { label: 'Shaded', value: SHADING_MODE_PBR },
+      { label: 'Normals', value: SHADING_MODE_NORMALS },
       { label: 'Triangles', value: SHADING_MODE_TRIANGLE },
       { label: 'Meshlets', value: SHADING_MODE_MESHLET },
       { label: 'LOD levels', value: SHADING_MODE_LOD_LEVEL },
     ]);
     // prettier-ignore
-    gpuShadingMode = dir
+    _gpuShadingMode = dir
       .add(shadingDummy, 'shadingMode', shadingDummy.values) // prettier-ignore
       .name('Shading mode');
 

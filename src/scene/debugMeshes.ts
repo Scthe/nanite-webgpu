@@ -8,17 +8,19 @@ import { getTriangleCount, getVertexCount } from '../utils/index.ts';
 import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
 
 export interface DebugMeshes {
-  mesh: Mesh;
+  mesh: GPUMesh;
   meshlets: MeshletRenderPckg;
-  meshoptimizerLODs: Mesh[];
+  meshoptimizerLODs: GPUMesh[];
   meshoptimizerMeshletLODs: MeshletRenderPckg[];
 }
 
 /** Used only in debug */
-export interface Mesh {
+export interface GPUMesh {
   vertexCount: number;
   triangleCount: number;
   vertexBuffer: GPUBuffer;
+  normalsBuffer: GPUBuffer;
+  uvBuffer: GPUBuffer;
   indexBuffer: GPUBuffer;
 }
 
@@ -30,7 +32,7 @@ export type MeshletRenderPckg = meshopt_Meshlets & {
 
 export async function createDebugMeshes(
   device: GPUDevice,
-  originalMesh: Mesh,
+  originalMesh: GPUMesh,
   originalVertices: Float32Array,
   originalIndices: Uint32Array
 ): Promise<DebugMeshes> {
@@ -73,17 +75,17 @@ export async function createDebugMeshes(
 
 async function createMeshLODs(
   device: GPUDevice,
-  originalMesh: Mesh,
+  originalMesh: GPUMesh,
   vertices: Float32Array,
   originalIndices: Uint32Array
-): Promise<Array<[Mesh, Uint32Array]>> {
+): Promise<Array<[GPUMesh, Uint32Array]>> {
   const MAX_LODS = 10;
   const originalTriangleCount = getTriangleCount(originalIndices);
   const finalTargetTriangleCount = originalTriangleCount / 10;
   let triangleCount = originalTriangleCount;
-  const meshLODs: Array<[Mesh, Uint32Array]> = [];
+  const meshLODs: Array<[GPUMesh, Uint32Array]> = [];
 
-  const addMeshLod = (mesh: Mesh, indexData: Uint32Array) => {
+  const addMeshLod = (mesh: GPUMesh, indexData: Uint32Array) => {
     meshLODs.push([mesh, indexData]);
   };
   addMeshLod(originalMesh, originalIndices);
@@ -113,8 +115,8 @@ async function createMeshLODs(
       `dbg-lod-test-index-buffer-${level}`,
       simplifiedMesh.indexBuffer
     );
-    const meshLod = {
-      vertexBuffer: originalMesh.vertexBuffer,
+    const meshLod: GPUMesh = {
+      ...originalMesh,
       indexBuffer,
       vertexCount: getVertexCount(vertices),
       triangleCount: getTriangleCount(simplifiedMesh.indexBuffer),
@@ -127,7 +129,7 @@ async function createMeshLODs(
 
 async function createMeshletsMesh(
   device: GPUDevice,
-  originalMesh: Mesh,
+  originalMesh: GPUMesh,
   vertices: Float32Array,
   indices: Uint32Array,
   labelSuffix: string = ''

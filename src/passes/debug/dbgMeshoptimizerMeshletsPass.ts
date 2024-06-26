@@ -106,7 +106,10 @@ export class DbgMeshoptimizerMeshletsPass {
       scene.debugMeshes.meshoptimizerMeshletLODs[
         CONFIG.dbgMeshoptimizerLodLevel
       ];
+    const nanite = scene.naniteObject;
+
     renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
+    renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(meshlets.indexBuffer, 'uint32');
     let nextIdx = 0;
     meshlets.meshlets.forEach((m, firstInstance) => {
@@ -119,7 +122,8 @@ export class DbgMeshoptimizerMeshletsPass {
 
   private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
     const nanite = scene.naniteObject;
-    renderPass.setVertexBuffer(0, nanite.vertexBuffer);
+    renderPass.setVertexBuffer(0, nanite.originalMesh.vertexBuffer);
+    renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
 
     const drawnMeshlets = nanite.allMeshlets.filter(

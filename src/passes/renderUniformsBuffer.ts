@@ -15,8 +15,9 @@ const FLAG_OCCLUSION_CULLING = 2;
 
 export class RenderUniformsBuffer {
   public static SHADER_SNIPPET = (group: number) => `
-    const b1111 = 15u; // binary 0b1111
     const b11 = 3u; // binary 0b11
+    const b111 = 7u; // binary 0b111
+    const b1111 = 15u; // binary 0b1111
 
     struct Uniforms {
       vpMatrix: mat4x4<f32>,
@@ -32,8 +33,8 @@ export class RenderUniformsBuffer {
       cameraFrustumPlane5: vec4f,
       // b1 - frustom cull
       // b2 - occlusion cull
-      // b3,4 - shading mode
-      // b5,6,7 - not used
+      // b3,4,5 - shading mode
+      // b6,7 - not used
       // b8,9,10,11 - debug render depty pyramid level (value 0-15)
       // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
       // b16..32 - not used
@@ -49,7 +50,7 @@ export class RenderUniformsBuffer {
     fn useFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_FRUSTUM_CULLING}u); }
     fn useOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_OCCLUSION_CULLING}u); }
     fn getShadingMode(flags: u32) -> u32 {
-      return (flags >> 2u) & b11;
+      return (flags >> 2u) & b111;
     }
     fn getDbgPyramidMipmapLevel(flags: u32) -> i32 {
       return i32(clamp((flags >> 8u) & b1111, 0u, 15u));
@@ -165,7 +166,7 @@ export class RenderUniformsBuffer {
     flags = flags | (occlCull ? FLAG_OCCLUSION_CULLING : 0);
 
     // b3,4 - shading mode
-    let bits = naniteCfg.shadingMode & 0b11;
+    let bits = naniteCfg.shadingMode & 0b111;
     flags = flags | (bits << 2);
 
     // dbgDepthPyramidLevel

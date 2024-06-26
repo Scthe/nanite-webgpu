@@ -23,7 +23,8 @@ import {
 } from '../../utils/webgpu.ts';
 import { parseVisibilityBuffer } from '../../scene/naniteObject.ts';
 import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
-import { Mesh } from '../../scene/debugMeshes.ts';
+import { GPUMesh } from '../../scene/debugMeshes.ts';
+import { ParsedMesh } from '../../scene/objLoader.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -63,15 +64,25 @@ Deno.test('NaniteVisibilityPass', async () => {
   // console.log(allMeshlets);
 
   const uniforms = new RenderUniformsBuffer(device);
-  const mockOriginalMesh: Mesh = {
+
+  // mock mesh data, does not matter as visibility buffer only operates on insteances+meshlets
+  // It never has to step down to the actuall geometry
+  const mockOriginalMesh: GPUMesh = {
     vertexBuffer: { size: 'mocked-vertex-buffer-size' },
     // deno-lint-ignore no-explicit-any
   } as any;
+  const mockParsedMesh: ParsedMesh = {
+    vertices: new Float32Array([0, 1, 2]), // mock
+    normals: new Float32Array([0, 1, 0]), // mock
+    // deno-lint-ignore no-explicit-any
+  } as any;
+
+  // finally, we can create nanite object
   const naniteObject = createNaniteObject(
     device,
     'test-object',
-    mockOriginalMesh, // mock vertexBuffer
-    new Float32Array([0, 1, 2]), // mock rawVertices
+    mockOriginalMesh,
+    mockParsedMesh,
     allWIPMeshlets,
     { xCnt: 1, yCnt: 1, spacing: 1 } // mock instancesGrid
   );

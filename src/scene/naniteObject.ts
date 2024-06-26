@@ -11,6 +11,7 @@ import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
 import { downloadBuffer } from '../utils/webgpu.ts';
 import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
 import { Bounds3d } from '../utils/calcBounds.ts';
+import { GPUMesh } from './debugMeshes.ts';
 
 export type MeshletId = number;
 
@@ -59,9 +60,14 @@ export class NaniteObject {
   constructor(
     public readonly name: string,
     public readonly bounds: Bounds3d,
-    public readonly vertexBuffer: GPUBuffer,
-    /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
+    public readonly originalMesh: GPUMesh,
+    /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`.
+     * We could also: https://momentsingraphics.de/ToyRenderer2SceneManagement.html#Quantization ,
+     * but no point in complicating this demo
+     */
     private readonly vertexBufferForStorageAsVec4: GPUBuffer,
+    /** Encoded normals. */
+    private readonly octahedronNormals: GPUBuffer,
     public readonly indexBuffer: GPUBuffer,
     /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
     private readonly meshletsBuffer: GPUBuffer,
@@ -118,6 +124,11 @@ export class NaniteObject {
   ): GPUBindGroupEntry => ({
     binding: bindingIdx,
     resource: { buffer: this.vertexBufferForStorageAsVec4 },
+  });
+
+  bufferBindingOctahedronNormals = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: { buffer: this.octahedronNormals },
   });
 
   bufferBindingIndexBuffer = (bindingIdx: number): GPUBindGroupEntry => ({

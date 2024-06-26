@@ -46,6 +46,7 @@ export const SHADING_MODE_PBR = 0;
 export const SHADING_MODE_TRIANGLE = 1;
 export const SHADING_MODE_MESHLET = 2;
 export const SHADING_MODE_LOD_LEVEL = 3;
+export const SHADING_MODE_NORMALS = 4;
 
 export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */

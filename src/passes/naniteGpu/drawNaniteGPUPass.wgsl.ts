@@ -5,13 +5,11 @@ import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
 import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
 import {
-  SHADING_MODE_PBR,
   SHADING_MODE_TRIANGLE,
   SHADING_MODE_MESHLET,
   SHADING_MODE_LOD_LEVEL,
+  SHADING_MODE_NORMALS,
 } from '../../constants.ts';
-
-// TODO duplicated code from normal DrawNanitePass
 
 export const SHADER_PARAMS = {
   bindings: {
@@ -20,7 +18,8 @@ export const SHADER_PARAMS = {
     drawnMeshletIds: 2,
     instancesTransforms: 3,
     vertexPositions: 4,
-    indexBuffer: 5,
+    vertexNormals: 5,
+    indexBuffer: 6,
   },
 };
 
@@ -38,6 +37,7 @@ ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${SHADER_SNIPPETS.FS_NORMAL_FROM_DERIVATIVES}
+${SHADER_SNIPPETS.NORMALS_UTILS}
 ${SNIPPET_SHADING_PBR}
 ${SNIPPET_SHADING}
 
@@ -49,6 +49,9 @@ var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 @group(0) @binding(${b.vertexPositions})
 var<storage, read> _vertexPositions: array<vec4f>;
 
+@group(0) @binding(${b.vertexNormals})
+var<storage, read> _vertexNormals: array<vec2f>;
+
 @group(0) @binding(${b.indexBuffer})
 var<storage, read> _indexBuffer: array<u32>;
 
@@ -56,9 +59,10 @@ var<storage, read> _indexBuffer: array<u32>;
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) positionWS: vec4f,
-  @location(1) @interpolate(flat) instanceIdx: u32,
-  @location(2) @interpolate(flat) meshletId: u32,
-  @location(3) @interpolate(flat) triangleIdx: u32,
+  @location(1) normalWS: vec3f,
+  @location(2) @interpolate(flat) instanceIdx: u32,
+  @location(3) @interpolate(flat) meshletId: u32,
+  @location(4) @interpolate(flat) triangleIdx: u32,
 };
 
 const OUT_OF_SIGHT = 9999999.0;
@@ -85,42 +89,44 @@ fn main_vs(
 
   let vertexIdx = _indexBuffer[meshlet.firstIndexOffset + inVertexIndex];
   let vertexPos = _vertexPositions[vertexIdx]; // assumes .w=1
+  let vertexN = decodeOctahedronNormal(_vertexNormals[vertexIdx]);
 
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
   let projectedPosition = mvpMatrix * vertexPos;
   let positionWS = modelMat * vertexPos;
   result.position = projectedPosition;
   result.positionWS = positionWS;
+  result.normalWS = transformNormalToWorldSpace(modelMat, vertexN);
   result.instanceIdx = meshletId.x;
   result.triangleIdx = inVertexIndex;
 
   return result;
 }
 
-const SHADING_MODE_PBR = ${SHADING_MODE_PBR}u;
-const SHADING_MODE_TRIANGLE = ${SHADING_MODE_TRIANGLE}u;
-const SHADING_MODE_MESHLET = ${SHADING_MODE_MESHLET}u;
-const SHADING_MODE_LOD_LEVEL = ${SHADING_MODE_LOD_LEVEL}u;
 
 @fragment
 fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   let shadingMode = getShadingMode(_uniforms.flags);
   var color: vec3f;
   
-  if (shadingMode == SHADING_MODE_TRIANGLE) {
+  if (shadingMode == ${SHADING_MODE_TRIANGLE}u) {
     color = getRandomColor(fragIn.triangleIdx);
   
-  } else if (shadingMode == SHADING_MODE_MESHLET) {
+  } else if (shadingMode == ${SHADING_MODE_MESHLET}u) {
     color = getRandomColor(fragIn.meshletId);
 
-  } else if (shadingMode == SHADING_MODE_LOD_LEVEL) {
+  } else if (shadingMode == ${SHADING_MODE_LOD_LEVEL}u) {
     let meshlet = _meshlets[fragIn.meshletId];
     let lodLevel = meshlet.lodLevel;
     color = getRandomColor(lodLevel);
   
+  } else if (shadingMode == ${SHADING_MODE_NORMALS}u) {
+    color = abs(normalize(fragIn.normalWS));
+    
   } else {
     var material: Material;
     createDefaultMaterial(&material, fragIn.positionWS);
+    material.normal = normalize(fragIn.normalWS);
     
     // shading
     var lights = array<Light, LIGHT_COUNT>();

@@ -85,6 +85,7 @@ export class DbgMeshoptimizerPass {
     const mesh =
       scene.debugMeshes.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
+    renderPass.setVertexBuffer(1, mesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
     const vertexCount = mesh.triangleCount * VERTS_IN_TRIANGLE;
     renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);
