@@ -16,6 +16,7 @@ import {
 } from './edgesUtils.ts';
 import { metisFreeAllocations, partitionGraph } from './partitionGraph.ts';
 import { simplifyMesh } from './simplifyMesh.ts';
+import { ParsedMesh } from '../scene/objLoader.ts';
 
 const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
   ? findAdjacentMeshlets_Map
@@ -30,6 +31,8 @@ const MAX_LODS = 20;
 /** Reduce triangle count per each level. */
 const DECIMATE_FACTOR = 2;
 const TARGET_SIMPLIFY_ERROR = 0.05;
+
+const DEBUG = false;
 
 /** Progress [0..1]. Promise, so you can yield thread (for DOM updates) if you want */
 export type MeshPreprocessProgressCb = (progress: number) => Promise<void>;
@@ -63,7 +66,7 @@ export interface MeshletWIP {
 }
 
 export async function createNaniteMeshlets(
-  vertices: Float32Array,
+  parsedMesh: ParsedMesh,
   indices: Uint32Array,
   progressCb?: MeshPreprocessProgressCb
 ): Promise<MeshletWIP[]> {
@@ -78,14 +81,17 @@ export async function createNaniteMeshlets(
     // does not matter, bottom meshlets have error 0, so they always pass
     // the 'has error < threshold' check. They only depend on the parent's error.
     // If the parent also passes the check, the parent should be rendered instead
-    calculateBounds(vertices, indices).sphere
+    calculateBounds(parsedMesh.positions, indices).sphere
   );
   let currentMeshlets = bottomMeshlets;
   lodLevel += 1;
 
   for (; lodLevel < MAX_LODS + 1; lodLevel++) {
     // prettier-ignore
-    // console.log(`LOD ${lodLevel}: Starting with ${currentMeshlets.length} meshlets`);
+    if (currentMeshlets.length < 2) {
+      // console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
+      break;
+    }
 
     // 1. group meshlets into groups of 4
     // e.g. 33 meshlets is 9 groups (last one is 1 meshlet)
@@ -102,6 +108,13 @@ export async function createNaniteMeshlets(
         return indices.map((i) => currentMeshlets[i]);
       });
     }
+    if (DEBUG) {
+      // prettier-ignore
+      console.log(
+      `[LOD ${lodLevel}] Starting with ${currentMeshlets.length} meshlets.`,
+      `Partition into groups of <4 meshlets:`, partitioned
+    );
+    }
 
     // 2. for each group of 4 meshlets
     const newlyCreatedMeshlets: MeshletWIP[] = [];
@@ -111,7 +124,7 @@ export async function createNaniteMeshlets(
 
       // 2.2 [GROUP] simplify to remove not needed edges/vertices in the middle
       const targetIndexCount = Math.floor(megaMeshlet.length / DECIMATE_FACTOR);
-      const simplifiedMesh = await simplifyMesh(vertices, megaMeshlet, {
+      const simplifiedMesh = await simplifyMesh(parsedMesh, megaMeshlet, {
         targetIndexCount,
         targetError: TARGET_SIMPLIFY_ERROR,
         lockBorders: true, // important!
@@ -121,7 +134,7 @@ export async function createNaniteMeshlets(
         ...childMeshletGroup.map((m) => m.maxSiblingsError)
       );
       const totalError = errorNow + childrenError;
-      const bounds = calculateBounds(vertices, megaMeshlet).sphere;
+      const bounds = calculateBounds(parsedMesh.positions, megaMeshlet).sphere;
 
       // 2.3 [GROUP] split into new meshlets. Share: simplificationError, bounds (both are used in nanite to reproject the error)
       let newMeshlets: MeshletWIP[];
@@ -135,9 +148,19 @@ export async function createNaniteMeshlets(
         newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError, bounds);
       }
 
+      if (DEBUG) {
+        // prettier-ignore
+        console.log(
+        `\tSimplify (${megaMeshlet.length} into ${targetIndexCount} tris), got ${simplifiedMesh.indexBuffer.length} tris.`,
+        'Meshlets:', newMeshlets
+      );
+      }
+
+      // update all lower level meshlets with parent data.
+      // This way they all take same decision when deciding if render self or parent
       childMeshletGroup.forEach((childMeshlet) => {
         childMeshlet.parentError = totalError; // set based on simplify, not meshlets!
-        // childMeshlet.maxSiblingsError = childrenError; // NO!
+        // childMeshlet.maxSiblingsError = childrenError; // NO! TODO write assert to test if this should be done.
         childMeshlet.parentBounds = bounds;
 
         newMeshlets.forEach((m2) => {
@@ -147,13 +170,15 @@ export async function createNaniteMeshlets(
       newlyCreatedMeshlets.push(...newMeshlets);
     }
 
-    currentMeshlets = newlyCreatedMeshlets;
-    if (currentMeshlets.length < 2) {
-      // console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
-      break;
+    if (newlyCreatedMeshlets.length >= currentMeshlets.length) {
+      throw new SimplificationError(lodLevel - 1, parsedMesh.vertexCount);
     }
+
+    currentMeshlets = newlyCreatedMeshlets;
   }
 
+  // We have filled all LOD tree levels (or reached MAX_LODS iters).
+  // By now the LOD tree is complete
   if (currentMeshlets.length !== 1) {
     // It's ok to increase $MAX_LODS, just make sure you know what you are doing.
     throw new Error(
@@ -174,7 +199,7 @@ export async function createNaniteMeshlets(
     simplificationError: number,
     sharedSiblingsBounds: BoundingSphere
   ) {
-    const meshletsOpt = await createMeshlets(vertices, indices, {
+    const meshletsOpt = await createMeshlets(parsedMesh, indices, {
       maxVertices: CONFIG.nanite.preprocess.meshletMaxVertices,
       maxTriangles: CONFIG.nanite.preprocess.meshletMaxTriangles,
       coneWeight: CONFIG.nanite.preprocess.meshletBackfaceCullingConeWeight,
@@ -203,7 +228,7 @@ export async function createNaniteMeshlets(
   ): Promise<MeshletWIP> {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
-    const ownBounds = calculateBounds(vertices, indices);
+    const ownBounds = calculateBounds(parsedMesh.positions, indices);
     const m: MeshletWIP = {
       id: NEXT_MESHLET_ID,
       indices,
@@ -270,4 +295,20 @@ function estimateFinalMeshletCount(indices: Uint32Array) {
   }
 
   return totalMeshlets;
+}
+
+export class SimplificationError extends Error {
+  constructor(lodLevel: number, vertexCount: number) {
+    // Flat shading turns each triangle into something like it's own sub-mesh.
+    // All 3 triangle vertices share normal same normal, but a triangle
+    // next to it has different normal, so 3 more vertices.
+    // In that case, 2 triangles next to each other have 6 different unique
+    // vertices instead of 4. This is impossible to simplify.
+    // This could be enforced in code, but I'm too lazy.
+
+    // prettier-ignore
+    super(
+      `Failed to simplify the mesh. Was not able to simplify beyond LOD level ${lodLevel}. This usually happens if you have duplicated vertices (${vertexCount}, should roughly match Blender's). One cause could be a flat shading or tons of UV islands.`
+    );
+  }
 }

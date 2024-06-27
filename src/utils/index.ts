@@ -115,7 +115,7 @@ export const getTriangleCount = (indices: Uint32Array | number) =>
     ? indices / VERTS_IN_TRIANGLE
     : indices.length / VERTS_IN_TRIANGLE;
 
-export const getVertexCount = (verts: Float32Array | number) =>
+export const getVertexCount = (verts: Float32Array | number[] | number) =>
   typeof verts === 'number'
     ? verts / CO_PER_VERTEX
     : verts.length / CO_PER_VERTEX;

@@ -7,7 +7,7 @@ import {
 import { NaniteVisibilityPass } from './naniteVisibilityPass.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { mat4 } from 'wgpu-matrix';
-import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
 import {
   NaniteVisibilityStatus,
   calcCotHalfFov,
@@ -65,17 +65,23 @@ Deno.test('NaniteVisibilityPass', async () => {
 
   const uniforms = new RenderUniformsBuffer(device);
 
-  // mock mesh data, does not matter as visibility buffer only operates on insteances+meshlets
+  // mock mesh data, does not matter as visibility buffer only operates on instances+meshlets
   // It never has to step down to the actuall geometry
   const mockOriginalMesh: GPUMesh = {
     vertexBuffer: { size: 'mocked-vertex-buffer-size' },
     // deno-lint-ignore no-explicit-any
   } as any;
   const mockParsedMesh: ParsedMesh = {
-    vertices: new Float32Array([0, 1, 2]), // mock
+    vertexCount: 1,
+    positions: new Float32Array([0, 1, 2]), // mock
+    positionsStride: BYTES_VEC3,
     normals: new Float32Array([0, 1, 0]), // mock
-    // deno-lint-ignore no-explicit-any
-  } as any;
+    uv: new Float32Array([0.5, 0.5]), // mock
+    indices: new Uint32Array([0, 1, 2]),
+    indicesCount: 3,
+    verticesAndAttributes: new Float32Array([0, 1, 2]), // mock
+    verticesAndAttributesStride: 32,
+  };
 
   // finally, we can create nanite object
   const naniteObject = createNaniteObject(

@@ -68,8 +68,7 @@ export async function loadScene(
   const debugMeshes = await createDebugMeshes(
     device,
     obj.originalMesh,
-    obj.originalVertices,
-    obj.originalIndices
+    obj.parsedMesh
   );
 
   // fallback texture
@@ -122,8 +121,8 @@ async function loadObject(
   const loadedObj = await loadObjFile(objFileText, modelDesc.scale);
   addTimer('OBJ parsing', timerStart);
   // prettier-ignore
-  console.log(`Object '${name}': ${getVertexCount(loadedObj.vertices)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);
-  printBoundingBox(loadedObj.vertices);
+  console.log(`Object '${name}': ${getVertexCount(loadedObj.positions)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);
+  printBoundingBox(loadedObj.positions);
 
   // load texture if needed
   // Do it now so it fails early if you have typo in the path
@@ -141,7 +140,7 @@ async function loadObject(
 
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
-    loadedObj.vertices,
+    loadedObj,
     loadedObj.indices,
     progressCb != undefined ? (p) => progressCb(name, p) : undefined
   );
@@ -173,8 +172,7 @@ async function loadObject(
 
   return {
     originalMesh,
-    originalVertices: loadedObj.vertices,
-    originalIndices: loadedObj.indices,
+    parsedMesh: loadedObj,
     naniteObject,
   };
 }
@@ -187,7 +185,7 @@ function createOriginalMesh(
   const vertexBuffer = createGPU_VertexBuffer(
     device,
     `${sceneName}-original-vertices`,
-    mesh.vertices
+    mesh.positions
   );
   const normalsBuffer = createGPU_VertexBuffer(
     device,
@@ -210,7 +208,7 @@ function createOriginalMesh(
     uvBuffer,
     normalsBuffer,
     vertexBuffer,
-    vertexCount: getVertexCount(mesh.vertices),
+    vertexCount: getVertexCount(mesh.positions),
     triangleCount: getTriangleCount(mesh.indices),
   };
 }

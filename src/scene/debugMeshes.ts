@@ -6,6 +6,7 @@ import {
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import { getTriangleCount, getVertexCount } from '../utils/index.ts';
 import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
+import { ParsedMesh } from './objLoader.ts';
 
 export interface DebugMeshes {
   mesh: GPUMesh;
@@ -33,20 +34,21 @@ export type MeshletRenderPckg = meshopt_Meshlets & {
 export async function createDebugMeshes(
   device: GPUDevice,
   originalMesh: GPUMesh,
-  originalVertices: Float32Array,
-  originalIndices: Uint32Array
+  parsedMesh: ParsedMesh
 ): Promise<DebugMeshes> {
+  const originalIndices = parsedMesh.indices;
+
   const meshlets = await createMeshletsMesh(
     device,
     originalMesh,
-    originalVertices,
+    parsedMesh,
     originalIndices
   );
 
   const meshoptimizerLODs = await createMeshLODs(
     device,
     originalMesh,
-    originalVertices,
+    parsedMesh,
     originalIndices
   );
 
@@ -55,7 +57,7 @@ export async function createDebugMeshes(
       return createMeshletsMesh(
         device,
         lodMesh,
-        originalVertices,
+        parsedMesh,
         indices,
         `-lod${level}`
       );
@@ -76,10 +78,11 @@ export async function createDebugMeshes(
 async function createMeshLODs(
   device: GPUDevice,
   originalMesh: GPUMesh,
-  vertices: Float32Array,
+  parsedMesh: ParsedMesh,
   originalIndices: Uint32Array
 ): Promise<Array<[GPUMesh, Uint32Array]>> {
   const MAX_LODS = 10;
+  const vertices = parsedMesh.positions;
   const originalTriangleCount = getTriangleCount(originalIndices);
   const finalTargetTriangleCount = originalTriangleCount / 10;
   let triangleCount = originalTriangleCount;
@@ -98,7 +101,7 @@ async function createMeshLODs(
 
     const targetIndexCount = (triangleCount * VERTS_IN_TRIANGLE) / 2;
     // TBH we should use last indices instead of original mesh. Though this is debug view..
-    const simplifiedMesh = await simplifyMesh(vertices, originalIndices, {
+    const simplifiedMesh = await simplifyMesh(parsedMesh, originalIndices, {
       targetIndexCount,
       targetError: 0.05,
     });
@@ -130,11 +133,11 @@ async function createMeshLODs(
 async function createMeshletsMesh(
   device: GPUDevice,
   originalMesh: GPUMesh,
-  vertices: Float32Array,
+  mesh: ParsedMesh,
   indices: Uint32Array,
   labelSuffix: string = ''
 ): Promise<MeshletRenderPckg> {
-  const meshlets = await createMeshlets(vertices, indices, {});
+  const meshlets = await createMeshlets(mesh, indices, {});
 
   const meshletIndexBuffer = createGPU_IndexBuffer(
     device,

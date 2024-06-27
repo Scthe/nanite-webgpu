@@ -48,7 +48,7 @@ export function createNaniteObject(
   const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
     device,
     name,
-    loadedObj.vertices
+    loadedObj.positions
   );
   const octahedronNormals = createOctahedronNormals(
     device,
@@ -63,7 +63,7 @@ export function createNaniteObject(
     getInstancesCount(instancesGrid)
   );
   const instances = createInstancesData(device, name, instancesGrid);
-  const bounds = calculateBounds(loadedObj.vertices);
+  const bounds = calculateBounds(loadedObj.positions);
   const naniteObject = new NaniteObject(
     name,
     bounds,

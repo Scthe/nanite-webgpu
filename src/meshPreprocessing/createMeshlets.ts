@@ -3,11 +3,8 @@ import { BYTES_F32, BYTES_U32, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { copyToTypedArray } from '../utils/index.ts';
 import { WasmModule } from '../utils/wasm-types.d.ts';
 import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
-import {
-  getMeshOptimizerModule,
-  getMeshData,
-  MeshData,
-} from './meshoptimizerUtils.ts';
+import { getMeshOptimizerModule } from './meshoptimizerUtils.ts';
+import { ParsedMesh } from '../scene/objLoader.ts';
 
 /** https://github.com/zeux/meshoptimizer/blob/master/src/meshoptimizer.h#L511 */
 export interface meshopt_Bounds {
@@ -78,13 +75,14 @@ interface Opts {
  * https://github.com/zeux/meshoptimizer/issues/531
  */
 export async function createMeshlets(
-  vertices: Float32Array,
+  mesh: ParsedMesh,
   indices: Uint32Array,
   opts: Opts
 ): Promise<meshopt_Meshlets> {
   // max_vertices=64, max_triangles=124, cone_weight=0
   const module = await getMeshOptimizerModule();
-  const meshData = getMeshData(vertices, indices);
+  const indicesCount = indices.length;
+
   // "Looking at the original NVidia mesh shader publication,
   // one concrete number they recommend is 64 vertices
   // and 84 or 126 triangles per meshlet."
@@ -96,10 +94,19 @@ export async function createMeshlets(
     opts.rewriteIndicesToReferenceOriginalVertexBuffer !== false;
   // console.log('createMeshlets', opts);
 
-  const maxMeshlets = buildMeshletsBound(module, meshData, opts);
+  const maxMeshlets = buildMeshletsBound(module, indicesCount, opts);
 
   const [meshletCount, meshletsRaw, meshletVertices, meshletTriangles] =
-    buildMeshlets(module, vertices, indices, meshData, opts, maxMeshlets);
+    buildMeshlets(
+      module,
+      mesh.positions,
+      mesh.vertexCount,
+      mesh.positionsStride,
+      indices,
+      indicesCount,
+      opts,
+      maxMeshlets
+    );
 
   const meshlets: meshopt_Meshlet[] = [];
   for (let i = 0; i < meshletCount; i += 1) {
@@ -158,8 +165,10 @@ export async function createMeshlets(
 function buildMeshlets(
   module: WasmModule,
   vertices: Float32Array,
+  vertexCount: number,
+  stride: number,
   indices: Uint32Array,
-  meshData: MeshData,
+  indicesCount: number,
   opts: Opts,
   maxMeshlets: number
 ): [number, Uint32Array, Uint32Array, Uint8Array] {
@@ -178,10 +187,10 @@ function buildMeshlets(
     wasmPtr(meshletVertices, 'out'), // unsigned int* meshlet_vertices,
     wasmPtr(meshletTriangles, 'out'), // unsigned char* meshlet_triangles,
     wasmPtr(indices), // const unsigned int* indices,
-    meshData.indexCount, // size_t index_count,
+    indicesCount, // size_t index_count,
     wasmPtr(vertices), // const float* vertex_positions,
-    meshData.vertexCount, // size_t vertex_count,
-    meshData.vertexSize, // size_t vertex_positions_stride
+    vertexCount, // size_t vertex_count,
+    stride, // size_t vertex_positions_stride
     opts.maxVertices!, // size_t max_vertices,
     opts.maxTriangles!, // size_t max_triangles,
     opts.coneWeight!, // float cone_weight
@@ -191,7 +200,7 @@ function buildMeshlets(
 
 function buildMeshletsBound(
   module: WasmModule,
-  meshData: MeshData,
+  indicesCount: number,
   opts: Opts
 ): number {
   // "Looking at the original NVidia mesh shader publication,
@@ -199,7 +208,7 @@ function buildMeshletsBound(
   // and 84 or 126 triangles per meshlet."
   // https://zeux.io/2023/01/16/meshlet-size-tradeoffs/
   return meshoptCall(module, 'number', 'meshopt_buildMeshletsBound', [
-    meshData.indexCount,
+    indicesCount,
     opts.maxVertices!,
     opts.maxTriangles!,
   ]);
@@ -244,7 +253,8 @@ export function splitIndicesPerMeshlets(meshlets: meshopt_Meshlets) {
 function computeMeshletBounds(
   module: WasmModule,
   vertices: Float32Array,
-  meshData: Pick<MeshData, 'vertexCount' | 'vertexSize'>,
+  vertexCount: number,
+  stride: number,
   meshletVertices: Uint32Array,
   meshletTriangles: Uint8Array,
   meshlet: Omit<meshopt_Meshlet, 'bounds'>
@@ -264,8 +274,8 @@ function computeMeshletBounds(
     wasmPtr(mIdx), // unsigned char* meshlet_triangles, ||| &meshlet_triangles[m.triangle_offset],
     meshlet.triangleCount, // size_t triangle_count, ||| m.triangle_count,
     wasmPtr(vertices), // const float* vertex_positions, ||| &vertices[0].x,
-    meshData.vertexCount, // size_t vertex_count, ||| vertices.size(),
-    meshData.vertexSize, // size_t vertex_positions_stride ||| sizeof(Vertex)
+    vertexCount, // size_t vertex_count, ||| vertices.size(),
+    stride, // size_t vertex_positions_stride ||| sizeof(Vertex)
   ]);
 
   return parseMeshopt_Bounds(returnValueBuffer);

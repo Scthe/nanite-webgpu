@@ -1,8 +1,15 @@
 import * as objLoader from 'webgl-obj-loader';
-import { copyToTypedArray, createArray } from '../utils/index.ts';
+import {
+  copyToTypedArray,
+  createArray,
+  getVertexCount,
+} from '../utils/index.ts';
 import { vec3 } from 'wgpu-matrix';
+import { optimizeMeshBuffers } from '../meshPreprocessing/optimizeMeshBuffers.ts';
+import { BYTES_F32, BYTES_VEC3 } from '../constants.ts';
 
 const Mesh = objLoader.default?.Mesh || objLoader.Mesh; // deno vs chrome
+const Layout = objLoader.default?.Layout || objLoader.Layout; // deno vs chrome
 
 interface ObjMesh {
   indices: number[];
@@ -13,42 +20,71 @@ interface ObjMesh {
 const vertexCount = (mesh: ObjMesh) => Math.ceil(mesh.vertices.length / 3);
 
 export interface ParsedMesh {
-  vertices: Float32Array;
+  vertexCount: number;
+  positions: Float32Array;
+  positionsStride: number; // in bytes
   normals: Float32Array;
   uv: Float32Array;
+  verticesAndAttributes: Float32Array;
+  verticesAndAttributesStride: number; // in bytes
   indices: Uint32Array;
+  indicesCount: number;
 }
 
-// deno-lint-ignore require-await
 export async function loadObjFile(
   objText: string,
   scale: number
 ): Promise<ParsedMesh> {
-  const mesh: ObjMesh = new Mesh(objText);
-  // const { vertices, indices } = mesh;
-  fillMissingData(mesh);
+  const mesh = new Mesh(objText) as ObjMesh;
+  cleanupRawOBJData(mesh, scale);
   // console.log(mesh);
 
-  const vertexF32 = copyToTypedArray(
-    Float32Array,
-    mesh.vertices.map((e: number) => e * scale)
-  );
-  const uvF32 = copyToTypedArray(Float32Array, mesh.textures!);
-  const normalsF32 = copyToTypedArray(Float32Array, mesh.vertexNormals!);
-  const indexU32 = copyToTypedArray(Uint32Array, mesh.indices);
+  const vertexCountInitial = getVertexCount(mesh.vertices);
+  const indicesInitial = copyToTypedArray(Uint32Array, mesh.indices);
 
-  // TODO restore buffers optimization?
-  // TIP: use makeBufferData() to fold into a single buffer
-  // const [optVertices, optIndices] = await optimizeMeshBuffers(
-  // vertexF32,
-  // indexU32
-  // );
-  // return [optVertices, optIndices];
+  // create a single buffer that containst ALL vertex attributes
+  const layout = new Layout(Layout.POSITION, Layout.NORMAL, Layout.UV);
+  // deno-lint-ignore no-explicit-any
+  const verticesAndAttributesU8 = (mesh as any).makeBufferData(layout);
+  const verticesAndAttributes = new Float32Array(verticesAndAttributesU8);
+
+  // optimize vertex and index buffer
+  const strideBytes = layout.stride; // 32
+  const strideF32 = strideBytes / BYTES_F32; // 8
+  const [verticesNew, indicesNew] = await optimizeMeshBuffers(
+    verticesAndAttributes,
+    vertexCountInitial,
+    strideBytes,
+    indicesInitial
+  );
+
+  // split optimized vertex buffer into per-attribute copies
+  const newVertexCount = verticesNew.length / strideF32;
+  const positionsF32 = new Float32Array(newVertexCount * 3);
+  const normalsF32 = new Float32Array(newVertexCount * 3);
+  const uvF32 = new Float32Array(newVertexCount * 2);
+  for (let vertIdx = 0; vertIdx < newVertexCount; vertIdx++) {
+    const offset = vertIdx * strideF32;
+    positionsF32[3 * vertIdx + 0] = verticesNew[offset + 0];
+    positionsF32[3 * vertIdx + 1] = verticesNew[offset + 1];
+    positionsF32[3 * vertIdx + 2] = verticesNew[offset + 2];
+    normalsF32[3 * vertIdx + 0] = verticesNew[offset + 3];
+    normalsF32[3 * vertIdx + 1] = verticesNew[offset + 4];
+    normalsF32[3 * vertIdx + 2] = verticesNew[offset + 5];
+    uvF32[2 * vertIdx + 0] = verticesNew[offset + 6];
+    uvF32[2 * vertIdx + 1] = verticesNew[offset + 7];
+  }
+
   return {
-    vertices: vertexF32,
+    vertexCount: newVertexCount,
+    positions: positionsF32,
+    positionsStride: BYTES_VEC3,
     normals: normalsF32,
     uv: uvF32,
-    indices: indexU32,
+    indices: indicesNew,
+    indicesCount: indicesNew.length,
+    verticesAndAttributes: verticesNew,
+    verticesAndAttributesStride: strideBytes,
   };
 }
 
@@ -64,7 +100,9 @@ const hasUVs = (mesh: ObjMesh) => {
   return typeof firstEl === 'number' && !isNaN(firstEl);
 };
 
-function fillMissingData(mesh: ObjMesh) {
+function cleanupRawOBJData(mesh: ObjMesh, scale: number) {
+  mesh.vertices = mesh.vertices.map((e: number) => e * scale);
+
   if (!hasNormals(mesh)) {
     recalcNormals(mesh);
   }

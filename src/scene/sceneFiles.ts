@@ -10,6 +10,13 @@ export const OBJECTS = {
   displacedPlane: {
     file: 'displaced-plane.obj',
     scale: 0.2,
+    texture: 'test-texture.png',
+  },
+  // test flat shading - it WILL fail with 'cannot simplify' error.
+  displacedPlaneFlat: {
+    file: 'displaced-plane-flat.obj',
+    scale: 0.2,
+    texture: 'test-texture.png',
   },
 };
 export type SceneObjectName = keyof typeof OBJECTS;
@@ -29,6 +36,7 @@ export const SCENES = {
   plane: [sceneModel('plane', 1, 1)],
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
   displacedPlane: [sceneModel('displacedPlane', 1, 1)],
+  displacedPlaneFlat: [sceneModel('displacedPlaneFlat', 1, 1)],
 };
 
 export type SceneName = keyof typeof SCENES;
