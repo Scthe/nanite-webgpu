@@ -90,11 +90,14 @@ fn main_vs(
   result.meshletId = meshletId.y;
   let modelMat = _instanceTransforms[meshletId.x];
 
-  // we always draw MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less. Discard
+  // We always draw MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less: discard.
+  // While this is not the most performant approach, it has tiny memory footprint
+  // (uvec2 * instances count * meshlets count).
+  // We just say: draw X instances, each is (MAX_MESHLET_TRIANGLES * 3u) verts.
   if (inVertexIndex >= meshlet.triangleCount * 3) {
-    result.position.x = OUT_OF_SIGHT;
-    result.position.y = OUT_OF_SIGHT;
-    result.position.z = OUT_OF_SIGHT;
+    result.position.x = OUT_OF_SIGHT; // NOTE: the spec does not say NaN would discard.
+    result.position.y = OUT_OF_SIGHT; //       Suprised? Let's just say, I do not have 'mixed'
+    result.position.z = OUT_OF_SIGHT; //       feelings about WGSL.
     result.position.w = 1.0;
     return result;
   }

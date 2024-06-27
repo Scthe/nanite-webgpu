@@ -1,11 +1,7 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletId } from '../scene/naniteObject.ts';
 import { clamp } from '../utils/index.ts';
-import {
-  BoundingSphere,
-  Bounds3d,
-  calculateBounds,
-} from '../utils/calcBounds.ts';
+import { BoundingSphere, calculateBounds } from '../utils/calcBounds.ts';
 import { createMeshlets, splitIndicesPerMeshlets } from './createMeshlets.ts';
 import {
   listAllEdges,
@@ -53,16 +49,20 @@ export interface MeshletWIP {
   lodLevel: number;
   indices: Uint32Array;
   boundaryEdges: Edge[];
-  ownBounds: Bounds3d;
 
   // Nanite error calc:
-  /** Error for this node */
+  /** ## CALCULATED DURING CREATION!
+   * Simplification error when the meshlet was created. Shared between all the meshlets created from the same lower level (more detailed) meshlets */
   maxSiblingsError: number;
-  /** Infinity for top tree level */
-  parentError: number;
-  /** Bounds (shared by all sibling meshlets). */
+  /** ## CALCULATED DURING CREATION!
+   *  Combined bounds of the (lower level, more detailed) meshlets used to create this meshlet. Shared with other meshlets created from the same meshlets */
   sharedSiblingsBounds: BoundingSphere;
-  parentBounds: BoundingSphere | undefined; // undefined at top level
+  /** ## ASSINGED WHEN MORE COARSE MESHLET USES US AS A BASE!
+   * Parent/higher-level meshlets means created from this meshlet. `Infinity` for root (most coarse) meshlet. */
+  parentError: number;
+  /** ## ASSINGED WHEN MORE COARSE MESHLET USES US AS A BASE!
+   * Parent/higher-level meshlets means created from this meshlet. `undefined` for root (most coarse) meshlet. */
+  parentBounds: BoundingSphere | undefined;
 }
 
 export async function createNaniteMeshlets(
@@ -75,14 +75,12 @@ export async function createNaniteMeshlets(
 
   const allMeshlets: MeshletWIP[] = [];
   let lodLevel = 0;
-  const bottomMeshlets = await splitIntoMeshlets(
-    indices,
-    0.0,
-    // does not matter, bottom meshlets have error 0, so they always pass
-    // the 'has error < threshold' check. They only depend on the parent's error.
-    // If the parent also passes the check, the parent should be rendered instead
-    calculateBounds(parsedMesh.positions, indices).sphere
-  );
+  // does not matter, bottom meshlets have error 0, so they always pass
+  // the 'has error < threshold' check. They only depend on the parent's error.
+  // If the parent also passes the check, the parent should be rendered instead
+  const mockBounds = calculateBounds(parsedMesh.positions, indices).sphere;
+  const bottomMeshlets = await splitIntoMeshlets(indices, 0.0, [], mockBounds);
+
   let currentMeshlets = bottomMeshlets;
   lodLevel += 1;
 
@@ -141,11 +139,11 @@ export async function createNaniteMeshlets(
       if (partitioned.length === 1) {
         // this happens on last iteration, when < 4 meshlets
         // prettier-ignore
-        const rootMeshlet = await createMeshletWip(simplifiedMesh.indexBuffer, totalError, bounds);
+        const rootMeshlet = await createMeshletWip(simplifiedMesh.indexBuffer, totalError, childMeshletGroup, bounds);
         newMeshlets = [rootMeshlet];
       } else {
         // prettier-ignore
-        newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError, bounds);
+        newMeshlets = await splitIntoMeshlets(simplifiedMesh.indexBuffer, totalError, childMeshletGroup, bounds);
       }
 
       if (DEBUG) {
@@ -160,12 +158,8 @@ export async function createNaniteMeshlets(
       // This way they all take same decision when deciding if render self or parent
       childMeshletGroup.forEach((childMeshlet) => {
         childMeshlet.parentError = totalError; // set based on simplify, not meshlets!
-        // childMeshlet.maxSiblingsError = childrenError; // NO! TODO write assert to test if this should be done.
         childMeshlet.parentBounds = bounds;
-
-        newMeshlets.forEach((m2) => {
-          m2.createdFrom.push(childMeshlet);
-        });
+        // childMeshlet.maxSiblingsError = childrenError; // NO! DO NOT EVER TOUCH THIS
       });
       newlyCreatedMeshlets.push(...newMeshlets);
     }
@@ -181,6 +175,16 @@ export async function createNaniteMeshlets(
   // By now the LOD tree is complete
   if (currentMeshlets.length !== 1) {
     // It's ok to increase $MAX_LODS, just make sure you know what you are doing.
+    //
+    // Technically, nothing stops us from having multiple roots. Think separate submeshes.
+    // Having a single root just makes it easier. It's really obvious that e.g.
+    // something went wrong during simplification. OTOH, some meshes could not simplify as easy.
+    //
+    // TO ALLOW MULTIPLE ROOTS:
+    // Remove this check and turn NaniteObject.root into an array. Both CPU and GPU
+    // visiblity would work. TBH. GPU visibility would not even notice anything changed.
+    // CPU visiblity starts traversing LOD 'tree' from the root, so initialize it:
+    // `meshletsToCheck = [...naniteObject.roots]`.
     throw new Error(
       `Nanite created ${lodLevel} LOD levels and would still require more? How big is your mesh?! Increase MAX_LODS (currrently ${MAX_LODS}) or reconsider mesh.`
     );
@@ -197,6 +201,7 @@ export async function createNaniteMeshlets(
   async function splitIntoMeshlets(
     indices: Uint32Array,
     simplificationError: number,
+    createdFrom: MeshletWIP[],
     sharedSiblingsBounds: BoundingSphere
   ) {
     const meshletsOpt = await createMeshlets(parsedMesh, indices, {
@@ -213,6 +218,7 @@ export async function createNaniteMeshlets(
         return createMeshletWip(
           indices,
           simplificationError,
+          createdFrom,
           sharedSiblingsBounds
         );
       })
@@ -224,24 +230,21 @@ export async function createNaniteMeshlets(
   async function createMeshletWip(
     indices: Uint32Array,
     simplificationError: number,
+    createdFrom: MeshletWIP[],
     sharedSiblingsBounds: BoundingSphere
   ): Promise<MeshletWIP> {
     const edges = listAllEdges(indices);
     const boundaryEdges = findBoundaryEdges(edges);
-    const ownBounds = calculateBounds(parsedMesh.positions, indices);
     const m: MeshletWIP = {
       id: NEXT_MESHLET_ID,
       indices,
       boundaryEdges,
-      // maxSiblingsError will temporarly hold the error till
-      // we determine siblings in next iter
       maxSiblingsError: simplificationError,
       parentError: Infinity,
       sharedSiblingsBounds,
       parentBounds: undefined,
       lodLevel,
-      createdFrom: [],
-      ownBounds,
+      createdFrom,
     };
     NEXT_MESHLET_ID += 1;
     allMeshlets.push(m);

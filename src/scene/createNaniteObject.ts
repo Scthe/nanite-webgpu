@@ -4,6 +4,7 @@ import {
   BOTTOM_LEVEL_NODE,
   GPU_MESHLET_SIZE_BYTES,
   NaniteInstancesData,
+  NaniteMeshletTreeNode,
   NaniteObject,
   getPreNaniteStats,
 } from '../scene/naniteObject.ts';
@@ -27,6 +28,7 @@ import { InstancesGrid, getInstancesCount } from './sceneFiles.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { ParsedMesh } from './objLoader.ts';
+import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -81,15 +83,25 @@ export function createNaniteObject(
   let nextId = 0; // id in the index buffer order
   const rewriteIds = createArray(naniteObject.meshletCount);
 
-  const meshletsToCheck: MeshletWIP[] = [roots[0]];
+  // array of [parentNode, meshletToCheck]
+  const root = roots[0];
+  const meshletsToCheck: Array<
+    [NaniteMeshletTreeNode | undefined, MeshletWIP]
+  > = [[undefined, root]];
+
   while (meshletsToCheck.length > 0) {
-    const meshlet = meshletsToCheck.shift()!; // remove 1st from queue
+    const [parentNode, meshlet] = meshletsToCheck.shift()!; // remove 1st from queue
     if (naniteObject.contains(meshlet.id)) {
       continue;
     }
+
+    // create meshlet
+    const ownBounds = calculateBounds(loadedObj.positions, meshlet.indices);
     const node = naniteObject.addMeshlet(
+      parentNode,
       meshlet,
-      indexBufferOffsetBytes / BYTES_U32
+      indexBufferOffsetBytes / BYTES_U32,
+      ownBounds
     );
 
     // write index buffer slice
@@ -108,7 +120,7 @@ export function createNaniteObject(
     // schedule child nodes processing
     meshlet.createdFrom.forEach((m) => {
       if (m) {
-        meshletsToCheck.push(m);
+        meshletsToCheck.push([node, m]);
       }
     });
   }
@@ -119,21 +131,6 @@ export function createNaniteObject(
     throw new Error(`Created ${allWIPMeshlets.length} meshlets, but only ${naniteObject.allMeshlets.length} were added to the LOD tree? Please verify '.createdFrom' for all meshlets.`);
   }
 
-  // fill `createdFrom`
-  allWIPMeshlets.forEach((m) => {
-    const node = naniteObject.find(m.id)!;
-    m.createdFrom.forEach((mChild) => {
-      const chNode = naniteObject.find(mChild.id);
-      if (chNode !== undefined && node !== undefined) {
-        node.createdFrom.push(chNode);
-      } else {
-        // Node not found?!
-        const missing = chNode === undefined ? mChild.id : m.id;
-        throw new Error(`Error finalizing nanite LOD tree. Could not find meshlet ${missing}`); // prettier-ignore
-      }
-    });
-  });
-
   // rewrite id's to be in index buffer order
   // This should be the last step, as we use ids all over the place.
   // After this step, MeshletWIP[_].id !== naniteLODTree.allMeshlets[_].id
@@ -143,6 +140,9 @@ export function createNaniteObject(
 
   // upload meshlet data to the GPU for GPU visibility check/render
   naniteObject.uploadMeshletsToGPU(device);
+
+  // finalize
+  assertValidNaniteObject(naniteObject);
 
   // print stats
   const rawStats = getPreNaniteStats(naniteObject);

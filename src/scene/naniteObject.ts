@@ -19,7 +19,6 @@ export type NaniteMeshletTreeNode = Pick<
   MeshletWIP,
   | 'id'
   | 'lodLevel'
-  | 'ownBounds'
   | 'sharedSiblingsBounds'
   | 'maxSiblingsError'
   | 'parentBounds'
@@ -28,6 +27,7 @@ export type NaniteMeshletTreeNode = Pick<
   triangleCount: number;
   firstIndexOffset: number;
   createdFrom: NaniteMeshletTreeNode[];
+  ownBounds: Bounds3d;
 };
 
 export interface NaniteInstancesData {
@@ -219,7 +219,12 @@ export class NaniteObject {
   }
 
   /** Used only during construction */
-  addMeshlet(m: MeshletWIP, firstIndexOffset: number) {
+  addMeshlet(
+    parent: NaniteMeshletTreeNode | undefined,
+    m: MeshletWIP,
+    firstIndexOffset: number,
+    ownBounds: Bounds3d
+  ) {
     const existing = this.find(m.id);
     if (existing) {
       return existing;
@@ -234,11 +239,13 @@ export class NaniteObject {
       parentError: m.parentError,
       firstIndexOffset,
       triangleCount: getTriangleCount(m.indices),
-      createdFrom: [], // filled once all nodes created in the tree
-      ownBounds: m.ownBounds,
+      createdFrom: [], // filled when addMeshlet() is called for children
+      ownBounds,
     };
 
     this.allMeshlets.push(node);
+    if (parent) parent.createdFrom.push(node);
+
     return node;
   }
 }
