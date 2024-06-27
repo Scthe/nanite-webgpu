@@ -1,5 +1,8 @@
 import { ValueOf } from '../utils/index.ts';
 
+export const MODELS_DIR = 'models';
+
+// prettier-ignore
 export const OBJECTS = {
   bunny: { file: 'bunny.obj', scale: 8 },
   lucy: { file: 'lucy.obj', scale: 1 },

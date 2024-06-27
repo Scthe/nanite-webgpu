@@ -21,6 +21,7 @@ import {
   InstancesGrid,
   SCENES,
   OBJECTS,
+  MODELS_DIR,
 } from './sceneFiles.ts';
 import {
   createFallbackTexture,
@@ -113,7 +114,7 @@ async function loadObject(
 
   // get OBJ file text
   const modelDesc = OBJECTS[name];
-  const objFileText = await objTextReaderFn(modelDesc.file);
+  const objFileText = await objTextReaderFn(`${MODELS_DIR}/${modelDesc.file}`);
   addTimer('OBJ fetch', start);
 
   // parse OBJ file
@@ -130,7 +131,10 @@ async function loadObject(
   let diffuseTextureView: GPUTextureView | undefined = undefined;
   if ('texture' in modelDesc) {
     timerStart = getProfilerTimestamp();
-    diffuseTexture = await createTextureFromFile(device, modelDesc.texture);
+    diffuseTexture = await createTextureFromFile(
+      device,
+      `${MODELS_DIR}/${modelDesc.texture}`
+    );
     diffuseTextureView = diffuseTexture.createView();
     addTimer('Load texture', timerStart);
   }

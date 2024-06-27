@@ -20,6 +20,13 @@ export function absPathFromRepoRoot(filePath: string) {
   return path.resolve(__dirname, '..', '..', filePath);
 }
 
+export function relativePath(
+  importMeta: { dirname?: string },
+  filePath: string
+) {
+  return path.resolve(importMeta?.dirname || '', filePath);
+}
+
 type ValidateWebGPUCallsFn = () => Promise<void>;
 
 export async function createGpuDevice_TESTS(): Promise<
