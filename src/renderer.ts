@@ -142,23 +142,46 @@ export class Renderer {
     } else {
       // draw nanite - calc visibility either CPU or GPU
       if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
-        this.cmdDrawNaniteGPU(ctx);
+        this.cmdDrawNanite_GPU(ctx);
       } else {
-        this.drawMeshPass.draw(ctx);
+        this.cmdDrawNanite_CPU(ctx);
       }
     }
 
     this.frameIdx += 1;
   }
 
-  private cmdDrawNaniteGPU(ctx: PassCtx) {
-    const { naniteObject } = ctx.scene;
+  private cmdDrawNanite_CPU(ctx: PassCtx) {
+    const { naniteObjects } = ctx.scene;
 
-    if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
-      this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+    this.drawMeshPass.initFrameStats();
+
+    // draw objects
+    for (let i = 0; i < naniteObjects.length; i++) {
+      const naniteObject = naniteObjects[i];
+      const loadOp: GPULoadOp = i == 0 ? 'clear' : 'load';
+
+      this.drawMeshPass.draw(ctx, naniteObject, loadOp);
     }
-    this.drawNaniteGPUPass.draw(ctx, naniteObject);
 
+    this.drawMeshPass.uploadFrameStats(ctx);
+  }
+
+  private cmdDrawNanite_GPU(ctx: PassCtx) {
+    const { naniteObjects } = ctx.scene;
+
+    // draw objects
+    for (let i = 0; i < naniteObjects.length; i++) {
+      const naniteObject = naniteObjects[i];
+      const loadOp: GPULoadOp = i == 0 ? 'clear' : 'load';
+
+      if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
+        this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+      }
+      this.drawNaniteGPUPass.draw(ctx, naniteObject, loadOp);
+    }
+
+    // depth pyramid
     this.depthPyramidPass.cmdCreateDepthPyramid(
       ctx,
       this.depthTexture,

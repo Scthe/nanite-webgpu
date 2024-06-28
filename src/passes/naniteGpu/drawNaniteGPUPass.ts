@@ -58,16 +58,16 @@ export class DrawNaniteGPUPass {
     });
   }
 
-  draw(ctx: PassCtx, naniteObject: NaniteObject) {
+  draw(ctx: PassCtx, naniteObject: NaniteObject, loadOp: GPULoadOp) {
     const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawNaniteGPUPass.NAME,
       colorAttachments: [
-        useColorAttachment(screenTexture, getClearColorVec3()),
+        useColorAttachment(screenTexture, getClearColorVec3(), loadOp),
       ],
-      depthStencilAttachment: useDepthStencilAttachment(depthTexture),
+      depthStencilAttachment: useDepthStencilAttachment(depthTexture, loadOp),
       timestampWrites: profiler?.createScopeGpu(DrawNaniteGPUPass.NAME),
     });
     const bindings = this.bindingsCache.getBindings(naniteObject.name, () =>

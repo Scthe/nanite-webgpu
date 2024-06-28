@@ -72,7 +72,7 @@ export class NaniteObject {
     private readonly octahedronNormals: GPUBuffer,
     public readonly indexBuffer: GPUBuffer,
     /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
-    private readonly meshletsBuffer: GPUBuffer,
+    public readonly meshletsBuffer: GPUBuffer,
     /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and Array<(tfxId, meshletId)> */
     private readonly visiblityBuffer: GPUBuffer,
     public readonly instances: NaniteInstancesData
@@ -104,6 +104,20 @@ export class NaniteObject {
 
   get instancesCount() {
     return this.instances.transforms.length;
+  }
+
+  /** Triangle count as imported from .OBJ file. This is how much you would render if you did not have nanite */
+  get rawObjectTriangleCount() {
+    return this.allMeshlets.reduce((acc, m) => {
+      return m.lodLevel === BOTTOM_LEVEL_NODE ? acc + m.triangleCount : acc;
+    }, 0);
+  }
+
+  /** Bottom-level meshlets. We don't want to render them, we want something higher-up the LOD tree to reduce triangle count */
+  get rawMeshletCount() {
+    return this.allMeshlets.reduce((acc, m) => {
+      return m.lodLevel === BOTTOM_LEVEL_NODE ? acc + 1 : acc;
+    }, 0);
   }
 
   /** Use specialised methods for this buffer! It's complicated */
@@ -248,19 +262,6 @@ export class NaniteObject {
 
     return node;
   }
-}
-
-/** Bottom meshlet LOD level is pre-nanite */
-export function getPreNaniteStats(naniteObj: NaniteObject) {
-  let triangleCount = 0;
-  let meshletCount = 0;
-  naniteObj.allMeshlets.forEach((m) => {
-    if (m.lodLevel === BOTTOM_LEVEL_NODE) {
-      triangleCount += m.triangleCount;
-      meshletCount += 1;
-    }
-  });
-  return { meshletCount, triangleCount };
 }
 
 /**

@@ -8,7 +8,6 @@ import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
 import { CONFIG, MILISECONDS_TO_SECONDS } from './constants.ts';
 import { createErrorSystem } from './utils/errors.ts';
 import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
-import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 import {
   FileTextReader,
@@ -17,14 +16,17 @@ import {
   loadScene,
 } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
+import { setNaniteDrawStats } from './passes/_shared.ts';
 
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
-const SCENE_FILE: SceneName = 'bunny1b';
+// const SCENE_FILE: SceneName = 'bunny1b';
+const SCENE_FILE: SceneName = 'manyObjects';
 // const SCENE_FILE: SceneName = 'planeSubdiv';
 // const SCENE_FILE: SceneName = 'singleLucy';
 // const SCENE_FILE: SceneName = 'dragon';
 // const SCENE_FILE: SceneName = 'displacedPlane';
+// const SCENE_FILE: SceneName = 'displacedPlaneFlat'; // fails
 // const SCENE_FILE: SceneName = 'cube';
 // const SCENE_FILE: SceneName = 'plane';
 
@@ -117,14 +119,7 @@ const SCENE_FILE: SceneName = 'bunny1b';
     // download GPU visibility buffer if needed
     if (CONFIG.nanite.render.nextFrameDebugVisiblityBuffer) {
       CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = false;
-      downloadVisibilityBuffer(device, scene.naniteObject).then((res): void => {
-        DrawNanitesPass.updateRenderStats(
-          res.naniteObject,
-          res.meshletCount,
-          undefined,
-          undefined
-        );
-      });
+      getGPUVisiblityStats(device, scene); // not awaited!
     }
 
     // frame end
@@ -203,4 +198,13 @@ function showErrorMessage(msg?: string) {
   if (msg) {
     document.getElementById('error-msg')!.textContent = msg;
   }
+}
+
+async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
+  const resultsAsync = scene.naniteObjects.map((obj) =>
+    downloadVisibilityBuffer(device, obj)
+  );
+  const results = await Promise.all(resultsAsync);
+  const drawnMeshlets = results.reduce((acc, res) => acc + res.meshletCount, 0);
+  setNaniteDrawStats(scene, drawnMeshlets, undefined);
 }

@@ -1,5 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
-import { Scene } from '../../scene/scene.ts';
+import { Scene, getDebugTestObject } from '../../scene/scene.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
@@ -102,11 +102,9 @@ export class DbgMeshoptimizerMeshletsPass {
     renderPass: GPURenderPassEncoder,
     scene: Scene
   ) {
+    const [debugMeshes, nanite] = getDebugTestObject(scene);
     const meshlets =
-      scene.debugMeshes.meshoptimizerMeshletLODs[
-        CONFIG.dbgMeshoptimizerLodLevel
-      ];
-    const nanite = scene.naniteObject;
+      debugMeshes.meshoptimizerMeshletLODs[CONFIG.dbgMeshoptimizerLodLevel];
 
     renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
     renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
@@ -122,7 +120,7 @@ export class DbgMeshoptimizerMeshletsPass {
   }
 
   private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
-    const nanite = scene.naniteObject;
+    const [_debugMeshes, nanite] = getDebugTestObject(scene);
     renderPass.setVertexBuffer(0, nanite.originalMesh.vertexBuffer);
     renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setVertexBuffer(2, nanite.originalMesh.uvBuffer); // not used but required?! Chrome WebGPU..

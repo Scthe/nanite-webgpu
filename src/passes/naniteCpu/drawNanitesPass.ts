@@ -7,6 +7,8 @@ import {
   getClearColorVec3,
   labelPipeline,
   labelShader,
+  setNaniteDrawStats,
+  setNaniteInstancesStats,
   useColorAttachment,
   useDepthStencilAttachment,
 } from '../_shared.ts';
@@ -15,9 +17,7 @@ import {
   calcCotHalfFov,
   calcNaniteMeshletsVisibility,
 } from './calcNaniteMeshletsVisibility.ts';
-import { NaniteObject, getPreNaniteStats } from '../../scene/naniteObject.ts';
-import { STATS } from '../../sys_web/stats.ts';
-import { formatNumber } from '../../utils/index.ts';
+import { NaniteObject } from '../../scene/naniteObject.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './drawNanitesPass.wgsl.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 import { getDiffuseTexture } from '../../scene/scene.ts';
@@ -64,6 +64,11 @@ export class DrawNanitesPass {
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();
 
+  // current frame stats
+  private drawnMeshletsCount = 0;
+  private drawnTriangleCount = 0;
+  private culledInstancesCount = 0;
+
   constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
     this.renderPipeline = DrawNanitesPass.createRenderPipeline(
       device,
@@ -98,7 +103,20 @@ export class DrawNanitesPass {
     });
   }
 
-  draw(ctx: PassCtx) {
+  initFrameStats() {
+    this.drawnMeshletsCount = 0;
+    this.drawnTriangleCount = 0;
+    this.culledInstancesCount = 0;
+  }
+
+  uploadFrameStats({ scene }: PassCtx) {
+    setNaniteDrawStats(scene, this.drawnMeshletsCount, this.drawnTriangleCount);
+    const drawnInstancesCount =
+      scene.totalInstancesCount - this.culledInstancesCount;
+    setNaniteInstancesStats(scene, drawnInstancesCount);
+  }
+
+  draw(ctx: PassCtx, naniteObject: NaniteObject, loadOp: GPULoadOp) {
     const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
 
     // in this fn, time taken is on CPU, as GPU is async. Not 100% accurate, but good enough?
@@ -108,9 +126,9 @@ export class DrawNanitesPass {
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawNanitesPass.NAME,
       colorAttachments: [
-        useColorAttachment(screenTexture, getClearColorVec3()),
+        useColorAttachment(screenTexture, getClearColorVec3(), loadOp),
       ],
-      depthStencilAttachment: useDepthStencilAttachment(depthTexture),
+      depthStencilAttachment: useDepthStencilAttachment(depthTexture, loadOp),
       timestampWrites: profiler?.createScopeGpu(DrawNanitesPass.NAME),
     });
 
@@ -118,7 +136,7 @@ export class DrawNanitesPass {
     renderPass.setPipeline(this.renderPipeline);
 
     // draw
-    this.renderNaniteObject(ctx, renderPass, ctx.scene.naniteObject);
+    this.renderNaniteObject(ctx, renderPass, naniteObject);
 
     // fin
     profiler?.endRegionCpu(visibilityCheckProfiler);
@@ -141,9 +159,6 @@ export class DrawNanitesPass {
     renderPass.setVertexBuffer(2, naniteObject.originalMesh.uvBuffer);
     renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
 
-    let drawnTriangleCount = 0;
-    let drawnMeshletsCount = 0;
-    let culledInstances = 0;
     const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 
     for (let instanceIdx = 0; instanceIdx < instances.length; instanceIdx++) {
@@ -154,11 +169,11 @@ export class DrawNanitesPass {
         instanceModelMat,
         naniteObject
       );
-      drawnMeshletsCount += toDrawCount;
       if (toDrawCount === 0) {
-        culledInstances += 1;
+        this.culledInstancesCount += 1;
         continue;
       }
+      this.drawnMeshletsCount += toDrawCount;
 
       for (let mIdx = 0; mIdx < toDrawCount; mIdx++) {
         const m = naniteObject.naniteVisibilityBufferCPU.drawnMeshlets[mIdx];
@@ -174,16 +189,9 @@ export class DrawNanitesPass {
           0, // base vertex
           instanceIdx // first instance
         );
-        drawnTriangleCount += triangleCount;
+        this.drawnTriangleCount += triangleCount;
       }
     }
-
-    DrawNanitesPass.updateRenderStats(
-      naniteObject,
-      drawnMeshletsCount,
-      drawnTriangleCount,
-      culledInstances
-    );
   }
 
   private createBindings = (
@@ -210,37 +218,4 @@ export class DrawNanitesPass {
       ]
     );
   };
-
-  public static updateRenderStats(
-    naniteObject: NaniteObject | undefined,
-    drawnMeshletsCount: number | undefined,
-    drawnTriangleCount: number | undefined,
-    culledInstances: number | undefined
-  ) {
-    if (!naniteObject) {
-      STATS.update('Nanite meshlets', '-');
-      STATS.update('Nanite triangles', '-');
-      return;
-    }
-
-    const rawStats = getPreNaniteStats(naniteObject);
-
-    const fmt = (drawn: number, total: number, decimals = 1) => {
-      const percent = ((drawn / total) * 100.0) / naniteObject.instancesCount;
-      return `${formatNumber(drawn, decimals)} (${percent.toFixed(1)}%)`;
-    };
-
-    if (drawnMeshletsCount !== undefined) {
-      STATS.update('Nanite meshlets' , fmt(drawnMeshletsCount, rawStats.meshletCount)); // prettier-ignore
-    }
-    if (drawnTriangleCount !== undefined) {
-      STATS.update('Nanite triangles', fmt(drawnTriangleCount, rawStats.triangleCount)); // prettier-ignore
-    }
-    if (culledInstances !== undefined) {
-      STATS.update('Culled instances', fmt(culledInstances, 1)); // prettier-ignore
-    }
-    // if (backfaceCulledMeshletsCount !== undefined) {
-    // STATS.update('Backface meshlets', fmt(backfaceCulledMeshletsCount, rawStats.meshletCount, 0)); // prettier-ignore
-    // }
-  }
 }

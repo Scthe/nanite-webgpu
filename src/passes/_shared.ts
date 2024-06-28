@@ -1,4 +1,7 @@
 import { CONFIG, DEPTH_FORMAT } from '../constants.ts';
+import { Scene } from '../scene/scene.ts';
+import { STATS } from '../sys_web/stats.ts';
+import { formatPercentageNumber } from '../utils/index.ts';
 
 type PassClass = { NAME: string };
 
@@ -52,20 +55,22 @@ export const assignResourcesToBindings = (
 
 export const useColorAttachment = (
   colorTexture: GPUTextureView,
-  clearColor: number[]
+  clearColor: number[],
+  loadOp: GPULoadOp = 'clear'
 ): GPURenderPassColorAttachment => ({
   view: colorTexture,
-  loadOp: 'clear',
+  loadOp,
   storeOp: 'store',
   clearValue: [clearColor[0], clearColor[1], clearColor[2], 1],
 });
 
 export const useDepthStencilAttachment = (
-  depthTexture: GPUTextureView
+  depthTexture: GPUTextureView,
+  depthLoadOp: GPULoadOp = 'clear'
 ): GPURenderPassDepthStencilAttachment => ({
   view: depthTexture,
   depthClearValue: 1.0,
-  depthLoadOp: 'clear',
+  depthLoadOp,
   depthStoreOp: 'store',
 });
 
@@ -89,4 +94,38 @@ export class BindingsCache {
     // });
     this.cache = {};
   }
+}
+
+export function resetNaniteStats() {
+  STATS.update('Nanite meshlets', '-');
+  STATS.update('Nanite triangles', '-');
+  STATS.update('Drawn instances', '-');
+}
+
+export function setNaniteDrawStats(
+  scene: Scene,
+  drawnMeshletsCount: number,
+  drawnTriangleCount: number | undefined // not always available
+) {
+  STATS.update(
+    'Nanite meshlets',
+    formatPercentageNumber(drawnMeshletsCount, scene.naiveMeshletCount)
+  );
+
+  if (drawnTriangleCount) {
+    STATS.update(
+      'Nanite triangles',
+      formatPercentageNumber(drawnTriangleCount, scene.naiveTriangleCount)
+    );
+  }
+}
+
+export function setNaniteInstancesStats(
+  scene: Scene,
+  drawnInstancesCount: number
+) {
+  STATS.update(
+    'Drawn instances',
+    formatPercentageNumber(drawnInstancesCount, scene.totalInstancesCount)
+  );
 }

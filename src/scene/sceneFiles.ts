@@ -40,6 +40,7 @@ export const SCENES = {
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
   displacedPlane: [sceneModel('displacedPlane', 1, 1)],
   displacedPlaneFlat: [sceneModel('displacedPlaneFlat', 1, 1)],
+  manyObjects: [sceneModel('displacedPlane', 1, 1), sceneModel('bunny', 1, 1)],
 };
 
 export type SceneName = keyof typeof SCENES;

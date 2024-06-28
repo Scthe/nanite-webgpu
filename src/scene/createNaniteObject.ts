@@ -6,13 +6,10 @@ import {
   NaniteInstancesData,
   NaniteMeshletTreeNode,
   NaniteObject,
-  getPreNaniteStats,
 } from '../scene/naniteObject.ts';
 import {
   createArray,
   dgr2rad,
-  formatBytes,
-  formatNumber,
   getBytesForTriangles,
   getTriangleCount,
   randomBetween,
@@ -23,7 +20,6 @@ import {
   writeMatrixToGPUBuffer,
 } from '../utils/webgpu.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
-import { STATS } from '../sys_web/stats.ts';
 import { InstancesGrid, getInstancesCount } from './sceneFiles.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
@@ -145,23 +141,13 @@ export function createNaniteObject(
   assertValidNaniteObject(naniteObject);
 
   // print stats
-  const rawStats = getPreNaniteStats(naniteObject);
   if (!CONFIG.isTest) {
     console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
     console.log('[Nanite] Root meshlet:', naniteObject.root);
     console.log(
-      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${rawStats.meshletCount} bottom level meshlets)`
+      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${naniteObject.rawMeshletCount} bottom level meshlets)`
     );
   }
-
-  // in-browser stats
-  STATS.update('Vertex buffer', formatBytes(originalMesh.vertexBuffer.size));
-  STATS.update('Vertex buffer2', formatBytes(vertexBufferForStorageAsVec4.size)); // prettier-ignore
-  STATS.update('Index buffer', formatBytes(indexBuffer.size));
-  STATS.update('Meshlets data', formatBytes(meshletsBuffer.size));
-  STATS.update('Visibility buffer', formatBytes(visiblityBuffer.size));
-  STATS.update('Pre-Nanite meshlets', formatNumber(rawStats.meshletCount * naniteObject.instancesCount, 1)); // prettier-ignore
-  STATS.update('Pre-Nanite triangles', formatNumber(rawStats.triangleCount * naniteObject.instancesCount, 1)); // prettier-ignore
 
   return naniteObject;
 }

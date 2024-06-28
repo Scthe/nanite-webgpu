@@ -1,4 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { getDebugTestObject } from '../../scene/scene.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
   PIPELINE_PRIMITIVE_TRIANGLE_LIST,
@@ -82,8 +83,8 @@ export class DbgMeshoptimizerPass {
     renderPass.setBindGroup(0, this.uniformsBindings);
 
     // draw
-    const mesh =
-      scene.debugMeshes.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
+    const [debugMeshes, _nanite] = getDebugTestObject(scene);
+    const mesh = debugMeshes.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
     renderPass.setVertexBuffer(1, mesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setVertexBuffer(2, mesh.uvBuffer); // not used but required?! Chrome WebGPU..

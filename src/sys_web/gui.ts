@@ -10,10 +10,10 @@ import {
   SHADING_MODE_TRIANGLE,
 } from '../constants.ts';
 import { GpuProfiler, GpuProfilerResult } from '../gpuProfiler.ts';
-import { Scene } from '../scene/scene.ts';
+import { Scene, getDebugTestObject } from '../scene/scene.ts';
 import { Camera } from '../camera.ts';
-import { DrawNanitesPass } from '../passes/naniteCpu/drawNanitesPass.ts';
 import { showHtmlEl } from '../utils/index.ts';
+import { resetNaniteStats } from '../passes/_shared.ts';
 
 // https://github.com/Scthe/WebFX/blob/master/src/UISystem.ts#L13
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
@@ -73,12 +73,7 @@ export function initializeGUI(
   function onVisiblityDeviceSwap() {
     const nextDevice = CONFIG.nanite.render.calcVisibilityDevice;
 
-    DrawNanitesPass.updateRenderStats(
-      undefined,
-      undefined,
-      undefined,
-      undefined
-    );
+    resetNaniteStats();
 
     // gpu
     setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
@@ -191,13 +186,14 @@ export function initializeGUI(
       (modeCtrl as any).__onFinishChange();
     };
 
-    let maxLod = scene.debugMeshes.meshoptimizerLODs.length - 1;
+    const [debugMeshes, naniteObject] = getDebugTestObject(scene);
+    let maxLod = debugMeshes.meshoptimizerLODs.length - 1;
     const lodCtrl = dir
       .add(CONFIG, 'dbgMeshoptimizerLodLevel', 0, maxLod)
       .step(1)
       .name('LOD level');
 
-    maxLod = scene.naniteObject.lodLevelCount - 1; // 7 levels mean 0-6 on GUI
+    maxLod = naniteObject.lodLevelCount - 1; // 7 levels mean 0-6 on GUI
     const naniteLodCtrl = dir
       .add(CONFIG, 'dbgNaniteLodLevel', 0, maxLod)
       .step(1)

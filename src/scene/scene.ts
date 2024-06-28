@@ -5,7 +5,12 @@ import {
 } from '../gpuProfiler.ts';
 import { createNaniteMeshlets } from '../meshPreprocessing/index.ts';
 import { STATS } from '../sys_web/stats.ts';
-import { getVertexCount, getTriangleCount } from '../utils/index.ts';
+import {
+  getVertexCount,
+  getTriangleCount,
+  formatBytes,
+  formatNumber,
+} from '../utils/index.ts';
 import { printBoundingBox } from '../utils/calcBounds.ts';
 import {
   createGPU_VertexBuffer,
@@ -38,11 +43,23 @@ export type ObjectLoadingProgressCb = (
 ) => Promise<void>;
 
 export interface Scene {
-  naniteObject: NaniteObject;
+  naniteObjects: NaniteObject[];
   debugMeshes: DebugMeshes;
   fallbackDiffuseTexture: GPUTexture;
   fallbackDiffuseTextureView: GPUTextureView;
   defaultSampler: GPUSampler;
+
+  // stats
+  /** Triangle count as imported from .OBJ file. This is how much you would render if you did not have nanite */
+  naiveTriangleCount: number;
+  /** Bottom-level meshlets. We don't want to render them, we want something higher-up the LOD tree to reduce triangle count */
+  naiveMeshletCount: number;
+  /** Sum of instance count over all objects */
+  totalInstancesCount: number;
+}
+
+export function getDebugTestObject(scene: Scene): [DebugMeshes, NaniteObject] {
+  return [scene.debugMeshes, scene.naniteObjects[0]];
 }
 
 export const getDiffuseTexture = (scene: Scene, naniteObject: NaniteObject) =>
@@ -54,23 +71,39 @@ export async function loadScene(
   sceneName: SceneName,
   progressCb?: ObjectLoadingProgressCb
 ): Promise<Scene> {
-  const scene = SCENES[sceneName];
+  const sceneObjectDefs = SCENES[sceneName];
+  if (!sceneObjectDefs || sceneObjectDefs.length < 1) {
+    throw new Error(`Scene '${sceneName}' is empty`);
+  }
 
-  const objDef = scene[0];
-  const obj = await loadObject(
-    device,
-    objTextReaderFn,
-    objDef.model,
-    objDef.instances,
-    progressCb
-  );
+  let debugMeshes: DebugMeshes | undefined = undefined;
+  const naniteObjects: NaniteObject[] = [];
+  const start = getProfilerTimestamp();
 
-  // create debug meshes if needed
-  const debugMeshes = await createDebugMeshes(
-    device,
-    obj.originalMesh,
-    obj.parsedMesh
-  );
+  for (let i = 0; i < sceneObjectDefs.length; i++) {
+    const objDef = sceneObjectDefs[i];
+    const obj = await loadObject(
+      device,
+      objTextReaderFn,
+      objDef.model,
+      objDef.instances,
+      progressCb
+    );
+    naniteObjects.push(obj.naniteObject);
+
+    // create debug meshes if needed
+    if (debugMeshes == undefined) {
+      debugMeshes = await createDebugMeshes(
+        device,
+        obj.originalMesh,
+        obj.parsedMesh
+      );
+    }
+  }
+
+  // update stats
+  const delta = getDeltaFromTimestampMS(start);
+  STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
 
   // fallback texture
   const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
@@ -84,12 +117,15 @@ export async function loadScene(
     addressModeV: 'clamp-to-edge',
   });
 
+  const stats = updateSceneStats(naniteObjects);
+
   return {
-    naniteObject: obj.naniteObject,
-    debugMeshes,
+    naniteObjects,
+    debugMeshes: debugMeshes!, // was created from first nanite object
     fallbackDiffuseTexture,
     fallbackDiffuseTextureView,
     defaultSampler,
+    ...stats,
   };
 }
 
@@ -100,6 +136,7 @@ async function loadObject(
   instancesDesc: InstancesGrid,
   progressCb?: ObjectLoadingProgressCb
 ) {
+  console.group(`Object '${name}'`);
   await progressCb?.(name, `Loading object: '${name}'`);
   const start = getProfilerTimestamp();
   const timers: string[] = [];
@@ -166,13 +203,12 @@ async function loadObject(
   addTimer('Finalize nanite object', timerStart);
 
   // end
-  const delta = getDeltaFromTimestampMS(start);
   addTimer('---TOTAL---', start);
-  STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
   console.log(`Object '${name}' loaded. Timers:`, timers);
   if (enableProfiler) {
     console.profileEnd();
   }
+  console.groupEnd();
 
   return {
     originalMesh,
@@ -214,5 +250,44 @@ function createOriginalMesh(
     vertexBuffer,
     vertexCount: getVertexCount(mesh.positions),
     triangleCount: getTriangleCount(mesh.indices),
+  };
+}
+
+function updateSceneStats(
+  naniteObjects: NaniteObject[]
+): Pick<
+  Scene,
+  'naiveMeshletCount' | 'naiveTriangleCount' | 'totalInstancesCount'
+> {
+  // geometry
+  let naiveTriangleCount = 0;
+  let naiveMeshletCount = 0;
+  let totalInstancesCount = 0;
+  // memory
+  let meshletsDataBytes = 0;
+  let visibilityBufferBytes = 0;
+  let indexBufferBytes = 0;
+
+  for (const naniteObj of naniteObjects) {
+    naiveTriangleCount +=
+      naniteObj.rawObjectTriangleCount * naniteObj.instancesCount;
+    naiveMeshletCount += naniteObj.rawMeshletCount * naniteObj.instancesCount;
+    totalInstancesCount += naniteObj.instancesCount;
+
+    meshletsDataBytes += naniteObj.meshletsBuffer.size;
+    visibilityBufferBytes += naniteObj.dangerouslyGetVisibilityBuffer().size;
+    indexBufferBytes += naniteObj.indexBuffer.size;
+  }
+
+  STATS.update('Index buffer', formatBytes(indexBufferBytes));
+  STATS.update('Meshlets data', formatBytes(meshletsDataBytes));
+  STATS.update('Visibility buffer', formatBytes(visibilityBufferBytes));
+  STATS.update('Scene meshlets', formatNumber(naiveMeshletCount, 1));
+  STATS.update('Scene triangles', formatNumber(naiveTriangleCount, 1));
+
+  return {
+    naiveTriangleCount,
+    naiveMeshletCount,
+    totalInstancesCount,
   };
 }

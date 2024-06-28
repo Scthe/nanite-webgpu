@@ -21,20 +21,17 @@ const AvailableStats = {
   'Camera rot': {} as StatOpts,
   // memory
   s0: { categoryName: 'Memory' } as StatOpts,
-  'Vertex buffer': { visibilityDevice: 'cpu' } as StatOpts,
-  'Vertex buffer2': { visibilityDevice: 'gpu' } as StatOpts,
   'Index buffer': {} as StatOpts,
   'Meshlets data': { visibilityDevice: 'gpu' } as StatOpts,
   'Visibility buffer': { visibilityDevice: 'gpu' } as StatOpts,
   // Geometry
   s1: { categoryName: 'Geometry' } as StatOpts,
   'Preprocessing': {} as StatOpts,
-  'Pre-Nanite meshlets': {} as StatOpts,
-  'Pre-Nanite triangles': {} as StatOpts,
+  'Scene meshlets': {} as StatOpts,
+  'Scene triangles': {} as StatOpts,
   'Nanite meshlets': {} as StatOpts,
   'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
-  'Culled instances': { visibilityDevice: 'cpu' } as StatOpts,
-  // 'Backface meshlets': { visibilityDevice: 'cpu' } as StatOpts,
+  'Drawn instances': { visibilityDevice: 'cpu' } as StatOpts,
   'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;

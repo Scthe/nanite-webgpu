@@ -150,6 +150,16 @@ export function formatNumber(num: number, decimals = 2) {
   return `${sign}${v}${units[i]}`;
 }
 
+/** Format 4 out of 100 into: '4 (4%)' */
+export function formatPercentageNumber(
+  actual: number,
+  total: number,
+  decimals = 1
+) {
+  const percent = (actual / total) * 100.0;
+  return `${formatNumber(actual, decimals)} (${percent.toFixed(1)}%)`;
+}
+
 // deno-lint-ignore no-explicit-any
 export function once(fn: (...arg1: any[]) => void) {
   let fired = false;
