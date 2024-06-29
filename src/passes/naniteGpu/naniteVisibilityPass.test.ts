@@ -25,6 +25,7 @@ import { parseVisibilityBuffer } from '../../scene/naniteObject.ts';
 import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
 import { GPUMesh } from '../../scene/debugMeshes.ts';
 import { ParsedMesh } from '../../scene/objLoader.ts';
+import { createGrid, createInstancesData } from '../../scene/instancesData.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -84,13 +85,18 @@ Deno.test('NaniteVisibilityPass', async () => {
   };
 
   // finally, we can create nanite object
+  const mockInstances = createInstancesData(
+    device,
+    'test-object',
+    createGrid(1, 1)
+  );
   const naniteObject = createNaniteObject(
     device,
     'test-object',
     mockOriginalMesh,
     mockParsedMesh,
     allWIPMeshlets,
-    { xCnt: 1, yCnt: 1, spacing: 1 } // mock instancesGrid
+    mockInstances
   );
 
   // retrieve visiblityBuffer

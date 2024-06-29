@@ -1,16 +1,14 @@
 import '../lib/meshoptimizer.d.ts';
 import '../lib/metis.d.ts';
-import { absPathFromRepoRoot, assertSameArray } from '../sys_deno/testUtils.ts';
+import { assertSameArray, injectMetisWASM } from '../sys_deno/testUtils.ts';
 import {
-  OVERRIDE_METIS_WASM_PATH,
   createAdjacencyData,
   partitionGraph,
   partitionGraphImpl,
 } from './partitionGraph.ts';
 import { assertEquals } from 'assert';
 
-OVERRIDE_METIS_WASM_PATH.value =
-  'file:///' + absPathFromRepoRoot('static/metis.wasm');
+injectMetisWASM();
 
 // prettier-ignore
 const XADJ_SECTION_55 = [0, 2, 5, 8, 11, 13, 16, 20, 24, 28, 31, 33, 36, 39, 42, 44];

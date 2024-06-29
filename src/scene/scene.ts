@@ -32,7 +32,7 @@ import {
   createTextureFromFile,
 } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
-import { InstancesGridDef, createInstancesData } from './instancesData.ts';
+import { NaniteInstancesData, createInstancesData } from './instancesData.ts';
 
 export type FileTextReader = (filename: string) => Promise<string>;
 
@@ -71,10 +71,7 @@ export async function loadScene(
   sceneName: SceneName,
   progressCb?: ObjectLoadingProgressCb
 ): Promise<Scene> {
-  const sceneObjectDefs = SCENES[sceneName];
-  if (!sceneObjectDefs || sceneObjectDefs.length < 1) {
-    throw new Error(`Scene '${sceneName}' is empty`);
-  }
+  const sceneObjectDefs = getSceneDef(device, sceneName);
 
   let debugMeshes: DebugMeshes | undefined = undefined;
   const naniteObjects: NaniteObject[] = [];
@@ -101,9 +98,12 @@ export async function loadScene(
     }
   }
 
+  ensureUniqueNames(naniteObjects);
+
   // update stats
   const delta = getDeltaFromTimestampMS(start);
   STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
+  const stats = updateSceneStats(naniteObjects);
 
   // fallback texture
   const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
@@ -113,11 +113,9 @@ export async function loadScene(
     magFilter: 'nearest',
     minFilter: 'nearest',
     mipmapFilter: 'nearest',
-    addressModeU: 'clamp-to-edge',
-    addressModeV: 'clamp-to-edge',
+    addressModeU: 'repeat',
+    addressModeV: 'repeat',
   });
-
-  const stats = updateSceneStats(naniteObjects);
 
   return {
     naniteObjects,
@@ -133,10 +131,10 @@ async function loadObject(
   device: GPUDevice,
   objTextReaderFn: FileTextReader,
   name: SceneObjectName,
-  instancesDesc: InstancesGridDef,
+  instances: NaniteInstancesData,
   progressCb?: ObjectLoadingProgressCb
 ) {
-  console.group(`Object '${name}'`);
+  console.groupCollapsed(`Object '${name}'`);
   await progressCb?.(name, `Loading object: '${name}'`);
   const start = getProfilerTimestamp();
   const timers: string[] = [];
@@ -168,19 +166,15 @@ async function loadObject(
   let diffuseTextureView: GPUTextureView | undefined = undefined;
   if ('texture' in modelDesc) {
     timerStart = getProfilerTimestamp();
-    diffuseTexture = await createTextureFromFile(
-      device,
-      `${MODELS_DIR}/${modelDesc.texture}`
-    );
+    const texturePath = `${MODELS_DIR}/${modelDesc.texture}`;
+    diffuseTexture = await createTextureFromFile(device, texturePath);
+    console.log(`Texture: '${texturePath}'`);
     diffuseTextureView = diffuseTexture.createView();
     addTimer('Load texture', timerStart);
   }
 
   // create original mesh
   const originalMesh = createOriginalMesh(device, name, loadedObj);
-
-  // instances
-  const instances = createInstancesData(device, name, instancesDesc);
 
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
@@ -266,6 +260,7 @@ function updateSceneStats(
   let naiveTriangleCount = 0;
   let naiveMeshletCount = 0;
   let totalInstancesCount = 0;
+  let maxSimplifiedTriangles = 0;
   // memory
   let meshletsDataBytes = 0;
   let visibilityBufferBytes = 0;
@@ -276,6 +271,9 @@ function updateSceneStats(
       naniteObj.rawObjectTriangleCount * naniteObj.instancesCount;
     naiveMeshletCount += naniteObj.rawMeshletCount * naniteObj.instancesCount;
     totalInstancesCount += naniteObj.instancesCount;
+    maxSimplifiedTriangles +=
+      naniteObj.roots.reduce((acc, m) => acc + m.triangleCount, 0) *
+      naniteObj.instancesCount;
 
     meshletsDataBytes += naniteObj.meshletsBuffer.size;
     visibilityBufferBytes += naniteObj.dangerouslyGetVisibilityBuffer().size;
@@ -288,9 +286,55 @@ function updateSceneStats(
   STATS.update('Scene meshlets', formatNumber(naiveMeshletCount, 1));
   STATS.update('Scene triangles', formatNumber(naiveTriangleCount, 1));
 
+  const avgSimpl = (100.0 * maxSimplifiedTriangles) / naiveTriangleCount;
+  console.log(`Avg scene simplification is ${avgSimpl.toFixed(1)}% (${formatNumber(naiveTriangleCount)} -> ${formatNumber(maxSimplifiedTriangles)} triangles)`); // prettier-ignore
+
   return {
     naiveTriangleCount,
     naiveMeshletCount,
     totalInstancesCount,
   };
+}
+
+function getSceneDef(
+  device: GPUDevice,
+  sceneName: SceneName
+): Array<{ model: SceneObjectName; instances: NaniteInstancesData }> {
+  const sceneObjectDefs = SCENES[sceneName];
+  const errMsg = `Scene '${sceneName}' is empty`;
+  if (!sceneObjectDefs) {
+    throw new Error(`Scene '${sceneName}' is empty`);
+  }
+
+  // each object has own instance grid
+  if (Array.isArray(sceneObjectDefs)) {
+    if (sceneObjectDefs.length < 1) throw new Error(errMsg);
+
+    return sceneObjectDefs.map((objDef) => {
+      const instances = createInstancesData(
+        device,
+        objDef.model,
+        objDef.instances
+      );
+      return {
+        model: objDef.model,
+        instances,
+      };
+    });
+  }
+
+  // shared instances grid between all objects
+  const { models, instances } = sceneObjectDefs;
+  const instancesGPU = createInstancesData(device, sceneName, instances);
+  return models.map((model) => ({ model, instances: instancesGPU }));
+}
+
+function ensureUniqueNames(naniteObjs: NaniteObject[]) {
+  const pastNames = new Set<string>();
+
+  naniteObjs.forEach((obj, i) => {
+    while (pastNames.has(obj.name)) {
+      obj.name += i;
+    }
+  });
 }

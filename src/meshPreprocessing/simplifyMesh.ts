@@ -20,6 +20,15 @@ interface Opts {
   lockBorders?: boolean;
 }
 
+const roundToMultiplyOf3 = (a: number) => Math.floor(a / 3) * 3;
+
+export const calculateTargetIndexCount = (
+  originalCount: number,
+  decimateFactor: number
+) => {
+  return roundToMultiplyOf3(originalCount / decimateFactor);
+};
+
 /**
  * Reduce triangle count. Mesh will look worse.
  *
@@ -33,7 +42,7 @@ export async function simplifyMesh(
   const module = await getMeshOptimizerModule();
   const indicesCount = indices.length;
 
-  opts.targetIndexCount = Math.floor(opts.targetIndexCount / 3) * 3;
+  opts.targetIndexCount = roundToMultiplyOf3(opts.targetIndexCount);
   opts.targetError = opts.targetError || 0.01;
   opts.lockBorders = opts.lockBorders != false;
 

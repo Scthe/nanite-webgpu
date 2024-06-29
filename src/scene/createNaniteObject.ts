@@ -12,7 +12,7 @@ import {
   getTriangleCount,
 } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT, createGPUBuffer } from '../utils/webgpu.ts';
-import { MeshletWIP } from '../meshPreprocessing/index.ts';
+import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { ParsedMesh } from './objLoader.ts';
@@ -27,13 +27,6 @@ export function createNaniteObject(
   allWIPMeshlets: MeshletWIP[],
   instances: NaniteInstancesData
 ): NaniteObject {
-  const lodLevels = 1 + Math.max(...allWIPMeshlets.map((m) => m.lodLevel)); // includes LOD level 0
-  const roots = allWIPMeshlets.filter((m) => m.lodLevel === lodLevels - 1);
-  if (roots.length !== 1) {
-    // prettier-ignore
-    throw new Error(`Expected 1 Nanite LOD tree root, found ${roots.length}. Searched for LOD level ${lodLevels - 1}`);
-  }
-
   // allocate single shared index buffer. Meshlets will use slices of it
   const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
   const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
@@ -72,13 +65,14 @@ export function createNaniteObject(
   const rewriteIds = createArray(naniteObject.meshletCount);
 
   // array of [parentNode, meshletToCheck]
-  const root = roots[0];
+  const roots = allWIPMeshlets.filter(isWIP_Root);
   const meshletsToCheck: Array<
     [NaniteMeshletTreeNode | undefined, MeshletWIP]
-  > = [[undefined, root]];
+  > = roots.map((m) => [undefined, m]);
 
   while (meshletsToCheck.length > 0) {
     const [parentNode, meshlet] = meshletsToCheck.shift()!; // remove 1st from queue
+
     if (naniteObject.contains(meshlet.id)) {
       continue;
     }
@@ -135,7 +129,7 @@ export function createNaniteObject(
   // print stats
   if (!CONFIG.isTest) {
     console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
-    console.log('[Nanite] Root meshlet:', naniteObject.root);
+    console.log('[Nanite] Root meshlets:', naniteObject.roots);
     console.log(
       `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${naniteObject.rawMeshletCount} bottom level meshlets)`
     );

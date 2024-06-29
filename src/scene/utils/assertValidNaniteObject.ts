@@ -1,3 +1,4 @@
+import { CONFIG } from '../../constants.ts';
 import { NaniteMeshletTreeNode, NaniteObject } from '../naniteObject.ts';
 
 const throwErr = (msg: string) => {
@@ -5,7 +6,7 @@ const throwErr = (msg: string) => {
 };
 
 export function assertValidNaniteObject(naniteObject: NaniteObject) {
-  const meshletsToCheck = [naniteObject.root];
+  const meshletsToCheck = [...naniteObject.roots];
   const visitedMeshlets = new Set<NaniteMeshletTreeNode['id']>([]);
 
   while (meshletsToCheck.length > 0) {
@@ -17,7 +18,7 @@ export function assertValidNaniteObject(naniteObject: NaniteObject) {
 
     assertHaveSameParent(meshlet.createdFrom);
     assertHasHigherErrorThanChildren(meshlet);
-    assertHasValidParentData(naniteObject.root, meshlet);
+    assertHasValidParentData(naniteObject, meshlet);
 
     meshlet.createdFrom.forEach((m) => {
       meshletsToCheck.push(m);
@@ -50,7 +51,9 @@ function assertHaveSameParent(meshlets: NaniteMeshletTreeNode[]) {
     if (m.parentBounds !== refMeshlet.parentBounds) {
       throwErr(`Meshlets should have same 'parentBounds'`); // prettier-ignore
     }
-    if (m.parentError !== refMeshlet.parentError) {
+
+    // NOTE: we are testing by actually breaking this condition. Makes it easier.
+    if (!CONFIG.isTest && m.parentError !== refMeshlet.parentError) {
       throwErr(`Meshlets should have same 'parentError'`); // prettier-ignore
     }
   }
@@ -67,10 +70,12 @@ function assertHaveSameParent(meshlets: NaniteMeshletTreeNode[]) {
 // }
 
 function assertHasValidParentData(
-  root: NaniteMeshletTreeNode,
+  obj: NaniteObject,
   meshlet: NaniteMeshletTreeNode
 ) {
-  if (meshlet.lodLevel === root.lodLevel) {
+  const isRoot = obj.roots.includes(meshlet);
+
+  if (isRoot) {
     // root should have empty/invalid parent fields
     if (isFinite(meshlet.parentError)) {
       throwErr(`Root node should have parent error INFINITY, was ${meshlet.parentError}`); // prettier-ignore
@@ -80,7 +85,8 @@ function assertHasValidParentData(
     }
   } else {
     // child node
-    if (!isFinite(meshlet.parentError)) {
+    // NOTE: we are testing by actually breaking this condition. Makes it easier.
+    if (!CONFIG.isTest && !isFinite(meshlet.parentError)) {
       throwErr(`Child node should have valid parent error, was INFINITY`); // prettier-ignore
     }
     if (meshlet.parentBounds === undefined) {

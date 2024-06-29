@@ -133,6 +133,8 @@ fn projectSphereView(
   r: f32,
   viewportSize: vec2f,
 ) -> vec4f {
+  // WARNING: This code only works for perspective camera
+  // For ortho I think you would have [c.x-r, c.y-r, c.x+r, c.y+r]?
   let c = vec3f(centerViewSpace.xy, -centerViewSpace.z); // see camera.ts
   let cr = c * r;
   let czr2 = c.z * c.z - r * r;

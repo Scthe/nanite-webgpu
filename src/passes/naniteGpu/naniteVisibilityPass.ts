@@ -18,7 +18,8 @@ import { CONFIG } from '../../constants.ts';
 export class NaniteVisibilityPass {
   public static NAME: string = NaniteVisibilityPass.name;
 
-  private readonly depthSampler: GPUSampler; // TODO is this sampler really needed? Maybe use textureLoad() instead of textureSample?
+  // TODO [IGNORE] is this sampler really needed? Maybe use textureLoad() instead of textureSample?
+  private readonly depthSampler: GPUSampler;
 
   // shader variant 1
   private readonly pipeline_SpreadYZ: GPUComputePipeline;

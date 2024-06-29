@@ -86,8 +86,8 @@ fn createDefaultMaterial(
   material.toEye = normalize(cameraPos - positionWS.xyz);
   // brdf params:
   material.albedo = vec3f(${DEFAULT_COLOR[0]}, ${DEFAULT_COLOR[1]}, ${DEFAULT_COLOR[2]});
-  material.roughness = 0.7;
-  material.isMetallic = 0.3; // oops!
+  material.roughness = 0.8;
+  material.isMetallic = 0.0; // oops!
   // material.ao = 1.0;
 }
 

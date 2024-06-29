@@ -17,11 +17,12 @@ export const OBJECTS = {
     texture: 'test-texture.png',
   },
   // test flat shading - it WILL fail with 'cannot simplify' error.
-  displacedPlaneFlat: {
-    file: 'displaced-plane-flat.obj',
-    scale: 0.2,
-    texture: 'test-texture.png',
-  },
+  displacedPlaneFlat: { file: 'displaced-plane-flat.obj', scale: 0.2 },
+  // jinx
+  jinxBackpack: { file: 'jinx/jinx_backpack.obj', scale: 1, texture: 'jinx/jinx_backpack.png' },
+  jinxBody: { file: 'jinx/jinx_body.obj', scale: 1, texture: 'jinx/jinx_body.png' },
+  jinxFace: { file: 'jinx/jinx_face.obj', scale: 1, texture: 'jinx/jinx_face.png' },
+  jinxHair: { file: 'jinx/jinx_hair.obj', scale: 1, texture: 'jinx/jinx_hair.png' },
 };
 export type SceneObjectName = keyof typeof OBJECTS;
 
@@ -45,6 +46,15 @@ export const SCENES = {
     sceneModelUniformGrid('displacedPlane', 10, 2, 0),
     sceneModelUniformGrid('bunny', 10, 2, 1),
   ],
+  jinx: {
+    models: [
+      'jinxBody',
+      'jinxFace',
+      'jinxHair',
+      'jinxBackpack',
+    ] as SceneObjectName[],
+    instances: createGrid(10, 10, 1.0),
+  },
 };
 
 export type SceneName = keyof typeof SCENES;

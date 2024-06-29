@@ -29,13 +29,12 @@ export function calcNaniteMeshletsVisibility(
   modelMat: Mat4,
   naniteObject: NaniteObject
 ): number {
-  const root = naniteObject.root;
   // check: entire instance is visible
   if (!checkIsInsideFrustum(ctx.cameraFrustum, modelMat, naniteObject.bounds)) {
     return 0;
   }
 
-  const meshletsToCheck = [root];
+  const meshletsToCheck = [...naniteObject.roots];
   const visibilityBuffer = naniteObject.naniteVisibilityBufferCPU;
   visibilityBuffer.prepareForDraw();
   const getProjectedError = createErrorMetric(

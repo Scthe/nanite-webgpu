@@ -54,22 +54,50 @@ export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
   isTest: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
+
+  ///////////////
+  /// GENERIC/SCENE STUFF
+  /** Changeable from GUI */
   clearColor: [0.2, 0.2, 0.2],
-  clearColorAlt: [0.35, 0.35, 0.8], // if you need to check for holes
+  /** Special color: if you need to check for holes */
+  clearColorAlt: [0.35, 0.35, 0.8],
+  /** if you need to check for holes */
   useAlternativeClearColor: false,
-  rotationSpeed: 1,
-  movementSpeed: 3,
-  movementSpeedFaster: 20,
-  displayMode: 'nanite' as DisplayMode,
-  dbgMeshoptimizerLodLevel: 0,
-  dbgDepthPyramidLevel: 0,
-  dbgNaniteLodLevel: 1,
+  // useAlternativeClearColor: true,
+  /** DO NOT CHANGE BEFORE DEFINING THE LIGHT VALUES IN SHADER. WILL CAUSE RNG VALUES OTHERWISE */
   lightsCount: 2,
+
+  ///////////////
+  /// CAMERA
+  /** Camera rotation sensitivity */
+  rotationSpeed: 1,
+  /** Camera movement sensitivity */
+  movementSpeed: 3,
+  /** Camera movement sensitivity when pressing SPEED BUTTON */
+  movementSpeedFaster: 20,
+
+  ///////////////
+  /// DEBUG DISPLAY MODES
+  /** Debug display mode to test meshoptimizer */
+  displayMode: 'nanite' as DisplayMode,
+  /** LOD in 'DBG: lod meshlets' mode */
+  dbgMeshoptimizerLodLevel: 0,
+  /** LOD in 'DBG: nanite meshlets' mode */
+  dbgNaniteLodLevel: 1,
+  /** Which depth pyramid level to show in respective debug mode */
+  dbgDepthPyramidLevel: 0,
+
+  ///////////////
+  /// NANITE
   nanite: {
     preprocess: {
       meshletMaxVertices: 64,
       meshletMaxTriangles: 124,
       meshletBackfaceCullingConeWeight: 1.0,
+      /** Reduce triangle count per each level. */
+      simplificationDecimateFactor: 2,
+      /** IF you have 100 triangles you expect to simplify into 50. But if simplification is not possible, you might end up with e.g. 90 triangles. At this point stop the process for this parth of the mesh. */
+      simplificationFactorRequirement: 0.97,
       /** Select algo. to use */
       useMapToFindAdjacentEdges: true,
       /** Go to Devtools->Performance to check Chrome's log */

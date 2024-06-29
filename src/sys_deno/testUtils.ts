@@ -14,6 +14,8 @@ import { mat4 } from 'wgpu-matrix';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { BYTES_F32, CONFIG } from '../constants.ts';
 import { Frustum } from '../utils/frustum.ts';
+import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptimizerUtils.ts';
+import { OVERRIDE_METIS_WASM_PATH } from '../meshPreprocessing/partitionGraph.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -25,6 +27,16 @@ export function relativePath(
   filePath: string
 ) {
   return path.resolve(importMeta?.dirname || '', filePath);
+}
+
+export function injectMeshoptimizerWASM() {
+  OVERRIDE_MESHOPTIMIZER_WASM_PATH.value =
+    'file:///' + absPathFromRepoRoot('static/meshoptimizer.wasm');
+}
+
+export function injectMetisWASM() {
+  OVERRIDE_METIS_WASM_PATH.value =
+    'file:///' + absPathFromRepoRoot('static/metis.wasm');
 }
 
 type ValidateWebGPUCallsFn = () => Promise<void>;
@@ -263,26 +275,21 @@ export function createMeshlets_TESTS(
   data: Array<PartialMeshletWIP>
 ): MeshletWIP[] {
   const center = [0, 0, -1.2];
+  const MOCK_PARENT_BOUNDS = { center, radius: 1 };
+  const MOCK_SIBLINGS_BOUNDS = { center, radius: 1 };
+
   const meshlets = data.map(
-    // deno-lint-ignore no-unused-vars
     ({ parentIdx, ...m }, idx): MeshletWIP => ({
       id: idx,
       maxSiblingsError: 0.001,
-      parentError: 0.002,
-      sharedSiblingsBounds: { center, radius: 1 },
-      parentBounds: { center, radius: 1 },
+      parentError: parentIdx !== undefined ? 0.002 : Infinity,
+      sharedSiblingsBounds: MOCK_SIBLINGS_BOUNDS,
+      parentBounds: parentIdx !== undefined ? MOCK_PARENT_BOUNDS : undefined,
       // ignore fields below:
       boundaryEdges: [],
       createdFrom: [],
       indices: new Uint32Array([0, 1, 2]),
       lodLevel: 0,
-      ownBounds: {
-        box: [
-          [0, 0, 0],
-          [0, 0, 0],
-        ],
-        sphere: { center: [], radius: 0 },
-      },
       ...m,
     })
   );

@@ -1,19 +1,18 @@
 import {
   absPathFromRepoRoot,
   assertSameArray,
+  injectMeshoptimizerWASM,
   relativePath,
 } from '../sys_deno/testUtils.ts';
 import { loadObjFile } from './objLoader.ts';
-import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptimizerUtils.ts';
 import { assertEquals } from 'assert';
 import { BYTES_VEC3 } from '../constants.ts';
 
 const TEST_FILE = relativePath(import.meta, '__test__/plane.test.obj');
 
-OVERRIDE_MESHOPTIMIZER_WASM_PATH.value =
-  'file:///' + absPathFromRepoRoot('static/meshoptimizer.wasm');
-
 Deno.test('objLoader', async () => {
+  injectMeshoptimizerWASM();
+
   const filePath = absPathFromRepoRoot(TEST_FILE);
   let text = Deno.readTextFileSync(filePath);
   text = removeNormalsFromOBJText(text);

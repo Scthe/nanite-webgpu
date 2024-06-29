@@ -94,7 +94,9 @@ const hasNormals = (mesh: ObjMesh) => {
   return typeof firstEl === 'number' && !isNaN(firstEl);
 };
 
-const hasUVs = (mesh: ObjMesh) => {
+type MeshWithTextures = Required<Pick<ObjMesh, 'textures'>>;
+
+const hasUVs = (mesh: ObjMesh): mesh is ObjMesh & MeshWithTextures => {
   if (!mesh.textures || !Array.isArray(mesh.textures)) return false;
   const firstEl = mesh.textures[0];
   return typeof firstEl === 'number' && !isNaN(firstEl);
@@ -110,6 +112,15 @@ function cleanupRawOBJData(mesh: ObjMesh, scale: number) {
   if (!hasUVs(mesh)) {
     const vertCnt = vertexCount(mesh);
     mesh.textures = createArray(vertCnt * 2).fill(0.5);
+  } else {
+    for (let i = 0; i < mesh.textures.length; i += 1) {
+      let v = mesh.textures[i];
+      v = v % 1; // to range [0-1]
+      v = v < 0 ? 1.0 - Math.abs(v) : v; // negative to positive
+      // v = (i & 1) == 0 ? 1 - v : v; // invert X - not needed
+      v = (i & 1) == 1 ? 1 - v : v; // invert Y - webgpu coordinate system
+      mesh.textures[i] = v;
+    }
   }
 }
 

@@ -52,9 +52,12 @@ export class NaniteObject {
   public readonly naniteVisibilityBufferCPU = new NaniteVisibilityBufferCPU();
   public diffuseTexture: GPUTexture | undefined = undefined;
   public diffuseTextureView: GPUTextureView | undefined = undefined;
+  public roots: NaniteMeshletTreeNode[] = [];
+  /** Max LOD tree level of _ONE_ of the roots. Some roots might have ended earlier */
+  public lodLevelCount = 0;
 
   constructor(
-    public readonly name: string,
+    public name: string,
     public readonly bounds: Bounds3d,
     public readonly originalMesh: GPUMesh,
     /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`.
@@ -75,14 +78,6 @@ export class NaniteObject {
   find = (id: MeshletId) => this.allMeshlets.find((m) => m.id === id);
 
   contains = (id: MeshletId) => this.find(id) !== undefined;
-
-  get lodLevelCount() {
-    return 1 + this.root.lodLevel;
-  }
-
-  get root() {
-    return this.allMeshlets[0];
-  }
 
   get totalTriangleCount() {
     return this.allMeshlets.reduce((acc, m) => acc + m.triangleCount, 0);
@@ -252,7 +247,13 @@ export class NaniteObject {
     };
 
     this.allMeshlets.push(node);
-    if (parent) parent.createdFrom.push(node);
+    this.lodLevelCount = Math.max(this.lodLevelCount, node.lodLevel + 1);
+
+    if (parent) {
+      parent.createdFrom.push(node);
+    } else {
+      this.roots.push(node);
+    }
 
     return node;
   }
