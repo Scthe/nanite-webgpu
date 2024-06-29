@@ -23,7 +23,6 @@ import { ParsedMesh, loadObjFile } from './objLoader.ts';
 import {
   SceneName,
   SceneObjectName,
-  InstancesGrid,
   SCENES,
   OBJECTS,
   MODELS_DIR,
@@ -33,6 +32,7 @@ import {
   createTextureFromFile,
 } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
+import { InstancesGridDef, createInstancesData } from './instancesData.ts';
 
 export type FileTextReader = (filename: string) => Promise<string>;
 
@@ -133,7 +133,7 @@ async function loadObject(
   device: GPUDevice,
   objTextReaderFn: FileTextReader,
   name: SceneObjectName,
-  instancesDesc: InstancesGrid,
+  instancesDesc: InstancesGridDef,
   progressCb?: ObjectLoadingProgressCb
 ) {
   console.group(`Object '${name}'`);
@@ -179,6 +179,9 @@ async function loadObject(
   // create original mesh
   const originalMesh = createOriginalMesh(device, name, loadedObj);
 
+  // instances
+  const instances = createInstancesData(device, name, instancesDesc);
+
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
     loadedObj,
@@ -196,7 +199,7 @@ async function loadObject(
     originalMesh,
     loadedObj,
     naniteMeshlets,
-    instancesDesc
+    instances
   );
   naniteObject.diffuseTexture = diffuseTexture;
   naniteObject.diffuseTextureView = diffuseTextureView;

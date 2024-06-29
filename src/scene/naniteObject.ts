@@ -1,4 +1,3 @@
-import { Mat4 } from 'wgpu-matrix';
 import {
   BYTES_U32,
   BYTES_UVEC4,
@@ -12,6 +11,7 @@ import { downloadBuffer } from '../utils/webgpu.ts';
 import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
 import { Bounds3d } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
+import { NaniteInstancesData } from './instancesData.ts';
 
 export type MeshletId = number;
 
@@ -29,12 +29,6 @@ export type NaniteMeshletTreeNode = Pick<
   createdFrom: NaniteMeshletTreeNode[];
   ownBounds: Bounds3d;
 };
-
-export interface NaniteInstancesData {
-  transforms: Array<Mat4>;
-  /** Array of Mat4 */
-  transformsBuffer: GPUBuffer;
-}
 
 export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
 struct NaniteMeshletTreeNode {

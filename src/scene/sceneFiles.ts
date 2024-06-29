@@ -1,4 +1,5 @@
 import { ValueOf } from '../utils/index.ts';
+import { InstancesGridDef, createGrid } from './instancesData.ts';
 
 export const MODELS_DIR = 'models';
 
@@ -40,7 +41,10 @@ export const SCENES = {
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
   displacedPlane: [sceneModel('displacedPlane', 1, 1)],
   displacedPlaneFlat: [sceneModel('displacedPlaneFlat', 1, 1)],
-  manyObjects: [sceneModel('displacedPlane', 1, 1), sceneModel('bunny', 1, 1)],
+  manyObjects: [
+    sceneModelUniformGrid('displacedPlane', 10, 2, 0),
+    sceneModelUniformGrid('bunny', 10, 2, 1),
+  ],
 };
 
 export type SceneName = keyof typeof SCENES;
@@ -50,24 +54,20 @@ function sceneModel(
   model: SceneObjectName,
   ...args: Parameters<typeof createGrid>
 ) {
-  return { model, instances: createGrid(...args) };
+  const instances = createGrid(...args);
+  return obj(model, instances);
 }
 
-export type InstancesGrid = {
-  xCnt: number;
-  yCnt: number;
-  spacing: number;
-};
-export const getInstancesCount = (g: InstancesGrid) => g.xCnt * g.yCnt;
+function sceneModelUniformGrid(
+  model: SceneObjectName,
+  count: number,
+  spacing: number,
+  offset = 0
+) {
+  const instances = createGrid(count, count, spacing, offset, offset);
+  return obj(model, instances);
+}
 
-function createGrid(
-  xCnt: number = 10,
-  yCnt: number = 10,
-  spacing: number = 1.3
-): InstancesGrid {
-  return {
-    xCnt,
-    yCnt,
-    spacing,
-  };
+function obj(model: SceneObjectName, instances: InstancesGridDef) {
+  return { model, instances };
 }
