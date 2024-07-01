@@ -21,6 +21,7 @@ import { assertIsGPUTextureView } from './utils/webgpu.ts';
 import { DepthPyramidPass } from './passes/depthPyramid/depthPyramidPass.ts';
 import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDebugDrawPass.ts';
 import { CullInstancesPass } from './passes/cullInstances/cullInstancesPass.ts';
+import { NaniteBillboardPass } from './passes/naniteBillboard/naniteBillboardPass.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -37,6 +38,7 @@ export class Renderer {
   private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
   private readonly cullInstancesPass: CullInstancesPass;
+  private readonly naniteBillboardPass: NaniteBillboardPass;
   // depth pyramid
   private readonly depthPyramidPass: DepthPyramidPass;
   private readonly depthPyramidDebugDrawPass: DepthPyramidDebugDrawPass;
@@ -59,6 +61,10 @@ export class Renderer {
     );
     this.naniteVisibilityPass = new NaniteVisibilityPass(device);
     this.cullInstancesPass = new CullInstancesPass(device);
+    this.naniteBillboardPass = new NaniteBillboardPass(
+      device,
+      preferredCanvasFormat
+    );
     this.depthPyramidPass = new DepthPyramidPass(device);
     this.depthPyramidDebugDrawPass = new DepthPyramidDebugDrawPass(
       device,
@@ -188,6 +194,7 @@ export class Renderer {
         this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
       }
       this.drawNaniteGPUPass.draw(ctx, naniteObject, loadOp);
+      this.naniteBillboardPass.cmdRenderBillboards(ctx, naniteObject, 'load');
     }
 
     // depth pyramid

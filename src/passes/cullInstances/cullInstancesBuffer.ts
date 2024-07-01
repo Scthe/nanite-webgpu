@@ -39,7 +39,31 @@ export const BYTES_INSTANCE_CULL_DATA = Math.max(
     BYTES_VEC4 // bounding sphere
 );
 
-export function writeCullData(
+export function createDrawnInstanceIdsBuffer(
+  device: GPUDevice,
+  name: string,
+  allMeshletsCount: number,
+  instanceCount: number,
+  wholeObjectBounds: BoundingSphere
+): GPUBuffer {
+  const dataSize = BYTES_U32 * instanceCount;
+
+  const bufferGpu = device.createBuffer({
+    label: `${name}-nanite-drawn-instances-ids`,
+    size: BYTES_INSTANCE_CULL_DATA + dataSize,
+    usage:
+      GPUBufferUsage.STORAGE |
+      GPUBufferUsage.INDIRECT |
+      GPUBufferUsage.COPY_DST |
+      GPUBufferUsage.COPY_SRC, // for stats, debug etc.
+  });
+
+  writeCullData(device, bufferGpu, allMeshletsCount, wholeObjectBounds);
+
+  return bufferGpu;
+}
+
+function writeCullData(
   device: GPUDevice,
   bufferGpu: GPUBuffer,
   allMeshletsCount: number,

@@ -41,7 +41,7 @@ export class RenderUniformsBuffer {
       // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
       // b16..32 - not used
       flags: u32,
-      instanceCullingDiscardThreshold: f32,
+      billboardThreshold: f32,
       padding0: u32,
       padding1: u32,
     };
@@ -130,7 +130,7 @@ export class RenderUniformsBuffer {
     }
     // misc
     offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
-    offsetBytes = this.writeF32(offsetBytes, cullInst.discardThreshold);
+    offsetBytes = this.writeF32(offsetBytes, cullInst.billboardThreshold);
     // padding
     offsetBytes += 2 * BYTES_U32;
 

@@ -94,7 +94,7 @@ export const CONFIG = {
     frustumCulling: true,
     occlusionCulling: true,
     /** Every instance smaller than this is discarded */
-    discardThreshold: 0,
+    billboardThreshold: 800,
   },
 
   ///////////////

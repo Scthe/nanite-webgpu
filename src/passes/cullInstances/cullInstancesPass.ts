@@ -6,6 +6,11 @@ import {
   labelPipeline,
   labelShader,
 } from '../_shared.ts';
+import {
+  bufferBindingBillboardDrawArray,
+  bufferBindingBillboardDrawParams,
+  cmdClearBillboardDrawParams,
+} from '../naniteBillboard/naniteBillboardsBuffer.ts';
 import { PassCtx } from '../passCtx.ts';
 import {
   bufferBindingDrawnInstanceIdsParams,
@@ -41,6 +46,7 @@ export class CullInstancesPass {
 
     // forget draws from previous frame
     clearDrawnInstancesFrameData(cmdBuf, naniteObject.drawnInstanceIdsBuffer);
+    cmdClearBillboardDrawParams(cmdBuf, naniteObject.billboardImpostorsBuffer);
 
     const computePass = cmdBuf.beginComputePass({
       timestampWrites: profiler?.createScopeGpu(CullInstancesPass.NAME),
@@ -87,6 +93,7 @@ export class CullInstancesPass {
     const b = SHADER_PARAMS.bindings;
     assertIsGPUTextureView(prevFrameDepthPyramidTexture);
     const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
+    const billboardImpostorsBuffer = naniteObject.billboardImpostorsBuffer;
 
     return assignResourcesToBindings2(
       CullInstancesPass,
@@ -103,6 +110,14 @@ export class CullInstancesPass {
         bufferBindingDrawnInstanceIdsArray(
           drawnInstanceIdsBuffer,
           b.drawnInstanceIdsResult
+        ),
+        bufferBindingBillboardDrawParams(
+          billboardImpostorsBuffer,
+          b.billboardsParams
+        ),
+        bufferBindingBillboardDrawArray(
+          billboardImpostorsBuffer,
+          b.billboardsIdsResult
         ),
         {
           binding: b.depthPyramidTexture,

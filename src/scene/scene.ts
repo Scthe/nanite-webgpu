@@ -46,6 +46,7 @@ export interface Scene {
   naniteObjects: NaniteObject[];
   debugMeshes: DebugMeshes;
   fallbackDiffuseTexture: GPUTexture;
+  /** Texture with neutral (probably grey) color */
   fallbackDiffuseTextureView: GPUTextureView;
   defaultSampler: GPUSampler;
 

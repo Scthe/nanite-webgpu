@@ -8,6 +8,10 @@ import {
   SHADER_SNIPPET_INSTANCES_CULL_ARRAY,
   SHADER_SNIPPET_INSTANCES_CULL_PARAMS,
 } from './cullInstancesBuffer.ts';
+import {
+  SHADER_SNIPPET_BILLBOARD_DRAW_PARAMS,
+  SHADER_SNIPPET_BILLBOARD_ARRAY,
+} from '../naniteBillboard/naniteBillboardsBuffer.ts';
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
@@ -18,8 +22,10 @@ export const SHADER_PARAMS = {
     instancesTransforms: 1,
     dispatchIndirectParams: 2,
     drawnInstanceIdsResult: 3,
-    depthPyramidTexture: 4,
-    depthSampler: 5,
+    billboardsParams: 4,
+    billboardsIdsResult: 5,
+    depthPyramidTexture: 6,
+    depthSampler: 7,
   },
 };
 
@@ -43,8 +49,13 @@ var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 // cull params
 ${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(b.dispatchIndirectParams, 'read_write')}
-// array with results
+// cull: array with results
 ${SHADER_SNIPPET_INSTANCES_CULL_ARRAY(b.drawnInstanceIdsResult, 'read_write')}
+
+// billboard params
+${SHADER_SNIPPET_BILLBOARD_DRAW_PARAMS(b.billboardsParams, 'read_write')}
+// billboard: array with results
+${SHADER_SNIPPET_BILLBOARD_ARRAY(b.billboardsIdsResult, 'read_write')}
 
 // depth pyramid + sampler
 @group(0) @binding(${b.depthPyramidTexture})
@@ -77,7 +88,16 @@ fn main(
     if (tfxIdx >= instanceCount) { continue; }
     let modelMat = _instanceTransforms[tfxIdx];
 
-    if (isInstanceRendered(settingsFlags, modelMat, boundingSphere)){
+    if (!isInstanceRendered(settingsFlags, modelMat, boundingSphere)){
+      continue;
+    }
+
+    // TODO add flag to render all as billboard
+    if (renderAsBillboard(modelMat, boundingSphere)) {
+      let idx = atomicAdd(&_billboardDrawParams.instanceCount, 1u);
+      _billboardIdsArray[idx] = tfxIdx;
+
+    } else {
       // add 1, but no more than MAX_WORKGROUPS_Y.
       // meh impl, but..
       atomicAdd(&_cullParams.workgroupsY, 1u);
@@ -114,7 +134,14 @@ fn isInstanceRendered(
     return false;
   }
 
-  
+  return true;
+}
+
+
+fn renderAsBillboard(
+  modelMat: mat4x4<f32>,
+  boundingSphere: vec4f
+) -> bool {
   // get AABB in projection space
   // TODO [LOW] duplicate from occlusion culling
   let viewportSize = _uniforms.viewport.xy;
@@ -127,14 +154,10 @@ fn isInstanceRendered(
   let pixelSpanW = abs(aabb.z - aabb.x) * viewportSize.x;
   let pixelSpanH = abs(aabb.w - aabb.y) * viewportSize.y;
   let pixelSpan = pixelSpanW * pixelSpanH;
-  if (
+  return (
     projectionOK &&
-    pixelSpan < _uniforms.instanceCullingDiscardThreshold
-  ) {
-    return false;
-  }
-
-  return true;
+    pixelSpan < _uniforms.billboardThreshold
+  );
 }
 
 fn resetOtherDrawParams(global_id: vec3<u32>){
@@ -144,6 +167,10 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
       ${SHADER_PARAMS_VISIBILITY.workgroupSizeX}u
     );
     _cullParams.workgroupsZ = 1u;
+
+    _billboardDrawParams.vertexCount = 6; // billboard
+    _billboardDrawParams.firstVertex = 0u;
+    _billboardDrawParams.firstInstance = 0u;
   }
 }
 

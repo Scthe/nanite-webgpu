@@ -148,8 +148,8 @@ export function initializeGUI(
     dir.add(cfg, 'frustumCulling').name('Frustum culling');
     dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
     dir
-      .add(cfg, 'discardThreshold', 0.0, 1000.0)
-      .name('Discard threshold [px]');
+      .add(cfg, 'billboardThreshold', 0.0, 1000.0)
+      .name('Billboard threshold [px]');
   }
 
   function addCullingFolder() {

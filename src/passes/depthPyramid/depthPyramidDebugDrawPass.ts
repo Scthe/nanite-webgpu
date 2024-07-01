@@ -47,7 +47,7 @@ fn main_vs(
 
 @fragment
 fn main_fs(
-  // this is not uv, this in pixels
+  // this is not uv, it's in pixels
   @builtin(position) coord: vec4<f32>
 ) -> @location(0) vec4<f32> {
   let viewportSize = vec2f(_uniforms.viewport.x, _uniforms.viewport.y);

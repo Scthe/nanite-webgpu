@@ -70,10 +70,12 @@ export class NaniteObject {
     public readonly indexBuffer: GPUBuffer,
     /** GPU-flow: data for meshlets (NaniteMeshletTreeNode) uploaded to GPU*/
     public readonly meshletsBuffer: GPUBuffer,
-    /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and Array<(tfxId, meshletId)> */
+    /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and `Array<(tfxId, meshletId)>` */
     private readonly visiblityBuffer: GPUBuffer,
-    /** GPU-flow: Result of instance culling. Holds 1 dispatch indirect, object bounding sphere, and Array<(tfxId, meshletId)> */
+    /** GPU-flow: Result of instance culling. Holds 1 dispatch indirect, object bounding sphere, and `Array<tfxId>` */
     public readonly drawnInstanceIdsBuffer: GPUBuffer,
+    /** GPU-flow: Draw params and instanceIds for billboards. Holds 1 draw indirect and `Array<tfxId>` */
+    public readonly billboardImpostorsBuffer: GPUBuffer,
     public readonly instances: NaniteInstancesData
   ) {}
 
