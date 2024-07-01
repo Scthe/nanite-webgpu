@@ -42,19 +42,12 @@ fn isPassingOcclusionCulling(
   let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
   let r = boundingSphere.w;
 
-  // if is close to near plane, it's always visible
-  // abs cause view space is ???
-  let zNear: f32 = ${CAMERA_CFG.near};
-  // if (abs(center.z) < r + ${CAMERA_CFG.near}){
-  // let distanceToNearPlane = abs(center.z) - zNear;
-  // if (distanceToNearPlane < r){
   let closestPointZ = abs(center.z) - r;
-  if (closestPointZ < zNear + CLOSE_RANGE_NEAR_CAMERA){
-    return true;
-  }
 
-  // get AABB in view space
-  let aabb = projectSphereView(projMat, center.xyz, r, viewportSize);
+  // get AABB in projection space
+  var aabb = vec4f();
+  let projectionOK = projectSphereView(projMat, center.xyz, r, &aabb);
+  if (!projectionOK) { return true; } // if is close to near plane, it's always visible
   // let aabb = getAABBfrom8ProjectedPoints(projMat, center.xyz, r);
 
   // calc pixel span at fullscreen
@@ -131,8 +124,18 @@ fn projectSphereView(
   projMat: mat4x4f,
   centerViewSpace: vec3f,
   r: f32,
-  viewportSize: vec2f,
-) -> vec4f {
+  pixelSpan: ptr<function, vec4f>
+) -> bool {
+  // abs cause view space is ???
+  let zNear: f32 = ${CAMERA_CFG.near};
+  // if (abs(center.z) < r + ${CAMERA_CFG.near}){
+  // let distanceToNearPlane = abs(center.z) - zNear;
+  // if (distanceToNearPlane < r){
+  let closestPointZ = abs(centerViewSpace.z) - r;
+  if (closestPointZ < zNear + CLOSE_RANGE_NEAR_CAMERA){
+    return false;
+  }
+
   // WARNING: This code only works for perspective camera
   // For ortho I think you would have [c.x-r, c.y-r, c.x+r, c.y+r]?
   let c = vec3f(centerViewSpace.xy, -centerViewSpace.z); // see camera.ts
@@ -152,6 +155,12 @@ fn projectSphereView(
   let P11 = projMat[1][1];
   var aabb = vec4(minX * P00, minY * P11, maxX * P00, maxY * P11);
   // swizzle cause Y-axis is down. We will do abs() regardless. Then convert to [0, 1]
-  return aabb.xwzy * vec4(0.5, -0.5, 0.5, -0.5) + vec4(0.5);
+  aabb = aabb.xwzy * vec4(0.5, -0.5, 0.5, -0.5) + vec4(0.5);
+  pixelSpan.x = aabb.x;
+  pixelSpan.y = aabb.y;
+  pixelSpan.z = aabb.z;
+  pixelSpan.w = aabb.w;
+
+  return true;
 }
 `;

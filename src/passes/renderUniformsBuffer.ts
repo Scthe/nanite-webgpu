@@ -12,9 +12,11 @@ import { PassCtx } from './passCtx.ts';
 
 const FLAG_FRUSTUM_CULLING = 1;
 const FLAG_OCCLUSION_CULLING = 2;
+const FLAG_INSTANCES_FRUSTUM_CULLING = 1 << 5;
+const FLAG_INSTANCES_OCCLUSION_CULLING = 1 << 6;
 
 export class RenderUniformsBuffer {
-  public static SHADER_SNIPPET = (group: number) => `
+  public static SHADER_SNIPPET = (group: number) => /* wgsl */ `
     const b11 = 3u; // binary 0b11
     const b111 = 7u; // binary 0b111
     const b1111 = 15u; // binary 0b1111
@@ -32,16 +34,16 @@ export class RenderUniformsBuffer {
       cameraFrustumPlane4: vec4f,
       cameraFrustumPlane5: vec4f,
       // b1 - frustom cull
-      // b2 - occlusion cull
-      // b3,4,5 - shading mode
-      // b6,7 - not used
+      // b2 - occlusion cull (ends at: 1 << 1)
+      // b3,4,5 - shading mode (1 << 2 to 1 << 4)
+      // b6,7 - instances culling (1 << 5, 1 << 6)
       // b8,9,10,11 - debug render depty pyramid level (value 0-15)
       // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
       // b16..32 - not used
       flags: u32,
+      instanceCullingDiscardThreshold: f32,
       padding0: u32,
       padding1: u32,
-      padding2: u32,
     };
     @binding(0) @group(${group})
     var<uniform> _uniforms: Uniforms;
@@ -49,6 +51,8 @@ export class RenderUniformsBuffer {
     fn checkFlag(flags: u32, bit: u32) -> bool { return (flags & bit) > 0; }
     fn useFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_FRUSTUM_CULLING}u); }
     fn useOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_OCCLUSION_CULLING}u); }
+    fn useInstancesFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_INSTANCES_FRUSTUM_CULLING}u); }
+    fn useInstancesOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_INSTANCES_OCCLUSION_CULLING}u); }
     fn getShadingMode(flags: u32) -> u32 {
       return (flags >> 2u) & b111;
     }
@@ -101,6 +105,9 @@ export class RenderUniformsBuffer {
       cameraFrustum,
       cameraPositionWorldSpace,
     } = ctx;
+    const c = CONFIG;
+    const nanite = c.nanite.render;
+    const cullInst = c.cullingInstances;
 
     let offsetBytes = 0;
     offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
@@ -109,7 +116,7 @@ export class RenderUniformsBuffer {
     // viewport
     offsetBytes = this.writeF32(offsetBytes, viewport.width);
     offsetBytes = this.writeF32(offsetBytes, viewport.height);
-    offsetBytes = this.writeF32(offsetBytes, CONFIG.nanite.render.pixelThreshold); // prettier-ignore
+    offsetBytes = this.writeF32(offsetBytes, nanite.pixelThreshold); // prettier-ignore
     offsetBytes = this.writeF32(offsetBytes, calcCotHalfFov());
     // camera position
     const camPos = cameraPositionWorldSpace;
@@ -123,8 +130,9 @@ export class RenderUniformsBuffer {
     }
     // misc
     offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
+    offsetBytes = this.writeF32(offsetBytes, cullInst.discardThreshold);
     // padding
-    offsetBytes += 3 * BYTES_U32;
+    offsetBytes += 2 * BYTES_U32;
 
     // final write
     if (offsetBytes !== RenderUniformsBuffer.BUFFER_SIZE) {
@@ -157,17 +165,25 @@ export class RenderUniformsBuffer {
     const naniteCfg = CONFIG.nanite.render;
 
     let flags = 0;
+    const setFlag = (bit: number, b: boolean) => {
+      flags = flags | (b ? bit : 0);
+    };
+
     // frustum cull
-    flags = flags | (naniteCfg.useFrustumCulling ? FLAG_FRUSTUM_CULLING : 0);
+    setFlag(FLAG_FRUSTUM_CULLING, naniteCfg.useFrustumCulling);
 
     // occlusion culling: skip if we don't have depth pyramid yet
     const occlCull =
       naniteCfg.hasValidDepthPyramid && naniteCfg.useOcclusionCulling;
-    flags = flags | (occlCull ? FLAG_OCCLUSION_CULLING : 0);
+    setFlag(FLAG_OCCLUSION_CULLING, occlCull);
 
     // b3,4 - shading mode
     let bits = naniteCfg.shadingMode & 0b111;
     flags = flags | (bits << 2);
+
+    const ci = CONFIG.cullingInstances;
+    setFlag(FLAG_INSTANCES_FRUSTUM_CULLING, ci.frustumCulling);
+    setFlag(FLAG_INSTANCES_OCCLUSION_CULLING, ci.occlusionCulling);
 
     // dbgDepthPyramidLevel
     bits = CONFIG.dbgDepthPyramidLevel & 0b1111;

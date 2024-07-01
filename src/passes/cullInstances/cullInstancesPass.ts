@@ -1,8 +1,5 @@
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import {
-  assertIsGPUTextureView,
-  getItemsPerThread,
-} from '../../utils/webgpu.ts';
+import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 import {
   BindingsCache,
   assignResourcesToBindings2,
@@ -107,13 +104,11 @@ export class CullInstancesPass {
           drawnInstanceIdsBuffer,
           b.drawnInstanceIdsResult
         ),
-        /*
         {
           binding: b.depthPyramidTexture,
           resource: prevFrameDepthPyramidTexture,
         },
         { binding: b.depthSampler, resource: depthPyramidSampler },
-        */
       ]
     );
   };

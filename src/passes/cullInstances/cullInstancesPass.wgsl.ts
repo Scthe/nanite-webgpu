@@ -34,6 +34,8 @@ export const SHADER_CODE = () => /* wgsl */ `
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.UTILS}
+${SNIPPET_FRUSTUM_CULLING}
+${SNIPPET_OCCLUSION_CULLING}
 
 // instance transforms
 @group(0) @binding(${b.instancesTransforms})
@@ -45,10 +47,10 @@ ${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(b.dispatchIndirectParams, 'read_write')}
 ${SHADER_SNIPPET_INSTANCES_CULL_ARRAY(b.drawnInstanceIdsResult, 'read_write')}
 
 // depth pyramid + sampler
-// @group(0) @binding(${b.depthPyramidTexture})
-// var _depthPyramidTexture: texture_2d<f32>;
-// @group(0) @binding(${b.depthSampler})
-// var _depthSampler: sampler;
+@group(0) @binding(${b.depthPyramidTexture})
+var _depthPyramidTexture: texture_2d<f32>;
+@group(0) @binding(${b.depthSampler})
+var _depthSampler: sampler;
 
 
 
@@ -97,22 +99,40 @@ fn isInstanceRendered(
   modelMat: mat4x4<f32>,
   boundingSphere: vec4f
 ) -> bool {
-  /*
-  // TODO use separate instance culling flags. Current ones are for meshlets
   if (
-    useFrustumCulling(settingsFlags) &&
-    !isInsideCameraFrustum(modelMat, meshlet.ownBoundingSphere)
+    useInstancesFrustumCulling(settingsFlags) &&
+    !isInsideCameraFrustum(modelMat, boundingSphere)
   ) {
     return false;
   }
 
   let overrideMipmap = getOverrideOcclusionCullMipmap(settingsFlags);
   if (
-    useOcclusionCulling(settingsFlags) &&
-    !isPassingOcclusionCulling(modelMat, meshlet.ownBoundingSphere, overrideMipmap)
+    useInstancesOcclusionCulling(settingsFlags) &&
+    !isPassingOcclusionCulling(modelMat, boundingSphere, overrideMipmap)
   ) {
     return false;
-  }*/
+  }
+
+  
+  // get AABB in projection space
+  // TODO [LOW] duplicate from occlusion culling
+  let viewportSize = _uniforms.viewport.xy;
+  let viewMat = _uniforms.viewMatrix;
+  let projMat = _uniforms.projMatrix;
+  var aabb = vec4f();
+  let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
+  let r = boundingSphere.w;
+  let projectionOK = projectSphereView(projMat, center.xyz, r, &aabb);
+  let pixelSpanW = abs(aabb.z - aabb.x) * viewportSize.x;
+  let pixelSpanH = abs(aabb.w - aabb.y) * viewportSize.y;
+  let pixelSpan = pixelSpanW * pixelSpanH;
+  if (
+    projectionOK &&
+    pixelSpan < _uniforms.instanceCullingDiscardThreshold
+  ) {
+    return false;
+  }
 
   return true;
 }

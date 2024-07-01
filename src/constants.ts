@@ -90,11 +90,11 @@ export const CONFIG = {
   ///////////////
   /// CULLING - INSTANCES
   cullingInstances: {
-    enabled: false,
-    // frustumCulling: false, // TODO encode in global buffer
-    // occlusionCulling: false, // TODO encode in global buffer
+    enabled: true,
+    frustumCulling: true,
+    occlusionCulling: true,
     /** Every instance smaller than this is discarded */
-    // discardThreshold: 0,
+    discardThreshold: 0,
   },
 
   ///////////////

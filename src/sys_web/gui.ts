@@ -145,8 +145,11 @@ export function initializeGUI(
     const cfg = CONFIG.cullingInstances;
 
     dir.add(cfg, 'enabled').name('Enabled');
-    // dir.add(cfg, 'frustumCulling').name('Frustum culling');
-    // dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
+    dir.add(cfg, 'frustumCulling').name('Frustum culling');
+    dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
+    dir
+      .add(cfg, 'discardThreshold', 0.0, 1000.0)
+      .name('Discard threshold [px]');
   }
 
   function addCullingFolder() {
