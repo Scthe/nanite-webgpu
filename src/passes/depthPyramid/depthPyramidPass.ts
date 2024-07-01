@@ -21,12 +21,27 @@ interface PyramidLevel {
 
 const getMipSize = (d: number) => Math.floor(d / 2);
 
+export const createDepthPyramidSampler = (device: GPUDevice) => {
+  return device.createSampler({
+    label: createLabel(DepthPyramidPass, 'depth-sampler'),
+    magFilter: 'nearest',
+    minFilter: 'nearest',
+    mipmapFilter: 'nearest',
+    addressModeU: 'clamp-to-edge',
+    addressModeV: 'clamp-to-edge',
+  });
+};
+
 export class DepthPyramidPass {
   public static NAME: string = DepthPyramidPass.name;
 
   private readonly pipeline: GPUComputePipeline;
   private resultTexture: GPUTexture | undefined = undefined;
   private resultTextureView: GPUTextureView | undefined = undefined;
+
+  // TODO [IGNORE] is this sampler really needed? Maybe use textureLoad() instead of textureSample?
+  /** Sampler for any other pass that wants to use depth pyramid */
+  public readonly depthSampler: GPUSampler;
 
   /**
    * - 0 - downscaled 2x,
@@ -35,6 +50,7 @@ export class DepthPyramidPass {
 
   constructor(device: GPUDevice) {
     this.pipeline = DepthPyramidPass.createPipeline(device);
+    this.depthSampler = createDepthPyramidSampler(device);
   }
 
   private static createPipeline(device: GPUDevice) {

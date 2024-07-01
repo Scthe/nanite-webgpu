@@ -33,7 +33,7 @@ export function initializeGUI(
   let getGPUStatsCtrl: GuiCtrl;
   // let softwareBackfaceCullCtrl: GuiCtrl;
   let gpuFreezeVisiblityCtrl: GuiCtrl;
-  let gpuVisiblityImplCtrl: GuiCtrl;
+  // let gpuVisiblityImplCtrl: GuiCtrl;
   let _gpuShadingMode: GuiCtrl;
 
   const gui = new dat.GUI();
@@ -64,6 +64,7 @@ export function initializeGUI(
   gui.add(dummyObject, 'profile').name('Profile');
 
   addNaniteFolder();
+  addInstanceCullingFolder();
   addCullingFolder();
   addDbgFolder();
 
@@ -78,7 +79,7 @@ export function initializeGUI(
     // gpu
     setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
     setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
-    setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
+    // setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
     // setVisible(gpuShadingMode, nextDevice == 'gpu'); // normals preview works on the CPU
     // cpu
     // setVisible(softwareBackfaceCullCtrl, nextDevice == 'cpu');
@@ -109,9 +110,9 @@ export function initializeGUI(
       .name('Error threshold [px]');
 
     // Visib. algo
-    gpuVisiblityImplCtrl = dir
-      .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
-      .name('Visib. algo ITER');
+    // gpuVisiblityImplCtrl = dir
+    // .add(CONFIG.nanite.render, 'useVisibilityImpl_Iter')
+    // .name('Visib. algo ITER');
 
     // shading mode
     // prettier-ignore
@@ -136,6 +137,16 @@ export function initializeGUI(
     getGPUStatsCtrl = dir
       .add(dummyObject, 'getGpuDrawStats')
       .name('Get GPU visibility stats');
+  }
+
+  function addInstanceCullingFolder() {
+    const dir = gui.addFolder('Instances culling');
+    dir.open();
+    const cfg = CONFIG.cullingInstances;
+
+    dir.add(cfg, 'enabled').name('Enabled');
+    // dir.add(cfg, 'frustumCulling').name('Frustum culling');
+    // dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
   }
 
   function addCullingFolder() {

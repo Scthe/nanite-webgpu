@@ -61,7 +61,7 @@ fn isPassingOcclusionCulling(
   let pixelSpanW = abs(aabb.z - aabb.x) * viewportSize.x;
   let pixelSpanH = abs(aabb.w - aabb.y) * viewportSize.y;
   let pixelSpan = max(pixelSpanW, pixelSpanH);
-  // return pixelSpan > 100.;
+  // return pixelSpanW * pixelSpanH > 100.; // death by thousand triangles..
 
   // Calc. mip level. If meshlet spans 50px, we round it to 64px and then sample log2(64) = 6 mip.
   // But, we calculated span in fullscreen, and pyramid level 0 is half. So add extra 1 level.

@@ -6,7 +6,6 @@ import {
 import {
   BindingsCache,
   assignResourcesToBindings2,
-  createLabel,
   labelPipeline,
   labelShader,
 } from '../_shared.ts';
@@ -14,12 +13,14 @@ import { PassCtx } from '../passCtx.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './naniteVisibilityPass.wgsl.ts';
 import { CONFIG } from '../../constants.ts';
+import {
+  bufferBindingDrawnInstanceIdsParams,
+  bufferBindingDrawnInstanceIdsArray,
+} from '../cullInstances/cullInstancesBuffer.ts';
 
+/** Pass to cull on meshlet level */
 export class NaniteVisibilityPass {
   public static NAME: string = NaniteVisibilityPass.name;
-
-  // TODO [IGNORE] is this sampler really needed? Maybe use textureLoad() instead of textureSample?
-  private readonly depthSampler: GPUSampler;
 
   // shader variant 1
   private readonly pipeline_SpreadYZ: GPUComputePipeline;
@@ -28,6 +29,10 @@ export class NaniteVisibilityPass {
   // shader variant 2
   private readonly pipeline_Iter: GPUComputePipeline;
   private readonly bindingsCache_Iter = new BindingsCache();
+
+  // shader variant 3
+  private readonly pipeline_Indirect: GPUComputePipeline;
+  private readonly bindingsCache_Indirect = new BindingsCache();
 
   constructor(device: GPUDevice) {
     const shaderModule = device.createShaderModule({
@@ -45,15 +50,11 @@ export class NaniteVisibilityPass {
       shaderModule,
       'main_Iter'
     );
-
-    this.depthSampler = device.createSampler({
-      label: createLabel(NaniteVisibilityPass, 'depth-sampler'),
-      magFilter: 'nearest',
-      minFilter: 'nearest',
-      mipmapFilter: 'nearest',
-      addressModeU: 'clamp-to-edge',
-      addressModeV: 'clamp-to-edge',
-    });
+    this.pipeline_Indirect = NaniteVisibilityPass.createPipeline(
+      device,
+      shaderModule,
+      'main_Indirect'
+    );
   }
 
   private static createPipeline(
@@ -86,7 +87,9 @@ export class NaniteVisibilityPass {
       timestampWrites: profiler?.createScopeGpu(NaniteVisibilityPass.NAME),
     });
 
-    if (CONFIG.nanite.render.useVisibilityImpl_Iter) {
+    if (CONFIG.cullingInstances.enabled) {
+      this.dispatchVariant_Indirect(ctx, computePass, naniteObject);
+    } else if (CONFIG.nanite.render.useVisibilityImpl_Iter) {
       this.dispatchVariant_Iter(ctx, computePass, naniteObject);
     } else {
       this.dispatchVariant_SpreadYZ(ctx, computePass, naniteObject);
@@ -172,13 +175,80 @@ export class NaniteVisibilityPass {
     STATS.update('Visibility wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
   }
 
+  /** See shader for explanation */
+  private dispatchVariant_Indirect(
+    ctx: PassCtx,
+    computePass: GPUComputePassEncoder,
+    naniteObject: NaniteObject
+  ) {
+    const pipeline = this.pipeline_Indirect;
+    const bindings = this.bindingsCache_Indirect.getBindings(
+      naniteObject.name,
+      () => this.createBindingsIndirect(ctx, pipeline, naniteObject)
+    );
+
+    computePass.setPipeline(pipeline);
+    computePass.setBindGroup(0, bindings);
+
+    // dispatch
+    computePass.dispatchWorkgroupsIndirect(
+      naniteObject.drawnInstanceIdsBuffer,
+      0
+    );
+  }
+
+  /** Shared by both normal and indirect variants */
+  private getTheUsuallBindGroups(
+    {
+      globalUniforms,
+      prevFrameDepthPyramidTexture,
+      depthPyramidSampler,
+    }: PassCtx,
+    naniteObject: NaniteObject
+  ) {
+    const b = SHADER_PARAMS.bindings;
+    assertIsGPUTextureView(prevFrameDepthPyramidTexture);
+
+    return [
+      globalUniforms.createBindingDesc(b.renderUniforms),
+      naniteObject.bufferBindingMeshlets(b.meshlets),
+      naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
+      naniteObject.bufferBindingIndirectDrawParams(b.drawIndirectParams),
+      naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
+      {
+        binding: b.depthPyramidTexture,
+        resource: prevFrameDepthPyramidTexture,
+      },
+      { binding: b.depthSampler, resource: depthPyramidSampler },
+    ];
+  }
+
   private createBindings = (
-    { device, globalUniforms, prevFrameDepthPyramidTexture }: PassCtx,
+    ctx: PassCtx,
     pipeline: GPUComputePipeline,
     naniteObject: NaniteObject
   ): GPUBindGroup => {
+    const { device } = ctx;
+    const bindGroups = this.getTheUsuallBindGroups(ctx, naniteObject);
+
+    return assignResourcesToBindings2(
+      NaniteVisibilityPass,
+      naniteObject.name,
+      device,
+      pipeline,
+      bindGroups
+    );
+  };
+
+  private createBindingsIndirect = (
+    ctx: PassCtx,
+    pipeline: GPUComputePipeline,
+    naniteObject: NaniteObject
+  ): GPUBindGroup => {
+    const { device } = ctx;
     const b = SHADER_PARAMS.bindings;
-    assertIsGPUTextureView(prevFrameDepthPyramidTexture);
+    const bindGroups = this.getTheUsuallBindGroups(ctx, naniteObject);
+    const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
 
     return assignResourcesToBindings2(
       NaniteVisibilityPass,
@@ -186,16 +256,15 @@ export class NaniteVisibilityPass {
       device,
       pipeline,
       [
-        globalUniforms.createBindingDesc(b.renderUniforms),
-        naniteObject.bufferBindingMeshlets(b.meshlets),
-        naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
-        naniteObject.bufferBindingIndirectDrawParams(b.drawIndirectParams),
-        naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
-        {
-          binding: b.depthPyramidTexture,
-          resource: prevFrameDepthPyramidTexture,
-        },
-        { binding: b.depthSampler, resource: this.depthSampler },
+        ...bindGroups,
+        bufferBindingDrawnInstanceIdsParams(
+          drawnInstanceIdsBuffer,
+          b.indirectDispatchIndirectParams
+        ),
+        bufferBindingDrawnInstanceIdsArray(
+          drawnInstanceIdsBuffer,
+          b.indirectDrawnInstanceIdsResult
+        ),
       ]
     );
   };

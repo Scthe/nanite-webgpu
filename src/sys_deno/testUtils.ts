@@ -16,6 +16,7 @@ import { BYTES_F32, CONFIG } from '../constants.ts';
 import { Frustum } from '../utils/frustum.ts';
 import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptimizerUtils.ts';
 import { OVERRIDE_METIS_WASM_PATH } from '../meshPreprocessing/partitionGraph.ts';
+import { createDepthPyramidSampler } from '../passes/depthPyramid/depthPyramidPass.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -72,6 +73,7 @@ export const createMockPassCtx = (
     format: 'r8unorm',
     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
   });
+  const depthPyramidSampler = createDepthPyramidSampler(device);
 
   const cameraCtrl = new Camera();
   const projMatrix = createCameraProjectionMat(viewport);
@@ -99,6 +101,7 @@ export const createMockPassCtx = (
     globalUniforms: undefined!,
     prevFrameDepthPyramidTexture: dummyPyramidTexture.createView(),
     cameraFrustum,
+    depthPyramidSampler,
   };
 };
 

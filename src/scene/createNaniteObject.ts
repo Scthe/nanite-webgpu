@@ -13,11 +13,15 @@ import {
 } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT, createGPUBuffer } from '../utils/webgpu.ts';
 import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
-import { calculateBounds } from '../utils/calcBounds.ts';
+import { BoundingSphere, calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { ParsedMesh } from './objLoader.ts';
 import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 import { NaniteInstancesData } from './instancesData.ts';
+import {
+  BYTES_INSTANCE_CULL_DATA,
+  writeCullData,
+} from '../passes/cullInstances/cullInstancesBuffer.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -29,12 +33,12 @@ export function createNaniteObject(
 ): NaniteObject {
   // allocate single shared index buffer. Meshlets will use slices of it
   const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
-  const vertexBufferForStorageAsVec4 = createVertexBufferForStorageAsVec4(
+  const vertexPositionsAsVec4Buffer = createVertexBufferForStorageAsVec4(
     device,
     name,
     loadedObj.positions
   );
-  const octahedronNormals = createOctahedronNormals(
+  const octahedronNormalsBuffer = createOctahedronNormals(
     device,
     name,
     loadedObj.normals
@@ -47,15 +51,24 @@ export function createNaniteObject(
     instances.count
   );
   const bounds = calculateBounds(loadedObj.positions);
+  const instanceCullBuffer = createDrawnInstanceIdsBuffer(
+    device,
+    name,
+    allWIPMeshlets.length,
+    instances.count,
+    bounds.sphere
+  );
+
   const naniteObject = new NaniteObject(
     name,
     bounds,
     originalMesh,
-    vertexBufferForStorageAsVec4,
-    octahedronNormals,
+    vertexPositionsAsVec4Buffer,
+    octahedronNormalsBuffer,
     indexBuffer,
     meshletsBuffer,
     visiblityBuffer,
+    instanceCullBuffer,
     instances
   );
 
@@ -242,4 +255,28 @@ function createMeshletsVisiblityBuffer(
       GPUBufferUsage.COPY_DST |
       GPUBufferUsage.COPY_SRC, // for stats, debug etc.
   });
+}
+
+export function createDrawnInstanceIdsBuffer(
+  device: GPUDevice,
+  name: string,
+  allMeshletsCount: number,
+  instanceCount: number,
+  wholeObjectBounds: BoundingSphere
+): GPUBuffer {
+  const dataSize = BYTES_U32 * instanceCount;
+
+  const bufferGpu = device.createBuffer({
+    label: `${name}-nanite-drawn-instances-ids`,
+    size: BYTES_INSTANCE_CULL_DATA + dataSize,
+    usage:
+      GPUBufferUsage.STORAGE |
+      GPUBufferUsage.INDIRECT |
+      GPUBufferUsage.COPY_DST |
+      GPUBufferUsage.COPY_SRC, // for stats, debug etc.
+  });
+
+  writeCullData(device, bufferGpu, allMeshletsCount, wholeObjectBounds);
+
+  return bufferGpu;
 }

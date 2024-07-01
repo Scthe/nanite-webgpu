@@ -20,6 +20,7 @@ import { Frustum } from './utils/frustum.ts';
 import { assertIsGPUTextureView } from './utils/webgpu.ts';
 import { DepthPyramidPass } from './passes/depthPyramid/depthPyramidPass.ts';
 import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDebugDrawPass.ts';
+import { CullInstancesPass } from './passes/cullInstances/cullInstancesPass.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -35,8 +36,11 @@ export class Renderer {
   private readonly drawMeshPass: DrawNanitesPass;
   private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
+  private readonly cullInstancesPass: CullInstancesPass;
+  // depth pyramid
   private readonly depthPyramidPass: DepthPyramidPass;
   private readonly depthPyramidDebugDrawPass: DepthPyramidDebugDrawPass;
+  // debug
   private readonly dbgMeshoptimizerPass: DbgMeshoptimizerPass;
   private readonly dbgMeshoptimizerMeshletsPass: DbgMeshoptimizerMeshletsPass;
 
@@ -54,6 +58,7 @@ export class Renderer {
       preferredCanvasFormat
     );
     this.naniteVisibilityPass = new NaniteVisibilityPass(device);
+    this.cullInstancesPass = new CullInstancesPass(device);
     this.depthPyramidPass = new DepthPyramidPass(device);
     this.depthPyramidDebugDrawPass = new DepthPyramidDebugDrawPass(
       device,
@@ -128,6 +133,7 @@ export class Renderer {
       depthTexture: this.depthTextureView,
       prevFrameDepthPyramidTexture: _depthPyramidTexView,
       globalUniforms: this.renderUniformBuffer,
+      depthPyramidSampler: this.depthPyramidPass.depthSampler,
     };
 
     this.renderUniformBuffer.update(ctx);
@@ -176,6 +182,9 @@ export class Renderer {
       const loadOp: GPULoadOp = i == 0 ? 'clear' : 'load';
 
       if (!CONFIG.nanite.render.freezeGPU_Visibilty) {
+        if (CONFIG.cullingInstances.enabled) {
+          this.cullInstancesPass.cmdCullInstances(ctx, naniteObject);
+        }
         this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
       }
       this.drawNaniteGPUPass.draw(ctx, naniteObject, loadOp);

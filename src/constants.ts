@@ -88,6 +88,16 @@ export const CONFIG = {
   dbgDepthPyramidLevel: 0,
 
   ///////////////
+  /// CULLING - INSTANCES
+  cullingInstances: {
+    enabled: false,
+    // frustumCulling: false, // TODO encode in global buffer
+    // occlusionCulling: false, // TODO encode in global buffer
+    /** Every instance smaller than this is discarded */
+    // discardThreshold: 0,
+  },
+
+  ///////////////
   /// NANITE
   nanite: {
     preprocess: {

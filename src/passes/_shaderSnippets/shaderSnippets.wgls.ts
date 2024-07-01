@@ -92,3 +92,10 @@ fn decodeOctahedronNormal(f_: vec2f) -> vec3f {
   return normalize(n);
 }
 `;
+
+export const UTILS = /* wgsl */ `
+
+fn ceilDivideU32(numerator: u32, denominator: u32) -> u32 {
+  return (numerator + denominator - 1) / denominator;
+}
+`;

@@ -5,6 +5,10 @@ import { CONFIG } from '../../constants.ts';
 import { SNIPPET_OCCLUSION_CULLING } from '../_shaderSnippets/cullOcclusion.wgsl.ts';
 import { SNIPPET_FRUSTUM_CULLING } from '../_shaderSnippets/cullFrustum.wgsl.ts';
 import { SNIPPET_NANITE_LOD_CULLING } from '../_shaderSnippets/nanite.wgsl.ts';
+import {
+  SHADER_SNIPPET_INSTANCES_CULL_PARAMS,
+  SHADER_SNIPPET_INSTANCES_CULL_ARRAY,
+} from '../cullInstances/cullInstancesBuffer.ts';
 
 export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
   bindingIdx: number,
@@ -26,6 +30,8 @@ export const SHADER_PARAMS = {
     instancesTransforms: 4,
     depthPyramidTexture: 5,
     depthSampler: 6,
+    indirectDispatchIndirectParams: 7,
+    indirectDrawnInstanceIdsResult: 8,
   },
 };
 
@@ -33,8 +39,9 @@ export const SHADER_PARAMS = {
 /// SHADER CODE
 /// We dispatch X=meshletCount, YZ=instance count
 /// There is limit of 65535 and instance count can go over.
-/// Either split instance ID between YZ (variant 1) and have tons of empty workgroups.
-/// Or Z=1 and iterate in shader (variant 2).
+/// Variant 1: Split instance ID between YZ and have tons of empty workgroups.
+/// Variant 2: Z=1 and iterate in shader.
+/// Variant 3: Same as variant 2, but dispatch indirect based on cullInstancesPass.
 ///////////////////////////
 const c = SHADER_PARAMS;
 const b = SHADER_PARAMS.bindings;
@@ -45,6 +52,7 @@ ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
 ${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
+${SHADER_SNIPPETS.UTILS}
 ${SNIPPET_OCCLUSION_CULLING}
 ${SNIPPET_FRUSTUM_CULLING}
 ${SNIPPET_NANITE_LOD_CULLING}
@@ -143,6 +151,51 @@ fn main_Iter(
 }
 
 ///////////////////////////
+/// SHADER VARIANT 2: iterate inside shader INDIRECT DISPATCH
+///////////////////////////
+
+
+
+// cull params
+${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(
+  b.indirectDispatchIndirectParams,
+  'read'
+)}
+// array with results
+${SHADER_SNIPPET_INSTANCES_CULL_ARRAY(b.indirectDrawnInstanceIdsResult, 'read')}
+
+@compute
+@workgroup_size(${c.workgroupSizeX}, 1, 1)
+fn main_Indirect(
+  @builtin(global_invocation_id) global_id: vec3<u32>,
+) {
+  // set rest of the indirect draw params. Has to be first line in the shader in case we ooopsie and do early return by accident somewhere.
+  resetOtherDrawParams(global_id);
+
+  // get meshlet
+  let meshletIdx: u32 = global_id.x;
+  if (meshletIdx >= arrayLength(&_meshlets)) {
+    return;
+  }
+  let meshlet = _meshlets[meshletIdx];
+  let settingsFlags = _uniforms.flags;
+
+  // prepare iters
+  let instanceCount: u32 = _cullParams.actuallyDrawnInstances; //arrayLength(&_instanceTransforms);
+  let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
+  let tfxOffset: u32 = global_id.y * iterCount;
+  for(var i: u32 = 0u; i < iterCount; i++){
+    let iterOffset: u32 = tfxOffset + i;
+    let tfxIdx: u32 = _drawnInstanceIdsResult[iterOffset];
+    let modelMat = _instanceTransforms[tfxIdx];
+
+    if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
+      registerDraw(tfxIdx, meshletIdx);
+    }
+  } 
+}
+
+///////////////////////////
 /// UTILS
 ///////////////////////////
 
@@ -188,9 +241,5 @@ fn registerDraw(tfxIdx: u32, meshletIdx: u32){
    // See NV_shader_thread_group, functionality 4.
    let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
    _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
-}
-
-fn ceilDivideU32(numerator: u32, denominator: u32) -> u32 {
-  return (numerator + denominator - 1) / denominator;
 }
 `;
