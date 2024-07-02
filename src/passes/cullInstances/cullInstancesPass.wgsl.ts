@@ -92,7 +92,7 @@ fn main(
       continue;
     }
 
-    // TODO add flag to render all as billboard
+    //  TODO [NOW] add flag to render all as billboard
     if (renderAsBillboard(modelMat, boundingSphere)) {
       let idx = atomicAdd(&_billboardDrawParams.instanceCount, 1u);
       _billboardIdsArray[idx] = tfxIdx;

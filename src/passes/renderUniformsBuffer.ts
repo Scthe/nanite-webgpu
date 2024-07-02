@@ -107,7 +107,7 @@ export class RenderUniformsBuffer {
     } = ctx;
     const c = CONFIG;
     const nanite = c.nanite.render;
-    const cullInst = c.cullingInstances;
+    const imp = c.impostors;
 
     let offsetBytes = 0;
     offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
@@ -130,7 +130,7 @@ export class RenderUniformsBuffer {
     }
     // misc
     offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
-    offsetBytes = this.writeF32(offsetBytes, cullInst.billboardThreshold);
+    offsetBytes = this.writeF32(offsetBytes, imp.billboardThreshold);
     // padding
     offsetBytes += 2 * BYTES_U32;
 

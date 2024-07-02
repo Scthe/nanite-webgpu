@@ -25,18 +25,19 @@ export const SHADER_SNIPPET_BILLBOARD_ARRAY = (
 var<storage, ${access}> _billboardIdsArray: array<u32>;
 `;
 
-const BYTES_DRAW_INDIRECT = Math.max(WEBGPU_MINIMAL_BUFFER_SIZE, 4 * BYTES_U32);
+const BYTES_PARAMS = Math.max(WEBGPU_MINIMAL_BUFFER_SIZE, 4 * BYTES_U32);
 
 export function createBillboardImpostorsBuffer(
   device: GPUDevice,
   name: string,
   instanceCount: number
 ): GPUBuffer {
-  const dataSize = BYTES_U32 * instanceCount;
+  const arraySizeBytes = BYTES_U32 * instanceCount;
 
+  // TODO [HIGH] extract this to util createStorageBuffer()
   const bufferGpu = device.createBuffer({
     label: `${name}-nanite-billboards`,
-    size: BYTES_DRAW_INDIRECT + dataSize,
+    size: BYTES_PARAMS + arraySizeBytes,
     usage:
       GPUBufferUsage.STORAGE |
       GPUBufferUsage.INDIRECT |
@@ -52,7 +53,7 @@ export function cmdClearBillboardDrawParams(
   cmdBuf: GPUCommandEncoder,
   buf: GPUBuffer
 ) {
-  cmdBuf.clearBuffer(buf, 0, BYTES_DRAW_INDIRECT);
+  cmdBuf.clearBuffer(buf, 0, BYTES_PARAMS);
 }
 
 export const bufferBindingBillboardDrawParams = (
@@ -63,7 +64,7 @@ export const bufferBindingBillboardDrawParams = (
   resource: {
     buffer,
     offset: 0,
-    size: BYTES_DRAW_INDIRECT,
+    size: BYTES_PARAMS,
   },
 });
 
@@ -74,6 +75,6 @@ export const bufferBindingBillboardDrawArray = (
   binding: bindingIdx,
   resource: {
     buffer,
-    offset: BYTES_DRAW_INDIRECT,
+    offset: BYTES_PARAMS,
   },
 });

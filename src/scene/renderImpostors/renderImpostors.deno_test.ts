@@ -17,6 +17,8 @@ import { ImpostorMesh, ImpostorRenderer } from './renderImpostors.ts';
 // needed cause stray imports TODO [LOW] fix imports?
 import '../../lib/meshoptimizer.d.ts';
 import '../../lib/metis.d.ts';
+import { CONFIG } from '../../constants.ts';
+import { vec3 } from 'wgpu-matrix';
 injectMeshoptimizerWASM();
 injectMetisWASM();
 
@@ -73,14 +75,17 @@ function createVertices() {
 const OUTPUT_PATH = relativePath(import.meta, 'test_result.png');
 const OBJ_NAME = 'impostor-cube';
 const OUT_TEXTURE_FORMAT = 'rgba8unorm-srgb';
-const IMPOSTOR_VIEWS = 12; // TODO read from config
+const IMPOSTOR_VIEWS = CONFIG.impostors.views;
 const IMPOSTOR_IMAGE_SIZE = 200;
 const TEXTURE_DIMENSIONS: Dimensions = {
   width: IMPOSTOR_IMAGE_SIZE * IMPOSTOR_VIEWS,
   height: IMPOSTOR_IMAGE_SIZE,
 };
 
-// TODO turn this into proper Deno.test?
+// TODO [NOW] restore
+// TODO [NOW] turn this into proper Deno.test?
+// TODO [NOW] move the util functions somewhere
+
 // Deno.test('renderImpostors(', async () => {
 const main = async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();

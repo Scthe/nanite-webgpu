@@ -12,6 +12,7 @@ import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
 import { Bounds3d } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { NaniteInstancesData } from './instancesData.ts';
+import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
 
 export type MeshletId = number;
 
@@ -76,6 +77,7 @@ export class NaniteObject {
     public readonly drawnInstanceIdsBuffer: GPUBuffer,
     /** GPU-flow: Draw params and instanceIds for billboards. Holds 1 draw indirect and `Array<tfxId>` */
     public readonly billboardImpostorsBuffer: GPUBuffer,
+    public readonly impostor: ImpostorBillboardTexture,
     public readonly instances: NaniteInstancesData
   ) {}
 

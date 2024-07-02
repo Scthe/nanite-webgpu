@@ -5,8 +5,6 @@ export const CAMERA_CFG = {
   position: {
     position: [1.5, 1.9, 2.3],
     rotation: [-0.6, 0.3], // [pitch, yaw]
-    // position: [1.2, 0.8, 0.2],
-    // rotation: [-1.4, 0.1], // [pitch, yaw]
   } satisfies CameraOpts,
   // projection
   fovDgr: 45,
@@ -93,7 +91,14 @@ export const CONFIG = {
     enabled: true,
     frustumCulling: true,
     occlusionCulling: true,
-    /** Every instance smaller than this is discarded */
+  },
+
+  ///////////////
+  /// BILLBOARD IMPOSTORS
+  impostors: {
+    views: 12,
+    textureSize: 512, // TODO [NOW] adjust
+    /** Every object that is smaller than this on screen becomes impostor billboard. Calculated as screen space AABB width * height. */
     billboardThreshold: 800,
   },
 

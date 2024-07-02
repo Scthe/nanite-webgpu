@@ -33,6 +33,7 @@ import {
 } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
 import { NaniteInstancesData, createInstancesData } from './instancesData.ts';
+import { ImpostorRenderer } from './renderImpostors/renderImpostors.ts';
 
 export type FileTextReader = (filename: string) => Promise<string>;
 
@@ -74,6 +75,23 @@ export async function loadScene(
 ): Promise<Scene> {
   const sceneObjectDefs = getSceneDef(device, sceneName);
 
+  // fallback texture
+  const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
+  const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
+  const defaultSampler = device.createSampler({
+    label: 'default-sampler',
+    magFilter: 'nearest',
+    minFilter: 'nearest',
+    mipmapFilter: 'nearest',
+    addressModeU: 'repeat',
+    addressModeV: 'repeat',
+  });
+  const impostorRenderer = new ImpostorRenderer(
+    device,
+    defaultSampler,
+    fallbackDiffuseTextureView
+  );
+
   let debugMeshes: DebugMeshes | undefined = undefined;
   const naniteObjects: NaniteObject[] = [];
   const start = getProfilerTimestamp();
@@ -85,6 +103,7 @@ export async function loadScene(
       objTextReaderFn,
       objDef.model,
       objDef.instances,
+      impostorRenderer,
       progressCb
     );
     naniteObjects.push(obj.naniteObject);
@@ -106,18 +125,6 @@ export async function loadScene(
   STATS.update('Preprocessing', `${delta.toFixed(0)}ms`);
   const stats = updateSceneStats(naniteObjects);
 
-  // fallback texture
-  const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
-  const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
-  const defaultSampler = device.createSampler({
-    label: 'default-sampler',
-    magFilter: 'nearest',
-    minFilter: 'nearest',
-    mipmapFilter: 'nearest',
-    addressModeU: 'repeat',
-    addressModeV: 'repeat',
-  });
-
   return {
     naniteObjects,
     debugMeshes: debugMeshes!, // was created from first nanite object
@@ -133,6 +140,7 @@ async function loadObject(
   objTextReaderFn: FileTextReader,
   name: SceneObjectName,
   instances: NaniteInstancesData,
+  impostorRenderer: ImpostorRenderer,
   progressCb?: ObjectLoadingProgressCb
 ) {
   console.groupCollapsed(`Object '${name}'`);
@@ -188,13 +196,24 @@ async function loadObject(
   // create nanite object
   await progressCb?.(name, `Uploading '${name}' data to the GPU`);
   timerStart = getProfilerTimestamp();
+  const impostor = impostorRenderer.createImpostorTexture(device, {
+    name,
+    vertexBuffer: originalMesh.vertexBuffer,
+    normalsBuffer: originalMesh.normalsBuffer,
+    uvBuffer: originalMesh.uvBuffer,
+    indexBuffer: originalMesh.indexBuffer,
+    triangleCount: originalMesh.triangleCount,
+    bounds: loadedObj.bounds.sphere,
+    texture: diffuseTextureView,
+  });
   const naniteObject = createNaniteObject(
     device,
     name,
     originalMesh,
     loadedObj,
     naniteMeshlets,
-    instances
+    instances,
+    impostor
   );
   naniteObject.diffuseTexture = diffuseTexture;
   naniteObject.diffuseTextureView = diffuseTextureView;

@@ -17,7 +17,6 @@ const AvailableStats = {
   fps: { hideLabel: true } as StatOpts,
   ms: { hideLabel: true } as StatOpts,
   'Camera pos WS': {} as StatOpts,
-  'Camera pos LS': {} as StatOpts,
   'Camera rot': {} as StatOpts,
   // memory
   s0: { categoryName: 'Memory' } as StatOpts,

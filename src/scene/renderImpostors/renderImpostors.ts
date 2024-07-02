@@ -1,6 +1,6 @@
 import { Mat4, mat4 } from 'wgpu-matrix';
-import { BYTES_F32 } from '../../constants.ts';
-import { BYTES_MAT4, BYTES_VEC3 } from '../../constants.ts';
+import { BYTES_F32, CONFIG } from '../../constants.ts';
+import { BYTES_MAT4 } from '../../constants.ts';
 import {
   labelShader,
   labelPipeline,
@@ -14,36 +14,40 @@ import {
 import { SHADER_CODE, SHADER_PARAMS } from './renderImpostors.wgsl.ts';
 import { BoundingSphere } from '../../utils/calcBounds.ts';
 import { createArray, dgr2rad } from '../../utils/index.ts';
+import { VERTEX_ATTRIBUTES } from '../../passes/naniteCpu/drawNanitesPass.ts';
+import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
+
+export class ImpostorBillboardTexture {
+  private readonly textureView: GPUTextureView;
+
+  constructor(private readonly texture: GPUTexture) {
+    this.textureView = texture.createView();
+  }
+
+  bind = (idx: number): GPUBindGroupEntry => ({
+    binding: idx,
+    resource: this.textureView,
+  });
+}
 
 export interface ImpostorMesh {
   name: string;
   vertexBuffer: GPUBuffer;
+  normalsBuffer: GPUBuffer;
+  uvBuffer: GPUBuffer;
   indexBuffer: GPUBuffer;
   triangleCount: number;
   bounds: BoundingSphere;
+  texture: GPUTextureView | undefined;
 }
 
-export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
-  {
-    attributes: [
-      {
-        shaderLocation: 0, // position
-        offset: 0,
-        format: 'float32x3',
-      },
-    ],
-    arrayStride: BYTES_VEC3,
-    stepMode: 'vertex',
-  },
-];
-
-const IMPOSTOR_VIEWS = 12; // TODO move to config
-const IMPOSTOR_TEXTURE_SIZE = 64; // TODO move to config
+const IMPOSTOR_VIEWS = CONFIG.impostors.views;
+const IMPOSTOR_TEXTURE_SIZE = CONFIG.impostors.textureSize;
 const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rgba8unorm';
 
 export class ImpostorRenderer {
   public static NAME: string = ImpostorRenderer.name;
-  private static CLEAR_COLOR = [0.0, 0.0, 0.0];
+  private static CLEAR_COLOR = [0.0, 0.0, 0.0, 0.0];
 
   private readonly pipeline: GPURenderPipeline;
   private readonly matricesBuffer: GPUBuffer;
@@ -51,8 +55,12 @@ export class ImpostorRenderer {
 
   constructor(
     device: GPUDevice,
+    private readonly sampler: GPUSampler,
+    private readonly fallbackTexture: GPUTextureView,
     outTextureFormat: GPUTextureFormat = OUT_TEXTURE_FORMAT
   ) {
+    assertIsGPUTextureView(this.fallbackTexture);
+
     const shaderModule = device.createShaderModule({
       label: labelShader(ImpostorRenderer),
       code: SHADER_CODE(),
@@ -65,7 +73,6 @@ export class ImpostorRenderer {
         module: shaderModule,
         entryPoint: 'main_vs',
         buffers: VERTEX_ATTRIBUTES,
-        // buffers: [],
       },
       fragment: {
         module: shaderModule,
@@ -92,7 +99,7 @@ export class ImpostorRenderer {
     device: GPUDevice,
     mesh: ImpostorMesh,
     size = IMPOSTOR_TEXTURE_SIZE
-  ) {
+  ): ImpostorBillboardTexture {
     const sizeW = size * IMPOSTOR_VIEWS;
     const resultTexture = device.createTexture({
       label: createLabel(ImpostorRenderer, mesh.name),
@@ -107,10 +114,10 @@ export class ImpostorRenderer {
     const cmdBuf = device.createCommandEncoder({
       label: `${ImpostorRenderer.NAME}-${mesh.name}-cmd-buffer`,
     });
-    this.renderImpostor(device, cmdBuf, resultTexture, mesh);
+    const result = this.renderImpostor(device, cmdBuf, resultTexture, mesh);
     device.queue.submit([cmdBuf.finish()]);
 
-    return resultTexture;
+    return result;
   }
 
   /** Render with previously generated texture/cmd buffer */
@@ -119,8 +126,9 @@ export class ImpostorRenderer {
     cmdBuf: GPUCommandEncoder,
     targetTexture: GPUTexture,
     mesh: ImpostorMesh
-  ) {
+  ): ImpostorBillboardTexture {
     const targetTextureView = targetTexture.createView();
+    // TODO [CRITICAL] destroy this texture after we are done! ATM it's memory leak. Or not cause JS?
     const depthTexture = device.createTexture({
       label: `${targetTexture}-depth`,
       size: [targetTexture.width, targetTexture.height],
@@ -128,6 +136,8 @@ export class ImpostorRenderer {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
     const depthTextureView = depthTexture.createView();
+
+    const bindings = this.createBindings(device, mesh);
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
@@ -146,8 +156,9 @@ export class ImpostorRenderer {
     });
 
     // set render pass data
-    const bindings = this.createBindings(device, mesh);
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
+    renderPass.setVertexBuffer(1, mesh.normalsBuffer);
+    renderPass.setVertexBuffer(2, mesh.uvBuffer);
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
     renderPass.setPipeline(this.pipeline);
     renderPass.setBindGroup(0, bindings);
@@ -181,6 +192,8 @@ export class ImpostorRenderer {
 
     // fin
     renderPass.end();
+
+    return new ImpostorBillboardTexture(targetTexture);
   }
 
   private createBindings = (
@@ -188,15 +201,17 @@ export class ImpostorRenderer {
     mesh: ImpostorMesh
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
-    // const diffuseTextureView = getDiffuseTexture(scene, naniteObject);
-    // assertIsGPUTextureView(diffuseTextureView);
+    assertIsGPUTextureView(mesh.texture);
 
     const projMat = this.getProjectionMat(mesh);
-    const rotDelta = 360 / IMPOSTOR_VIEWS;
+    const rotDelta = 360.0 / IMPOSTOR_VIEWS; // e.g. 30dgr
     const viewMats = createArray(IMPOSTOR_VIEWS).map((_, i) =>
       mat4.rotationY(dgr2rad(rotDelta * i))
     );
     this.writeUniforms(device, projMat, viewMats);
+
+    const texture = mesh.texture || this.fallbackTexture;
+    assertIsGPUTextureView(texture);
 
     return assignResourcesToBindings2(
       ImpostorRenderer,
@@ -205,8 +220,8 @@ export class ImpostorRenderer {
       this.pipeline,
       [
         { binding: b.matrices, resource: { buffer: this.matricesBuffer } },
-        // { binding: b.diffuseTexture, resource: diffuseTextureView },
-        // { binding: b.sampler, resource: scene.defaultSampler },
+        { binding: b.diffuseTexture, resource: texture },
+        { binding: b.sampler, resource: this.sampler },
       ]
     );
   };
@@ -217,16 +232,17 @@ export class ImpostorRenderer {
     viewMats.forEach((mat) => {
       offsetBytes = this.writeMat4(offsetBytes, mat);
     });
-    device.queue.writeBuffer(
-      this.matricesBuffer,
-      0,
-      this.matricesF32,
-      0,
-      this.matricesF32.byteLength
-    );
+    if (
+      offsetBytes !== this.matricesF32.byteLength ||
+      offsetBytes !== this.matricesBuffer.size
+    ) {
+      throw new Error(`Impostor matrices write error. GPUBuffer has ${this.matricesBuffer.size} bytes, CPU buffer is ${this.matricesF32.byteLength}, but have used ${offsetBytes} bytes.`); // prettier-ignore
+    }
+
+    device.queue.writeBuffer(this.matricesBuffer, 0, this.matricesF32);
   }
 
-  // TODO copied from renderUniformsBuffer.ts
+  // TODO copied from renderUniformsBuffer.ts. Use some BufferData/BufferWritter class?
   private writeMat4(offsetBytes: number, mat: Mat4) {
     const offset = offsetBytes / BYTES_F32;
     for (let i = 0; i < 16; i++) {
@@ -243,8 +259,8 @@ export class ImpostorRenderer {
       b.center[0] + r,
       b.center[1] - r,
       b.center[1] + r,
-      b.center[2] + r,
-      b.center[2] - r
+      b.center[2] - r,
+      b.center[2] + r
     );
   }
 }

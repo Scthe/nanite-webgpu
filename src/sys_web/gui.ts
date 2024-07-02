@@ -143,12 +143,13 @@ export function initializeGUI(
     const dir = gui.addFolder('Instances culling');
     dir.open();
     const cfg = CONFIG.cullingInstances;
+    const imp = CONFIG.impostors;
 
     dir.add(cfg, 'enabled').name('Enabled');
     dir.add(cfg, 'frustumCulling').name('Frustum culling');
     dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
     dir
-      .add(cfg, 'billboardThreshold', 0.0, 1000.0)
+      .add(imp, 'billboardThreshold', 0.0, 1000.0)
       .name('Billboard threshold [px]');
   }
 

@@ -20,6 +20,7 @@ import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 import { NaniteInstancesData } from './instancesData.ts';
 import { createDrawnInstanceIdsBuffer } from '../passes/cullInstances/cullInstancesBuffer.ts';
 import { createBillboardImpostorsBuffer } from '../passes/naniteBillboard/naniteBillboardsBuffer.ts';
+import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -27,7 +28,8 @@ export function createNaniteObject(
   originalMesh: GPUMesh,
   loadedObj: ParsedMesh,
   allWIPMeshlets: MeshletWIP[],
-  instances: NaniteInstancesData
+  instances: NaniteInstancesData,
+  impostor: ImpostorBillboardTexture
 ): NaniteObject {
   // allocate single shared index buffer. Meshlets will use slices of it
   const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
@@ -48,13 +50,12 @@ export function createNaniteObject(
     allWIPMeshlets,
     instances.count
   );
-  const bounds = calculateBounds(loadedObj.positions);
   const instanceCullBuffer = createDrawnInstanceIdsBuffer(
     device,
     name,
     allWIPMeshlets.length,
     instances.count,
-    bounds.sphere
+    loadedObj.bounds.sphere
   );
   const billboardImpostorsBuffer = createBillboardImpostorsBuffer(
     device,
@@ -64,7 +65,7 @@ export function createNaniteObject(
 
   const naniteObject = new NaniteObject(
     name,
-    bounds,
+    loadedObj.bounds,
     originalMesh,
     vertexPositionsAsVec4Buffer,
     octahedronNormalsBuffer,
@@ -73,6 +74,7 @@ export function createNaniteObject(
     visiblityBuffer,
     instanceCullBuffer,
     billboardImpostorsBuffer,
+    impostor,
     instances
   );
 

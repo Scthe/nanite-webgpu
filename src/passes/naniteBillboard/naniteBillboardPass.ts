@@ -13,10 +13,9 @@ import { DEPTH_FORMAT } from '../../constants.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './naniteBillboard.wgsl.ts';
 import { bufferBindingDrawnInstanceIdsParams } from '../cullInstances/cullInstancesBuffer.ts';
 import { bufferBindingBillboardDrawArray } from './naniteBillboardsBuffer.ts';
-import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
-import { getDiffuseTexture } from '../../scene/scene.ts';
 
 // TODO [CRITICAL] on toggling culling reset all buffers that count stuff. ATM disabling culling leaves old billboard data in the buffer
+/** Render impostor billboards */
 export class NaniteBillboardPass {
   public static NAME: string = NaniteBillboardPass.name;
 
@@ -48,7 +47,7 @@ export class NaniteBillboardPass {
         stripIndexFormat: undefined,
       },
       depthStencil: {
-        depthWriteEnabled: true, //  TODO? And blending?
+        depthWriteEnabled: true, //  TODO?
         depthCompare: 'less',
         format: DEPTH_FORMAT,
       },
@@ -93,8 +92,6 @@ export class NaniteBillboardPass {
     const b = SHADER_PARAMS.bindings;
     const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
     const billboardImpostorsBuffer = naniteObject.billboardImpostorsBuffer;
-    const impostorTextureView = getDiffuseTexture(scene, naniteObject); // TODO  use real impostor
-    assertIsGPUTextureView(impostorTextureView);
 
     return assignResourcesToBindings2(
       NaniteBillboardPass,
@@ -112,7 +109,7 @@ export class NaniteBillboardPass {
           billboardImpostorsBuffer,
           b.billboardsIdsResult
         ),
-        { binding: b.diffuseTexture, resource: impostorTextureView },
+        naniteObject.impostor.bind(b.impostorTexture),
         { binding: b.sampler, resource: scene.defaultSampler },
       ]
     );

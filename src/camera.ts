@@ -1,4 +1,4 @@
-import { Mat4, mat4, vec3, vec4 } from 'wgpu-matrix';
+import { Mat4, mat4, vec3 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
 import { CAMERA_CFG, CONFIG } from './constants.ts';
 import { clamp, projectPoint } from './utils/index.ts';
@@ -9,7 +9,7 @@ export type CameraOpts = {
   rotation?: [number, number];
 };
 
-const PI_2 = Math.PI / 2;
+const ANGLE_90_DRG_IN_RAD = Math.PI / 2;
 const ANGLE_UP_DOWN = 0; // pitch
 const ANGLE_LEFT_RIGHT = 1; // yaw
 
@@ -17,12 +17,17 @@ const ANGLE_LEFT_RIGHT = 1; // yaw
 export class Camera {
   private readonly _viewMatrix = mat4.identity();
   private readonly _tmpMatrix = mat4.identity(); // cache to prevent alloc
-  private readonly _angles: [number, number] = [0, 0]; // angles like in polar coords
+  /** Polar coordinate angles  */
+  private readonly _angles: [number, number] = [0, 0];
+  /** Position world space */
   private readonly _position: [number, number, number] = [0, 0, 0];
-  public readonly positionWorldSpace = vec4.create();
 
   constructor(options: CameraOpts = CAMERA_CFG.position) {
     this.resetPosition(options);
+  }
+
+  get positionWorldSpace() {
+    return this._position;
   }
 
   resetPosition = (options: CameraOpts = CAMERA_CFG.position) => {
@@ -40,16 +45,6 @@ export class Camera {
   update(deltaTime: number, input: Input): void {
     this.applyMovement(deltaTime, input);
     this.applyRotation(deltaTime, input);
-
-    // update world space position
-    vec4.set(0, 0, 0, 1, this.positionWorldSpace);
-    projectPoint(
-      this.viewMatrix,
-      this.positionWorldSpace,
-      this.positionWorldSpace
-    );
-    // vec4.mulScalar(this.positionWorldSpace, -1, this.positionWorldSpace);
-
     this.updateShownStats();
   }
 
@@ -77,23 +72,19 @@ export class Camera {
 
     this._angles[ANGLE_LEFT_RIGHT] += yaw;
     this._angles[ANGLE_UP_DOWN] += pitch;
-    const safePI = PI_2 * 0.95; // no extremes pls!
+    const safeAngle = ANGLE_90_DRG_IN_RAD * 0.95; // no extremes pls!
     this._angles[ANGLE_UP_DOWN] = clamp(
       this._angles[ANGLE_UP_DOWN],
-      -safePI,
-      safePI
+      -safeAngle,
+      safeAngle
     );
   }
 
   private updateShownStats() {
     const fmt = (x: number) => x.toFixed(1);
-    const wx = -this.positionWorldSpace[0];
-    const wy = -this.positionWorldSpace[1];
-    const wz = -this.positionWorldSpace[2];
     const p = this._position;
     const r = this._angles;
-    STATS.update('Camera pos WS', `[${fmt(wx)}, ${fmt(wy)}, ${fmt(wz)}]`);
-    STATS.update('Camera pos LS', `[${fmt(p[0])}, ${fmt(p[1])}, ${fmt(p[2])}]`);
+    STATS.update('Camera pos WS', `[${fmt(p[0])}, ${fmt(p[1])}, ${fmt(p[2])}]`);
     STATS.update(
       'Camera rot',
       `[${fmt(r[ANGLE_LEFT_RIGHT])}, ${fmt(r[ANGLE_UP_DOWN])}]`

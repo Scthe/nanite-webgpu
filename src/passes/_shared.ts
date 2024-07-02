@@ -61,7 +61,12 @@ export const useColorAttachment = (
   view: colorTexture,
   loadOp,
   storeOp: 'store',
-  clearValue: [clearColor[0], clearColor[1], clearColor[2], 1],
+  clearValue: [
+    clearColor[0],
+    clearColor[1],
+    clearColor[2],
+    clearColor[3] === undefined ? 1 : clearColor[3],
+  ],
 });
 
 export const useDepthStencilAttachment = (

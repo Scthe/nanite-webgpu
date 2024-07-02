@@ -7,6 +7,7 @@ import {
 import { vec3 } from 'wgpu-matrix';
 import { optimizeMeshBuffers } from '../meshPreprocessing/optimizeMeshBuffers.ts';
 import { BYTES_F32, BYTES_VEC3 } from '../constants.ts';
+import { Bounds3d, calculateBounds } from '../utils/calcBounds.ts';
 
 const Mesh = objLoader.default?.Mesh || objLoader.Mesh; // deno vs chrome
 const Layout = objLoader.default?.Layout || objLoader.Layout; // deno vs chrome
@@ -29,6 +30,7 @@ export interface ParsedMesh {
   verticesAndAttributesStride: number; // in bytes
   indices: Uint32Array;
   indicesCount: number;
+  bounds: Bounds3d;
 }
 
 export async function loadObjFile(
@@ -85,6 +87,7 @@ export async function loadObjFile(
     indicesCount: indicesNew.length,
     verticesAndAttributes: verticesNew,
     verticesAndAttributesStride: strideBytes,
+    bounds: calculateBounds(positionsF32),
   };
 }
 

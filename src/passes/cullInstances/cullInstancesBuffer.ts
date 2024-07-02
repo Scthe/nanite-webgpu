@@ -48,6 +48,7 @@ export function createDrawnInstanceIdsBuffer(
 ): GPUBuffer {
   const dataSize = BYTES_U32 * instanceCount;
 
+  // TODO [NOW] create util for this createStorageBuffer()
   const bufferGpu = device.createBuffer({
     label: `${name}-nanite-drawn-instances-ids`,
     size: BYTES_INSTANCE_CULL_DATA + dataSize,
