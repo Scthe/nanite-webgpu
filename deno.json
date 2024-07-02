@@ -1,7 +1,8 @@
 {
   "tasks": {
     "start": "DENO_NO_PACKAGE_JSON=1 && deno run --allow-read=. --allow-write=. --unstable-webgpu src/index.deno.ts",
-    "test": "DENO_NO_PACKAGE_JSON=1 && deno test --allow-read=. --allow-write=. --unstable-webgpu src"
+    "test": "DENO_NO_PACKAGE_JSON=1 && deno test --allow-read=. --allow-write=. --unstable-webgpu src",
+    "impostors": "DENO_NO_PACKAGE_JSON=1 && deno test --allow-read=. --allow-write=. --unstable-webgpu src/scene/renderImpostors/renderImpostors.deno_test.ts"
   },
   "imports": {
     "png": "https://deno.land/x/pngs@0.1.1/mod.ts",
