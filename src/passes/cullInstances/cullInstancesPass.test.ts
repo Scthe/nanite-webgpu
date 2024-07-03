@@ -3,7 +3,6 @@ import {
   createMockPassCtx,
 } from '../../sys_deno/testUtils.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { createDrawnInstanceIdsBuffer } from '../../scene/createNaniteObject.ts';
 import {
   cmdCopyToReadBackBuffer,
   createReadbackBuffer,
@@ -14,9 +13,14 @@ import { createGrid, createInstancesData } from '../../scene/instancesData.ts';
 import { BoundingSphere } from '../../utils/calcBounds.ts';
 import { CullInstancesPass } from './cullInstancesPass.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import { parseDrawnInstancesBuffer } from './cullInstancesBuffer.ts';
+import {
+  createDrawnInstanceIdsBuffer,
+  parseDrawnInstancesBuffer,
+} from './cullInstancesBuffer.ts';
 import { SHADER_PARAMS as SHADER_PARAMS_VISIBILITY } from '../naniteGpu/naniteVisibilityPass.wgsl.ts';
 import { assert, assertAlmostEquals, assertEquals } from 'assert';
+import { createBillboardImpostorsBuffer } from '../naniteBillboard/naniteBillboardsBuffer.ts';
+import { CONFIG } from '../../constants.ts';
 
 const OBJ_NAME = 'CullInstancesPass-obj';
 const ALL_MESHLETS_COUNT = 140;
@@ -28,6 +32,9 @@ const INSTANCES_X = 1 << 10; // 1024
 const INSTANCES_Y = 33;
 
 Deno.test('CullInstancesPass', async () => {
+  CONFIG.cullingInstances.frustumCulling = false;
+  CONFIG.cullingInstances.occlusionCulling = false;
+  CONFIG.impostors.billboardThreshold = 0;
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
 
   const uniforms = new RenderUniformsBuffer(device);
@@ -47,6 +54,11 @@ Deno.test('CullInstancesPass', async () => {
     BOUNDS
   );
   const bufferReadback = createReadbackBuffer(device, bufferGpu);
+  const billboardImpostorsBuffer = createBillboardImpostorsBuffer(
+    device,
+    OBJ_NAME,
+    1
+  );
 
   // nanite object
   const mockNaniteObject: NaniteObject = {
@@ -54,6 +66,7 @@ Deno.test('CullInstancesPass', async () => {
     name: OBJ_NAME,
     meshletCount: ALL_MESHLETS_COUNT,
     instancesCount: mockInstances.count,
+    billboardImpostorsBuffer,
     bufferBindingInstanceTransforms: (
       bindingIdx: number
     ): GPUBindGroupEntry => ({

@@ -70,6 +70,7 @@ fn main_vs(
   let viewMat = _uniforms.viewMatrix;
   let projMat = _uniforms.projMatrix;
   
+  // See './mathPlayground.test.ts' for test for math on this part
   // center -> view, then move corners in view space by radius, then project
   let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
   let cornerVS = vec4f(center.xy + r * quadOffset, center.z, 1.);
@@ -106,7 +107,10 @@ fn main_vs(
   return result;
 }
 
-/** https://math.stackexchange.com/questions/878785/how-to-find-an-angle-in-range0-360-between-2-vectors */
+/** https://math.stackexchange.com/questions/878785/how-to-find-an-angle-in-range0-360-between-2-vectors
+ * 
+ * Consult 'src\passes\naniteBillboard\mathPlayground.test.ts' before making any changes!
+ */
 fn angleDgr_axisXZ(vecA: vec3f, vecB: vec3f) -> f32 {
   let vecAn = normalize(vec2f(vecA.x, vecA.z));
   let vecBn = normalize(vec2f(vecB.x, vecB.z));

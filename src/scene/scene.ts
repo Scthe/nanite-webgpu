@@ -29,6 +29,7 @@ import {
 } from './sceneFiles.ts';
 import {
   createFallbackTexture,
+  createSamplerNearer,
   createTextureFromFile,
 } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
@@ -78,14 +79,7 @@ export async function loadScene(
   // fallback texture
   const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
   const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
-  const defaultSampler = device.createSampler({
-    label: 'default-sampler',
-    magFilter: 'nearest',
-    minFilter: 'nearest',
-    mipmapFilter: 'nearest',
-    addressModeU: 'repeat',
-    addressModeV: 'repeat',
-  });
+  const defaultSampler = createSamplerNearer(device);
   const impostorRenderer = new ImpostorRenderer(
     device,
     defaultSampler,
@@ -135,7 +129,8 @@ export async function loadScene(
   };
 }
 
-async function loadObject(
+/** Exported, cause Deno+WebGPU is brittle in tests */
+export async function loadObject(
   device: GPUDevice,
   objTextReaderFn: FileTextReader,
   name: SceneObjectName,
@@ -196,6 +191,7 @@ async function loadObject(
   // create nanite object
   await progressCb?.(name, `Uploading '${name}' data to the GPU`);
   timerStart = getProfilerTimestamp();
+  // Step 1: impostors
   const impostor = impostorRenderer.createImpostorTexture(device, {
     name,
     vertexBuffer: originalMesh.vertexBuffer,
@@ -206,6 +202,7 @@ async function loadObject(
     bounds: loadedObj.bounds.sphere,
     texture: diffuseTextureView,
   });
+  // Step 2: nanite object itself
   const naniteObject = createNaniteObject(
     device,
     name,
@@ -234,7 +231,7 @@ async function loadObject(
   };
 }
 
-function createOriginalMesh(
+export function createOriginalMesh(
   device: GPUDevice,
   sceneName: string,
   mesh: ParsedMesh

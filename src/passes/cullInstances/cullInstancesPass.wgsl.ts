@@ -168,7 +168,7 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
     );
     _cullParams.workgroupsZ = 1u;
 
-    _billboardDrawParams.vertexCount = 6; // billboard
+    _billboardDrawParams.vertexCount = 6u; // billboard
     _billboardDrawParams.firstVertex = 0u;
     _billboardDrawParams.firstInstance = 0u;
   }

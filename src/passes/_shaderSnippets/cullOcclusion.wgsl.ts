@@ -156,10 +156,7 @@ fn projectSphereView(
   var aabb = vec4(minX * P00, minY * P11, maxX * P00, maxY * P11);
   // swizzle cause Y-axis is down. We will do abs() regardless. Then convert to [0, 1]
   aabb = aabb.xwzy * vec4(0.5, -0.5, 0.5, -0.5) + vec4(0.5);
-  pixelSpan.x = aabb.x;
-  pixelSpan.y = aabb.y;
-  pixelSpan.z = aabb.z;
-  pixelSpan.w = aabb.w;
+  *pixelSpan = aabb;
 
   return true;
 }

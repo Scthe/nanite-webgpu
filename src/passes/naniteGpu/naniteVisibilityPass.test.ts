@@ -26,6 +26,7 @@ import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
 import { GPUMesh } from '../../scene/debugMeshes.ts';
 import { ParsedMesh } from '../../scene/objLoader.ts';
 import { createGrid, createInstancesData } from '../../scene/instancesData.ts';
+import { ImpostorBillboardTexture } from '../../scene/renderImpostors/renderImpostors.ts';
 
 const THRESHOLD = 1.0;
 const ERR_GT = 0.002;
@@ -41,6 +42,7 @@ const EXPECTED_DRAWN_MESHLETS_COUNT = 2;
 Deno.test('NaniteVisibilityPass', async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
   CONFIG.nanite.render.useFrustumCulling = false; // disabled as would require precise mock data
+  CONFIG.cullingInstances.enabled = false;
 
   // prettier-ignore
   const allWIPMeshlets = createMeshlets_TESTS([
@@ -82,6 +84,13 @@ Deno.test('NaniteVisibilityPass', async () => {
     indicesCount: 3,
     verticesAndAttributes: new Float32Array([0, 1, 2]), // mock
     verticesAndAttributesStride: 32,
+    bounds: {
+      box: [
+        [0, 0, 0],
+        [0, 0, 0],
+      ],
+      sphere: { center: [0, 0, 0], radius: 100 },
+    },
   };
 
   // finally, we can create nanite object
@@ -90,13 +99,15 @@ Deno.test('NaniteVisibilityPass', async () => {
     'test-object',
     createGrid(1, 1)
   );
+  const mockImpostors: ImpostorBillboardTexture = undefined!;
   const naniteObject = createNaniteObject(
     device,
     'test-object',
     mockOriginalMesh,
     mockParsedMesh,
     allWIPMeshlets,
-    mockInstances
+    mockInstances,
+    mockImpostors
   );
 
   // retrieve visiblityBuffer

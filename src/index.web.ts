@@ -21,6 +21,7 @@ import { setNaniteDrawStats } from './passes/_shared.ts';
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
 // const SCENE_FILE: SceneName = 'bunny1b';
+// const SCENE_FILE: SceneName = 'bunny';
 // const SCENE_FILE: SceneName = 'manyObjects';
 const SCENE_FILE: SceneName = 'jinx';
 // const SCENE_FILE: SceneName = 'planeSubdiv';

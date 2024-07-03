@@ -8,7 +8,7 @@ import { loadObjFile } from './objLoader.ts';
 import { assertEquals } from 'assert';
 import { BYTES_VEC3 } from '../constants.ts';
 
-const TEST_FILE = relativePath(import.meta, '__test__/plane.test.obj');
+const TEST_FILE = relativePath(import.meta, '__test__/plane.obj');
 
 Deno.test('objLoader', async () => {
   injectMeshoptimizerWASM();

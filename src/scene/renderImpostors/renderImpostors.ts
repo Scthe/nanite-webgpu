@@ -201,7 +201,6 @@ export class ImpostorRenderer {
     mesh: ImpostorMesh
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
-    assertIsGPUTextureView(mesh.texture);
 
     const projMat = this.getProjectionMat(mesh);
     const rotDelta = 360.0 / IMPOSTOR_VIEWS; // e.g. 30dgr
