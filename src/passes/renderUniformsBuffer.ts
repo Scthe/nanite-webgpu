@@ -14,12 +14,15 @@ const FLAG_FRUSTUM_CULLING = 1;
 const FLAG_OCCLUSION_CULLING = 2;
 const FLAG_INSTANCES_FRUSTUM_CULLING = 1 << 5;
 const FLAG_INSTANCES_OCCLUSION_CULLING = 1 << 6;
+const FLAG_FORCE_BILLBOARDS = 1 << 16;
 
 export class RenderUniformsBuffer {
   public static SHADER_SNIPPET = (group: number) => /* wgsl */ `
     const b11 = 3u; // binary 0b11
     const b111 = 7u; // binary 0b111
     const b1111 = 15u; // binary 0b1111
+    const b11111 = 31u; // binary 0b11111
+    const b111111 = 63u; // binary 0b111111
 
     struct Uniforms {
       vpMatrix: mat4x4<f32>,
@@ -39,7 +42,9 @@ export class RenderUniformsBuffer {
       // b6,7 - instances culling (1 << 5, 1 << 6)
       // b8,9,10,11 - debug render depty pyramid level (value 0-15)
       // b12,13,14,15 - debug override occlusion cull depth mipmap (value 0-15). 0b1111 means OFF
-      // b16..32 - not used
+      // b16 - force billboards
+      // b17,b18,b19,b20,b21,b22 - billboard dithering
+      // b23..32 - not used
       flags: u32,
       billboardThreshold: f32,
       padding0: u32,
@@ -53,6 +58,7 @@ export class RenderUniformsBuffer {
     fn useOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_OCCLUSION_CULLING}u); }
     fn useInstancesFrustumCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_INSTANCES_FRUSTUM_CULLING}u); }
     fn useInstancesOcclusionCulling(flags: u32) -> bool { return checkFlag(flags, ${FLAG_INSTANCES_OCCLUSION_CULLING}u); }
+    fn useForceBillboards(flags: u32) -> bool { return checkFlag(flags, ${FLAG_FORCE_BILLBOARDS}u); }
     fn getShadingMode(flags: u32) -> u32 {
       return (flags >> 2u) & b111;
     }
@@ -63,6 +69,10 @@ export class RenderUniformsBuffer {
       let v: u32 = clamp((flags >> 12u) & b1111, 0u, 15u);
       if (v == 15u) { return -1; }
       return i32(v);
+    }
+    fn getBillboardDitheringStrength(flags: u32) -> f32 {
+      let v: u32 = (flags >> 17u) & b111111; // [0-64]
+      return f32(v) / 63.0;
     }
   `;
 
@@ -163,6 +173,8 @@ export class RenderUniformsBuffer {
 
   private encodeFlags() {
     const naniteCfg = CONFIG.nanite.render;
+    const ci = CONFIG.cullingInstances;
+    const imp = CONFIG.impostors;
 
     let flags = 0;
     const setFlag = (bit: number, b: boolean) => {
@@ -181,7 +193,6 @@ export class RenderUniformsBuffer {
     let bits = naniteCfg.shadingMode & 0b111;
     flags = flags | (bits << 2);
 
-    const ci = CONFIG.cullingInstances;
     setFlag(FLAG_INSTANCES_FRUSTUM_CULLING, ci.frustumCulling);
     setFlag(FLAG_INSTANCES_OCCLUSION_CULLING, ci.occlusionCulling);
 
@@ -194,6 +205,11 @@ export class RenderUniformsBuffer {
       ? naniteCfg.occlusionCullOverrideMipmapLevel & 0b1111
       : 0b1111;
     flags = flags | (bits << 12);
+
+    // BILLBOARDS
+    setFlag(FLAG_FORCE_BILLBOARDS, imp.forceOnlyBillboards);
+    bits = Math.floor(imp.ditherStrength * 63);
+    flags = flags | (bits << 17);
 
     return flags;
   }

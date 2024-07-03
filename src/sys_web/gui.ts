@@ -151,6 +151,8 @@ export function initializeGUI(
     dir
       .add(imp, 'billboardThreshold', 0.0, 1000.0)
       .name('Billboard threshold [px]');
+    dir.add(imp, 'forceOnlyBillboards').name('Force billboards');
+    dir.add(imp, 'ditherStrength', 0.0, 1.0).name('Billboard dither');
   }
 
   function addCullingFolder() {

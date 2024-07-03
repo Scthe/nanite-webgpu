@@ -1,3 +1,4 @@
+import { SNIPPET_PACKING } from '../../passes/_shaderSnippets/pack.wgsl.ts';
 import { FS_NORMAL_FROM_DERIVATIVES } from '../../passes/_shaderSnippets/shaderSnippets.wgls.ts';
 
 export const SHADER_PARAMS = {
@@ -53,18 +54,19 @@ fn main_vs(
 }
 
 ${FS_NORMAL_FROM_DERIVATIVES}
+${SNIPPET_PACKING}
 
 @fragment
 fn main_fs(
   fragIn: VertexOutput
-) -> @location(0) vec4<f32> {
-  // TODO [NOW] store fragIn.normals normals too. Use some compressed format
-  // let normal = normalFromDerivatives(fragIn.positionWS);
-  // return vec4<f32>(abs(normal.xyz), 1.0);
-  // let c = vec3f(0.7, 0.7, 0.7);
-  
+) -> @location(0) vec2f {
   let c = textureSample(_diffuseTexture, _sampler, fragIn.uv).rgb;
   // TODO [IGNORE] store diffuse texture's alpha instead of override with 1.0
-  return vec4<f32>(c, 1.0);
+
+  let normalWS = normalize(fragIn.normalWS.xyz);
+  return vec2f(
+    packColor8888(vec4f(c.rgb, 1.0)),
+    packNormal(vec4f(normalWS, 0.0))
+  );
 }
 `;

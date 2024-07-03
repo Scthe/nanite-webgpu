@@ -43,7 +43,8 @@ export interface ImpostorMesh {
 
 const IMPOSTOR_VIEWS = CONFIG.impostors.views;
 const IMPOSTOR_TEXTURE_SIZE = CONFIG.impostors.textureSize;
-const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rgba8unorm';
+// const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rgba8unorm'; // 8bit per channel, will be read as float [0-1]
+const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rg32float';
 
 export class ImpostorRenderer {
   public static NAME: string = ImpostorRenderer.name;
@@ -105,7 +106,7 @@ export class ImpostorRenderer {
       label: createLabel(ImpostorRenderer, mesh.name),
       dimension: '2d',
       size: [sizeW, size, 1],
-      format: 'rgba8unorm',
+      format: OUT_TEXTURE_FORMAT,
       usage:
         GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT,
     });

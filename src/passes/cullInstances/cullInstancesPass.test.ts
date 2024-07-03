@@ -34,6 +34,7 @@ const INSTANCES_Y = 33;
 Deno.test('CullInstancesPass', async () => {
   CONFIG.cullingInstances.frustumCulling = false;
   CONFIG.cullingInstances.occlusionCulling = false;
+  CONFIG.impostors.forceOnlyBillboards = false;
   CONFIG.impostors.billboardThreshold = 0;
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
 

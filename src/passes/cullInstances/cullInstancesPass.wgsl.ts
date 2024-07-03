@@ -92,8 +92,7 @@ fn main(
       continue;
     }
 
-    //  TODO [NOW] add flag to render all as billboard
-    if (renderAsBillboard(modelMat, boundingSphere)) {
+    if (renderAsBillboard(settingsFlags, modelMat, boundingSphere)) {
       let idx = atomicAdd(&_billboardDrawParams.instanceCount, 1u);
       _billboardIdsArray[idx] = tfxIdx;
 
@@ -139,9 +138,14 @@ fn isInstanceRendered(
 
 
 fn renderAsBillboard(
+  settingsFlags: u32,
   modelMat: mat4x4<f32>,
   boundingSphere: vec4f
 ) -> bool {
+  if (useForceBillboards(settingsFlags)) {
+    return true;
+  }
+
   // get AABB in projection space
   // TODO [LOW] duplicate from occlusion culling
   let viewportSize = _uniforms.viewport.xy;
