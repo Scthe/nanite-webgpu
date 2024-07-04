@@ -4,7 +4,7 @@ import {
 } from '../../sys_deno/testUtils.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import {
-  cmdCopyToReadBackBuffer,
+  cmdCopyToReadbackBuffer,
   createReadbackBuffer,
   getItemsPerThread,
   readBufferToCPU,
@@ -90,7 +90,7 @@ Deno.test('CullInstancesPass', async () => {
   // CONFIG.nanite.render.pixelThreshold = THRESHOLD;
   uniforms.update(passCtx);
   pass.cmdCullInstances(passCtx, mockNaniteObject);
-  cmdCopyToReadBackBuffer(cmdBuf, bufferGpu, bufferReadback);
+  cmdCopyToReadbackBuffer(cmdBuf, bufferGpu, bufferReadback);
   device.queue.submit([cmdBuf.finish()]);
 
   await reportWebGPUErrAsync();

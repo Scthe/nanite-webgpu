@@ -29,7 +29,7 @@ import {
 } from './sceneFiles.ts';
 import {
   createFallbackTexture,
-  createSamplerNearer,
+  createSampler,
   createTextureFromFile,
 } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
@@ -50,7 +50,8 @@ export interface Scene {
   fallbackDiffuseTexture: GPUTexture;
   /** Texture with neutral (probably grey) color */
   fallbackDiffuseTextureView: GPUTextureView;
-  defaultSampler: GPUSampler;
+  samplerNearest: GPUSampler;
+  samplerLinear: GPUSampler;
 
   // stats
   /** Triangle count as imported from .OBJ file. This is how much you would render if you did not have nanite */
@@ -79,10 +80,10 @@ export async function loadScene(
   // fallback texture
   const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
   const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
-  const defaultSampler = createSamplerNearer(device);
+  const samplerNearest = createSampler(device, 'nearest');
+  const samplerLinear = createSampler(device, 'linear');
   const impostorRenderer = new ImpostorRenderer(
     device,
-    defaultSampler,
     fallbackDiffuseTextureView
   );
 
@@ -124,7 +125,8 @@ export async function loadScene(
     debugMeshes: debugMeshes!, // was created from first nanite object
     fallbackDiffuseTexture,
     fallbackDiffuseTextureView,
-    defaultSampler,
+    samplerNearest,
+    samplerLinear,
     ...stats,
   };
 }

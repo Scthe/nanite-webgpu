@@ -214,7 +214,7 @@ export class DrawNanitesPass {
           resource: { buffer: naniteObject.instances.transformsBuffer },
         },
         { binding: b.diffuseTexture, resource: diffuseTextureView },
-        { binding: b.sampler, resource: scene.defaultSampler },
+        { binding: b.sampler, resource: scene.samplerLinear },
       ]
     );
   };

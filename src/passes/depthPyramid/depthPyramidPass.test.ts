@@ -1,15 +1,17 @@
 import { assertEquals } from 'assert';
 import {
   assertSameArray,
-  cmdCopyTextureToBuffer,
   createGpuDevice_TESTS,
   createMockPassCtx,
-  createTextureReadbackBuffer,
   parseTextureBufferF32,
 } from '../../sys_deno/testUtils.ts';
 import { DepthPyramidPass } from './depthPyramidPass.ts';
 import { BYTES_F32, BYTES_U8 } from '../../constants.ts';
-import { readBufferToCPU } from '../../utils/webgpu.ts';
+import {
+  cmdCopyTextureToBuffer,
+  createReadbackBufferFromTexture,
+  readBufferToCPU,
+} from '../../utils/webgpu.ts';
 import { Dimensions } from '../../utils/index.ts';
 
 Deno.test('DepthPyramidPass: between mip maps', async () => {
@@ -80,11 +82,7 @@ Deno.test('DepthPyramidPass: between mip maps', async () => {
 
   // buffer DST
   const readbackBuffers = pass.pyramidLevels.map((level) =>
-    createTextureReadbackBuffer(device, {
-      width: level.width,
-      height: level.height,
-      bytesPerPixel: BYTES_F32,
-    })
+    createReadbackBufferFromTexture(device, level, BYTES_F32)
   );
 
   // submit

@@ -139,7 +139,7 @@ export class DrawNaniteGPUPass {
         naniteObject.bufferBindingUV(b.vertexUV),
         naniteObject.bufferBindingIndexBuffer(b.indexBuffer),
         { binding: b.diffuseTexture, resource: diffuseTextureView },
-        { binding: b.sampler, resource: scene.defaultSampler },
+        { binding: b.sampler, resource: scene.samplerLinear },
       ]
     );
   };

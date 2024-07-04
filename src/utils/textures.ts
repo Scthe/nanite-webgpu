@@ -67,11 +67,11 @@ export async function createTextureFromFile(device: GPUDevice, path: string) {
   return texture;
 }
 
-export function createSamplerNearer(device: GPUDevice) {
+export function createSampler(device: GPUDevice, mode: GPUFilterMode) {
   return device.createSampler({
     label: 'default-sampler',
-    magFilter: 'nearest',
-    minFilter: 'nearest',
+    magFilter: mode,
+    minFilter: mode,
     mipmapFilter: 'nearest',
     addressModeU: 'repeat',
     addressModeV: 'repeat',

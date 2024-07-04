@@ -1,5 +1,10 @@
 import { Mat4 } from 'wgpu-matrix';
-import { ensureTypedArray, getClassName, getTypeName } from './index.ts';
+import {
+  Dimensions,
+  ensureTypedArray,
+  getClassName,
+  getTypeName,
+} from './index.ts';
 import { BYTES_U32, CONFIG } from '../constants.ts';
 
 export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
@@ -120,7 +125,7 @@ export function createReadbackBuffer(device: GPUDevice, orgBuffer: GPUBuffer) {
   });
 }
 
-export function cmdCopyToReadBackBuffer(
+export function cmdCopyToReadbackBuffer(
   cmdBuf: GPUCommandEncoder,
   orgBuffer: GPUBuffer,
   readbackBuffer: GPUBuffer
@@ -157,7 +162,7 @@ export async function downloadBuffer<T>(
     const cmdBuf = device.createCommandEncoder({
       label: `${orgBuffer.label}-readback`,
     });
-    cmdCopyToReadBackBuffer(cmdBuf, orgBuffer, readbackBuffer);
+    cmdCopyToReadbackBuffer(cmdBuf, orgBuffer, readbackBuffer);
     device.queue.submit([cmdBuf.finish()]);
 
     // Warning: try-catch with promises
@@ -173,6 +178,61 @@ export async function downloadBuffer<T>(
     }
   }
 }
+
+///////////////
+/// Texture -> Buffer readback
+
+/** When reading data from texture to buffer, we need to provide alignments */
+export function getPaddedBytesPerRow(width: number, bytesPerPixel: number) {
+  const unpaddedBytesPerRow = width * bytesPerPixel;
+  const align = 256; // COPY_BYTES_PER_ROW_ALIGNMENT
+  const paddedBytesPerRowPadding =
+    (align - (unpaddedBytesPerRow % align)) % align;
+  return unpaddedBytesPerRow + paddedBytesPerRowPadding;
+}
+
+/** https://github.com/chirsz-ever/deno/blob/2cf21a4aea99ed8cb7530e43c8d68b9c4a84ea3e/tests/unit/webgpu_test.ts#L182 */
+export function createReadbackBufferFromTexture(
+  device: GPUDevice,
+  dims: Dimensions,
+  bytesPerPixel: number
+) {
+  const paddedBytesPerRow = getPaddedBytesPerRow(dims.width, bytesPerPixel);
+  return device.createBuffer({
+    label: 'test-readback',
+    size: dims.height * paddedBytesPerRow,
+    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+  });
+}
+
+export function cmdCopyTextureToBuffer(
+  cmdBuf: GPUCommandEncoder,
+  texture: GPUTexture,
+  bytesPerPixel: number,
+  buffer: GPUBuffer,
+  mipLevel?: {
+    miplevel: number;
+    width: number;
+    height: number;
+  }
+) {
+  const width = mipLevel?.width || texture.width;
+  const height = mipLevel?.height || texture.height;
+
+  const paddedBytesPerRow = getPaddedBytesPerRow(width, bytesPerPixel);
+  cmdBuf.copyTextureToBuffer(
+    { texture, mipLevel: mipLevel?.miplevel },
+    {
+      buffer,
+      bytesPerRow: paddedBytesPerRow,
+      rowsPerImage: height,
+    },
+    { width, height }
+  );
+}
+
+///////////////
+/// Utils
 
 // deno-lint-ignore no-explicit-any
 export const isGPUTextureView = (maybeTexView: any) =>

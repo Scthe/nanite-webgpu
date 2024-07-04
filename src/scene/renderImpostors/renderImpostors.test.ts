@@ -1,41 +1,51 @@
-import { createCapture } from 'std/webgpu';
-import { existsSync } from 'fs';
 import {
   absPathFromRepoRoot,
+  assertBinarySnapshot,
   createGpuDevice_TESTS,
   injectMeshoptimizerWASM,
   injectMetisWASM,
   relativePath,
 } from '../../sys_deno/testUtils.ts';
 import { Dimensions } from '../../utils/index.ts';
-import { ImpostorMesh, ImpostorRenderer } from './renderImpostors.ts';
-import { DEFAULT_COLOR } from '../../passes/_shaderSnippets/shading.wgsl.ts';
 import {
-  createFallbackTexture,
-  createSamplerNearer,
-} from '../../utils/textures.ts';
+  IMPOSTOR_BYTES_PER_PIXEL,
+  ImpostorMesh,
+  ImpostorRenderer,
+} from './renderImpostors.ts';
+import { DEFAULT_COLOR } from '../../passes/_shaderSnippets/shading.wgsl.ts';
+import { createFallbackTexture } from '../../utils/textures.ts';
 import { loadObjFile } from '../objLoader.ts';
 import { createOriginalMesh } from '../scene.ts';
-import { cmdCopyTextureToBuffer, writePng } from '../../sys_deno/fakeCanvas.ts';
+import { writePng } from '../../sys_deno/fakeCanvas.ts';
+import {
+  createReadbackBufferFromTexture,
+  cmdCopyTextureToBuffer,
+  readBufferToCPU,
+} from '../../utils/webgpu.ts';
 
 // needed cause stray imports TODO [LOW] fix imports?
 import '../../lib/meshoptimizer.d.ts';
 import '../../lib/metis.d.ts';
-import { assertEquals } from 'assert';
 
 injectMeshoptimizerWASM();
 injectMetisWASM();
 
-const OUTPUT_PATH = relativePath(import.meta, '__test__/test_preview.png');
 const TEST_FILE = relativePath(import.meta, '__test__/cube.obj');
+
+const PREVIEW_PATH = relativePath(import.meta, '__test__/test_preview.png');
+const PREVIEW_PATH_N = relativePath(import.meta, '__test__/test_preview.n.png');
+
 const SNAPSHOT_FILE = relativePath(
   import.meta,
   '__test__/ImpostorsRenderer.snapshot.bin'
 );
+const SNAPSHOT_FILE_N = relativePath(
+  import.meta,
+  '__test__/ImpostorsRenderer.n.snapshot.bin'
+);
 
-const OUT_TEXTURE_FORMAT = 'rgba8unorm-srgb';
-const IMPOSTOR_VIEWS = 2;
-const IMPOSTOR_IMAGE_SIZE = 50;
+const IMPOSTOR_VIEWS = 3; // NOTE: the back view is whole black
+const IMPOSTOR_IMAGE_SIZE = 64;
 
 const OBJ_NAME = 'impostor-cube';
 const TEXTURE_DIMENSIONS: Dimensions = {
@@ -62,53 +72,51 @@ Deno.test('ImpostorsRenderer', async () => {
     texture: undefined,
   };
 
-  const denoResult = createCapture(
-    device,
-    TEXTURE_DIMENSIONS.width,
-    TEXTURE_DIMENSIONS.height
-  );
-
   const fallbackDiffuseTexture = createFallbackTexture(device, DEFAULT_COLOR);
   const fallbackDiffuseTextureView = fallbackDiffuseTexture.createView();
-  const defaultSampler = createSamplerNearer(device);
   const pass = new ImpostorRenderer(
     device,
-    defaultSampler,
     fallbackDiffuseTextureView,
-    OUT_TEXTURE_FORMAT
+    IMPOSTOR_VIEWS,
+    IMPOSTOR_IMAGE_SIZE
+  );
+
+  const result = pass.createImpostorTexture(device, mesh);
+  const readbackBuffer = createReadbackBufferFromTexture(
+    device,
+    result.texture,
+    IMPOSTOR_BYTES_PER_PIXEL
   );
 
   // submit
   const cmdBuf = device.createCommandEncoder();
-  pass.renderImpostor(device, cmdBuf, denoResult.texture, mesh);
   cmdCopyTextureToBuffer(
     cmdBuf,
-    denoResult.texture,
-    denoResult.outputBuffer,
-    TEXTURE_DIMENSIONS
+    result.texture,
+    IMPOSTOR_BYTES_PER_PIXEL,
+    readbackBuffer
   );
   device.queue.submit([cmdBuf.finish()]);
 
   await reportWebGPUErrAsync();
 
-  const bytes = await writePng(
-    denoResult.outputBuffer,
-    TEXTURE_DIMENSIONS,
-    OUTPUT_PATH
-  );
+  const resultData = await readBufferToCPU(Uint32Array, readbackBuffer);
 
   // cleanup
   device.destroy();
 
-  if (existsSync(SNAPSHOT_FILE)) {
-    console.log(`Comparing snapshots`);
-    const expected = await Deno.readFile(SNAPSHOT_FILE);
-    // expected[0] = 11; // test that it fails
-    assertEquals(bytes, expected, 'Uint8Array result does not match snapshot', {
-      formatter: () => '<buffers-too-long-to-print>',
-    });
-  } else {
-    console.log(`Creating new snapshot: '${SNAPSHOT_FILE}'`);
-    await Deno.writeFile(SNAPSHOT_FILE, bytes);
+  const pixelCount = resultData.length / 2;
+  const colorData = new Uint32Array(pixelCount);
+  const normalsData = new Uint32Array(pixelCount);
+
+  for (let i = 0; i < pixelCount; i++) {
+    colorData[i] = resultData[2 * i];
+    normalsData[i] = resultData[2 * i + 1];
   }
+
+  await writePng(colorData.buffer, TEXTURE_DIMENSIONS, PREVIEW_PATH);
+  await writePng(normalsData.buffer, TEXTURE_DIMENSIONS, PREVIEW_PATH_N);
+
+  await assertBinarySnapshot(SNAPSHOT_FILE, colorData.buffer);
+  await assertBinarySnapshot(SNAPSHOT_FILE_N, normalsData.buffer);
 });

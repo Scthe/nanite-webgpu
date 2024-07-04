@@ -17,7 +17,7 @@ import {
 import { assertEquals } from 'assert';
 import { createNaniteObject } from '../../scene/createNaniteObject.ts';
 import {
-  cmdCopyToReadBackBuffer,
+  cmdCopyToReadbackBuffer,
   createReadbackBuffer,
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
@@ -127,7 +127,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   CONFIG.nanite.render.pixelThreshold = THRESHOLD;
   uniforms.update(passCtx);
   pass.cmdCalculateVisibility(passCtx, naniteObject);
-  cmdCopyToReadBackBuffer(cmdBuf, visiblityBuffer, readbackVisiblityBuffer);
+  cmdCopyToReadbackBuffer(cmdBuf, visiblityBuffer, readbackVisiblityBuffer);
   device.queue.submit([cmdBuf.finish()]);
 
   await reportWebGPUErrAsync();

@@ -6,7 +6,7 @@ import {
   getClassName,
   getModelViewProjectionMatrix,
 } from '../utils/index.ts';
-import { createGpuDevice } from '../utils/webgpu.ts';
+import { createGpuDevice, getPaddedBytesPerRow } from '../utils/webgpu.ts';
 import { createErrorSystem, rethrowWebGPUError } from '../utils/errors.ts';
 import { PassCtx } from '../passes/passCtx.ts';
 import { Camera } from '../camera.ts';
@@ -17,6 +17,7 @@ import { Frustum } from '../utils/frustum.ts';
 import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptimizerUtils.ts';
 import { OVERRIDE_METIS_WASM_PATH } from '../meshPreprocessing/partitionGraph.ts';
 import { createDepthPyramidSampler } from '../passes/depthPyramid/depthPyramidPass.ts';
+import { existsSync } from 'fs';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -134,74 +135,6 @@ export function printTypedArray(
   );
 }
 
-/** When reading data from texture to buffer, we need to provide alignments */
-export function getPaddedBytesPerRow(width: number, bytesPerPixel: number) {
-  const unpaddedBytesPerRow = width * bytesPerPixel;
-  const align = 256; // COPY_BYTES_PER_ROW_ALIGNMENT
-  const paddedBytesPerRowPadding =
-    (align - (unpaddedBytesPerRow % align)) % align;
-  return unpaddedBytesPerRow + paddedBytesPerRowPadding;
-}
-
-/** https://github.com/chirsz-ever/deno/blob/2cf21a4aea99ed8cb7530e43c8d68b9c4a84ea3e/tests/unit/webgpu_test.ts#L182 */
-export function createTextureReadbackBuffer(
-  device: GPUDevice,
-  dims: {
-    width: number;
-    height: number;
-    bytesPerPixel: number;
-  }
-) {
-  const paddedBytesPerRow = getPaddedBytesPerRow(
-    dims.width,
-    dims.bytesPerPixel
-  );
-  return device.createBuffer({
-    label: 'test-readback',
-    size: dims.height * paddedBytesPerRow,
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
-  });
-}
-
-/** https://github.com/chirsz-ever/deno/blob/2cf21a4aea99ed8cb7530e43c8d68b9c4a84ea3e/tests/unit/webgpu_test.ts#L182 */
-export function createTextureReadbackBuffer2(
-  device: GPUDevice,
-  texture: GPUTexture,
-  bytesPerPixel: number
-) {
-  return createTextureReadbackBuffer(device, {
-    width: texture.width,
-    height: texture.height,
-    bytesPerPixel,
-  });
-}
-
-export function cmdCopyTextureToBuffer(
-  cmdBuf: GPUCommandEncoder,
-  texture: GPUTexture,
-  bytesPerPixel: number,
-  buffer: GPUBuffer,
-  mipLevel?: {
-    miplevel: number;
-    width: number;
-    height: number;
-  }
-) {
-  const width = mipLevel?.width || texture.width;
-  const height = mipLevel?.height || texture.height;
-
-  const paddedBytesPerRow = getPaddedBytesPerRow(width, bytesPerPixel);
-  cmdBuf.copyTextureToBuffer(
-    { texture, mipLevel: mipLevel?.miplevel },
-    {
-      buffer,
-      bytesPerRow: paddedBytesPerRow,
-      rowsPerImage: height,
-    },
-    { width, height }
-  );
-}
-
 export function parseTextureBufferF32(
   width: number,
   height: number,
@@ -302,4 +235,28 @@ export function createMeshlets_TESTS(
     }
   });
   return meshlets;
+}
+
+export async function assertBinarySnapshot(
+  filepath: string,
+  bytes: ArrayBuffer
+) {
+  const bytesU8 = new Uint8Array(bytes);
+
+  if (existsSync(filepath)) {
+    console.log(`Comparing snapshots: '${filepath}'`);
+    const expected = await Deno.readFile(filepath);
+    // expected[0] = 11; // test that it fails
+    assertEquals(
+      bytesU8,
+      expected,
+      'Uint8Array result does not match snapshot',
+      {
+        formatter: () => '<buffers-too-long-to-print>',
+      }
+    );
+  } else {
+    console.log(`Creating new snapshot: '${filepath}'`);
+    await Deno.writeFile(filepath, bytesU8);
+  }
 }

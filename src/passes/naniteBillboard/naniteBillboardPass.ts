@@ -110,7 +110,8 @@ export class NaniteBillboardPass {
           b.billboardsIdsResult
         ),
         naniteObject.impostor.bind(b.impostorTexture),
-        { binding: b.sampler, resource: scene.defaultSampler },
+        // needs nearest as we will also sample packed normals
+        { binding: b.sampler, resource: scene.samplerNearest },
       ]
     );
   };
