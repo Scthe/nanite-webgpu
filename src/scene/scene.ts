@@ -173,7 +173,11 @@ export async function loadObject(
   if ('texture' in modelDesc) {
     timerStart = getProfilerTimestamp();
     const texturePath = `${MODELS_DIR}/${modelDesc.texture}`;
-    diffuseTexture = await createTextureFromFile(device, texturePath);
+    diffuseTexture = await createTextureFromFile(
+      device,
+      texturePath,
+      'rgba8unorm-srgb'
+    );
     console.log(`Texture: '${texturePath}'`);
     diffuseTextureView = diffuseTexture.createView();
     addTimer('Load texture', timerStart);

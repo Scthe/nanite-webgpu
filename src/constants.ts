@@ -28,6 +28,7 @@ export const NANO_TO_MILISECONDS = 0.000001;
 export const MILISECONDS_TO_SECONDS = 0.001;
 
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
+export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = 'rgba32float';
 
 /** 4 for Vec4, 3 for Vec3. ATM using Vec3  */
 export const CO_PER_VERTEX: number = 3;
@@ -84,6 +85,14 @@ export const CONFIG = {
   dbgNaniteLodLevel: 1,
   /** Which depth pyramid level to show in respective debug mode */
   dbgDepthPyramidLevel: 0,
+
+  ///////////////
+  /// PostFX-like effects (dither, tonemapping, exposure, gamma etc.)
+  colors: {
+    gamma: 2.2,
+    ditherStrength: 1.0,
+    exposure: 0.45,
+  },
 
   ///////////////
   /// CULLING - INSTANCES

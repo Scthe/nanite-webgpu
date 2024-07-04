@@ -239,6 +239,7 @@ export const isGPUTextureView = (maybeTexView: any) =>
   typeof maybeTexView === 'object' &&
   getClassName(maybeTexView) === GPUTextureView.name;
 
+/** TS typings do not see difference between GPUTexture and GPUTextureView */
 // deno-lint-ignore no-explicit-any
 export const assertIsGPUTextureView = (maybeTexView: any) => {
   if (!isGPUTextureView(maybeTexView)) {

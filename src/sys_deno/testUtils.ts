@@ -98,7 +98,7 @@ export const createMockPassCtx = (
     viewport,
     scene: undefined!,
     depthTexture: undefined!,
-    screenTexture: undefined!,
+    hdrRenderTexture: undefined!,
     globalUniforms: undefined!,
     prevFrameDepthPyramidTexture: dummyPyramidTexture.createView(),
     cameraFrustum,

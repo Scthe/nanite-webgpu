@@ -3,10 +3,11 @@ import { RenderUniformsBuffer } from './passes/renderUniformsBuffer.ts';
 import {
   Dimensions,
   createCameraProjectionMat,
+  debounce,
   getViewProjectionMatrix,
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
-import { CONFIG, DEPTH_FORMAT } from './constants.ts';
+import { CONFIG, DEPTH_FORMAT, HDR_RENDER_TEX_FORMAT } from './constants.ts';
 import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
@@ -22,6 +23,7 @@ import { DepthPyramidPass } from './passes/depthPyramid/depthPyramidPass.ts';
 import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDebugDrawPass.ts';
 import { CullInstancesPass } from './passes/cullInstances/cullInstancesPass.ts';
 import { NaniteBillboardPass } from './passes/naniteBillboard/naniteBillboardPass.ts';
+import { PresentPass } from './passes/presentPass/presentPass.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -29,9 +31,13 @@ export class Renderer {
   private readonly cameraFrustum: Frustum = new Frustum();
   private projectionMat: Mat4;
   private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
-  private depthTexture: GPUTexture = undefined!; // see this.recreateDepthDexture()
-  private depthTextureView: GPUTextureView = undefined!; // see this.recreateDepthDexture()
   private frameIdx = 0;
+
+  // render target textures
+  private depthTexture: GPUTexture = undefined!; // see this.handleViewportResize()
+  private depthTextureView: GPUTextureView = undefined!; // see this.handleViewportResize()
+  private hdrRenderTexture: GPUTexture = undefined!; // see this.handleViewportResize()
+  private hdrRenderTextureView: GPUTextureView = undefined!; // see this.handleViewportResize()
 
   // passes
   private readonly drawMeshPass: DrawNanitesPass;
@@ -39,6 +45,7 @@ export class Renderer {
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
   private readonly cullInstancesPass: CullInstancesPass;
   private readonly naniteBillboardPass: NaniteBillboardPass;
+  private readonly presentPass: PresentPass;
   // depth pyramid
   private readonly depthPyramidPass: DepthPyramidPass;
   private readonly depthPyramidDebugDrawPass: DepthPyramidDebugDrawPass;
@@ -54,53 +61,45 @@ export class Renderer {
   ) {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
-    this.drawMeshPass = new DrawNanitesPass(device, preferredCanvasFormat);
+    this.drawMeshPass = new DrawNanitesPass(device, HDR_RENDER_TEX_FORMAT);
     this.drawNaniteGPUPass = new DrawNaniteGPUPass(
       device,
-      preferredCanvasFormat
+      HDR_RENDER_TEX_FORMAT
     );
     this.naniteVisibilityPass = new NaniteVisibilityPass(device);
     this.cullInstancesPass = new CullInstancesPass(device);
     this.naniteBillboardPass = new NaniteBillboardPass(
       device,
-      preferredCanvasFormat
+      HDR_RENDER_TEX_FORMAT
     );
     this.depthPyramidPass = new DepthPyramidPass(device);
     this.depthPyramidDebugDrawPass = new DepthPyramidDebugDrawPass(
       device,
-      preferredCanvasFormat
+      HDR_RENDER_TEX_FORMAT
     );
+    this.presentPass = new PresentPass(device, preferredCanvasFormat);
 
     // geometry debug passes
     this.dbgMeshoptimizerPass = new DbgMeshoptimizerPass(
       device,
-      preferredCanvasFormat,
+      HDR_RENDER_TEX_FORMAT,
       this.renderUniformBuffer
     );
     this.dbgMeshoptimizerMeshletsPass = new DbgMeshoptimizerMeshletsPass(
       device,
-      preferredCanvasFormat,
+      HDR_RENDER_TEX_FORMAT,
       this.renderUniformBuffer
     );
 
     this.cameraCtrl = new Camera();
     this.projectionMat = createCameraProjectionMat(viewportSize);
 
-    this.recreateDepthDexture(viewportSize);
+    this.handleViewportResize(viewportSize);
   }
 
   updateCamera(deltaTime: number, input: Input): Mat4 {
     this.cameraCtrl.update(deltaTime, input);
   }
-
-  onCanvasResize = (viewportSize: Dimensions) => {
-    this.projectionMat = createCameraProjectionMat(viewportSize);
-
-    if (this.depthTexture) {
-      this.depthTexture.destroy();
-    }
-    this.recreateDepthDexture(viewportSize);
-  };
 
   cmdRender(
     cmdBuf: GPUCommandEncoder,
@@ -117,7 +116,7 @@ export class Renderer {
       this._viewMatrix
     );
     this.cameraFrustum.update(vpMatrix);
-    const [_depthPyramidTex, _depthPyramidTexView] =
+    const [_depthPyramidTex, depthPyramidTexView] =
       this.depthPyramidPass.verifyResultTexture(
         this.device,
         this.depthTexture,
@@ -128,7 +127,7 @@ export class Renderer {
       cmdBuf,
       viewport,
       scene,
-      screenTexture,
+      hdrRenderTexture: this.hdrRenderTextureView,
       device: this.device,
       profiler: this.profiler,
       viewMatrix,
@@ -137,7 +136,7 @@ export class Renderer {
       cameraFrustum: this.cameraFrustum,
       cameraPositionWorldSpace: this.cameraCtrl.positionWorldSpace,
       depthTexture: this.depthTextureView,
-      prevFrameDepthPyramidTexture: _depthPyramidTexView,
+      prevFrameDepthPyramidTexture: depthPyramidTexView,
       globalUniforms: this.renderUniformBuffer,
       depthPyramidSampler: this.depthPyramidPass.depthSampler,
     };
@@ -159,6 +158,8 @@ export class Renderer {
         this.cmdDrawNanite_CPU(ctx);
       }
     }
+
+    this.presentPass.cmdDraw(ctx, screenTexture);
 
     this.frameIdx += 1;
   }
@@ -210,14 +211,32 @@ export class Renderer {
     }
   }
 
-  private recreateDepthDexture = (viewportSize: Dimensions) => {
+  private handleViewportResize = (viewportSize: Dimensions) => {
+    console.log(`Viewport resize`, viewportSize);
     CONFIG.nanite.render.hasValidDepthPyramid = false;
+
+    this.projectionMat = createCameraProjectionMat(viewportSize);
+
     if (this.depthTexture) {
       this.depthTexture.destroy();
     }
+    if (this.hdrRenderTexture) {
+      this.hdrRenderTexture.destroy();
+    }
+
+    const vpStr = `${viewportSize.width}x${viewportSize.height}`;
+
+    this.hdrRenderTexture = this.device.createTexture({
+      label: `hdr-texture-${vpStr}`,
+      size: [viewportSize.width, viewportSize.height],
+      format: HDR_RENDER_TEX_FORMAT,
+      usage:
+        GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    this.hdrRenderTextureView = this.hdrRenderTexture.createView();
 
     this.depthTexture = this.device.createTexture({
-      label: `depth-texture-${viewportSize.width}x${viewportSize.height}`,
+      label: `depth-texture-${vpStr}`,
       size: [viewportSize.width, viewportSize.height],
       format: DEPTH_FORMAT,
       usage:
@@ -225,15 +244,18 @@ export class Renderer {
     });
     this.depthTextureView = this.depthTexture.createView();
 
-    // reset bindings that used depth texture
-    // TODO [LOW] this still has some issues. Add debounce to .onCanvasResize() and render to own color attachment. Then blit to canvas
-    this.depthPyramidDebugDrawPass.onDepthTextureResize();
-    this.naniteVisibilityPass.onDepthTextureResize();
+    // reset bindings that used texture
+    this.depthPyramidDebugDrawPass.onViewportResize();
+    this.naniteVisibilityPass.onViewportResize();
+    this.cullInstancesPass.onViewportResize();
     this.depthPyramidPass.verifyResultTexture(
       this.device,
       this.depthTexture,
       this.depthTextureView,
       true
     );
+    this.presentPass.onViewportResize();
   };
+
+  onCanvasResize = debounce(this.handleViewportResize, 500);
 }

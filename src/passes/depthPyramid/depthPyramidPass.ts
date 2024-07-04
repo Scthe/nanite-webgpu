@@ -109,7 +109,9 @@ export class DepthPyramidPass {
         GPUTextureUsage.TEXTURE_BINDING,
       mipLevelCount,
     });
-    this.resultTextureView = this.resultTexture.createView();
+    this.resultTextureView = this.resultTexture.createView({
+      label: `${this.resultTexture.label}-view`,
+    });
 
     // create mipmaps
     this.pyramidLevels = [];

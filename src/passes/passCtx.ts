@@ -19,7 +19,7 @@ export interface PassCtx {
   scene: Scene;
   depthTexture: GPUTextureView;
   prevFrameDepthPyramidTexture: GPUTextureView;
-  screenTexture: GPUTextureView;
+  hdrRenderTexture: GPUTextureView;
   globalUniforms: RenderUniformsBuffer;
   depthPyramidSampler: GPUSampler;
 }

@@ -72,9 +72,10 @@ export class NaniteVisibilityPass {
     });
   }
 
-  onDepthTextureResize = () => {
+  onViewportResize = () => {
     this.bindingsCache_SpreadYZ.clear();
     this.bindingsCache_Iter.clear();
+    this.bindingsCache_Indirect.clear();
   };
 
   cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteObject) {

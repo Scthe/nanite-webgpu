@@ -109,15 +109,15 @@ export class DepthPyramidDebugDrawPass {
     });
   }
 
-  onDepthTextureResize = () => this.bindingsCache.clear();
+  onViewportResize = () => this.bindingsCache.clear();
 
   cmdDraw(ctx: PassCtx) {
-    const { cmdBuf, profiler, screenTexture, depthTexture } = ctx;
+    const { cmdBuf, profiler, hdrRenderTexture, depthTexture } = ctx;
 
     const renderPass = cmdBuf.beginRenderPass({
       label: DepthPyramidDebugDrawPass.NAME,
       colorAttachments: [
-        useColorAttachment(screenTexture, getClearColorVec3()),
+        useColorAttachment(hdrRenderTexture, getClearColorVec3()),
       ],
       timestampWrites: profiler?.createScopeGpu(DepthPyramidDebugDrawPass.NAME),
     });

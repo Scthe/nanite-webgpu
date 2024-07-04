@@ -36,7 +36,7 @@ export function initCanvasResizeSystem(
   }
 
   function applyResize(d: Dimensions) {
-    console.log('Canvas resize:', d);
+    // console.log('Canvas resize:', d);
     canvas.width = d.width;
     canvas.height = d.height;
     listeners.forEach((l) => l(d));

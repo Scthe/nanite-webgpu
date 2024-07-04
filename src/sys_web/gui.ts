@@ -66,6 +66,7 @@ export function initializeGUI(
   addNaniteFolder();
   addInstanceCullingFolder();
   addCullingFolder();
+  addColorMgmt();
   addDbgFolder();
 
   // init visiblity
@@ -156,7 +157,7 @@ export function initializeGUI(
   }
 
   function addCullingFolder() {
-    const dir = gui.addFolder('Culling');
+    const dir = gui.addFolder('Meshlet culling');
     dir.open();
     const { render } = CONFIG.nanite;
 
@@ -180,6 +181,15 @@ export function initializeGUI(
     // softwareBackfaceCullCtrl = dir
     // .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
     // .name('SW backface cull');
+  }
+
+  function addColorMgmt() {
+    const dir = gui.addFolder('Color mgmt');
+    const cfg = CONFIG.colors;
+
+    dir.add(cfg, 'gamma', 1.0, 3.0).name('Gamma');
+    dir.add(cfg, 'exposure', 0.0, 2.0).name('Exposure');
+    dir.add(cfg, 'ditherStrength', 0.0, 2.0).name('Dithering');
   }
 
   function addDbgFolder() {

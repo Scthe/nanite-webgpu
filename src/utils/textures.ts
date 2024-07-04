@@ -43,15 +43,19 @@ export function createFallbackTexture(
 }
 
 /** https://webgpu.github.io/webgpu-samples/?sample=texturedCube#main.ts */
-export async function createTextureFromFile(device: GPUDevice, path: string) {
+export async function createTextureFromFile(
+  device: GPUDevice,
+  path: string,
+  format: GPUTextureFormat
+) {
   const response = await fetch(path);
   const imageBitmap = await createImageBitmap(await response.blob());
 
   const texture = device.createTexture({
-    label: 'fallback-texture-1',
+    label: path,
     dimension: '2d',
     size: [imageBitmap.width, imageBitmap.height, 1],
-    format: 'rgba8unorm',
+    format,
     usage:
       GPUTextureUsage.TEXTURE_BINDING |
       GPUTextureUsage.COPY_DST |

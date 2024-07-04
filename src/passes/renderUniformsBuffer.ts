@@ -49,6 +49,7 @@ export class RenderUniformsBuffer {
       billboardThreshold: f32,
       padding0: u32,
       padding1: u32,
+      colorMgmt: vec4f,
     };
     @binding(0) @group(${group})
     var<uniform> _uniforms: Uniforms;
@@ -83,7 +84,8 @@ export class RenderUniformsBuffer {
     BYTES_VEC4 + // viewport
     BYTES_VEC4 + // cameraPosition
     6 * BYTES_VEC4 + // camera frustum planes
-    4 * BYTES_U32; // flags + padding
+    4 * BYTES_U32 + // flags + padding
+    BYTES_VEC4; // color mgmt
 
   private readonly gpuBuffer: GPUBuffer;
   private readonly data = new ArrayBuffer(RenderUniformsBuffer.BUFFER_SIZE);
@@ -118,6 +120,7 @@ export class RenderUniformsBuffer {
     const c = CONFIG;
     const nanite = c.nanite.render;
     const imp = c.impostors;
+    const col = c.colors;
 
     let offsetBytes = 0;
     offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
@@ -143,6 +146,11 @@ export class RenderUniformsBuffer {
     offsetBytes = this.writeF32(offsetBytes, imp.billboardThreshold);
     // padding
     offsetBytes += 2 * BYTES_U32;
+    // color mgmt
+    offsetBytes = this.writeF32(offsetBytes, col.gamma);
+    offsetBytes = this.writeF32(offsetBytes, col.exposure);
+    offsetBytes = this.writeF32(offsetBytes, col.ditherStrength);
+    offsetBytes += BYTES_F32; // padding
 
     // final write
     if (offsetBytes !== RenderUniformsBuffer.BUFFER_SIZE) {

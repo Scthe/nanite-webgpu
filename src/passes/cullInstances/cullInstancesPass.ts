@@ -41,6 +41,10 @@ export class CullInstancesPass {
     });
   }
 
+  onViewportResize = () => {
+    this.bindingsCache.clear();
+  };
+
   cmdCullInstances(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler } = ctx;
 

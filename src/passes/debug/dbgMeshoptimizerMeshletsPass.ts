@@ -69,13 +69,13 @@ export class DbgMeshoptimizerMeshletsPass {
   }
 
   draw(ctx: PassCtx) {
-    const { cmdBuf, profiler, depthTexture, screenTexture, scene } = ctx;
+    const { cmdBuf, profiler, depthTexture, hdrRenderTexture, scene } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
       label: DbgMeshoptimizerMeshletsPass.NAME,
       colorAttachments: [
-        useColorAttachment(screenTexture, getClearColorVec3()),
+        useColorAttachment(hdrRenderTexture, getClearColorVec3()),
       ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture),
       timestampWrites: profiler?.createScopeGpu(

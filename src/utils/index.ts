@@ -189,3 +189,15 @@ export const randomBetween = (start: number, end: number) => {
 export function clamp(x: number, min: number, max: number): number {
   return Math.min(Math.max(x, min), max);
 }
+
+export function debounce<T extends unknown[]>(
+  callback: (...args: T) => void,
+  wait: number
+) {
+  let timer: number;
+
+  return (...args: T): void => {
+    clearTimeout(timer);
+    timer = setTimeout(() => callback(...args), wait);
+  };
+}

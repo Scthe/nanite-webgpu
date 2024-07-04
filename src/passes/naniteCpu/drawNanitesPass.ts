@@ -117,7 +117,7 @@ export class DrawNanitesPass {
   }
 
   draw(ctx: PassCtx, naniteObject: NaniteObject, loadOp: GPULoadOp) {
-    const { cmdBuf, profiler, depthTexture, screenTexture } = ctx;
+    const { cmdBuf, profiler, depthTexture, hdrRenderTexture } = ctx;
 
     // in this fn, time taken is on CPU, as GPU is async. Not 100% accurate, but good enough?
     const visibilityCheckProfiler = profiler?.startRegionCpu('VisibilityCheckCPU'); // prettier-ignore
@@ -126,7 +126,7 @@ export class DrawNanitesPass {
     const renderPass = cmdBuf.beginRenderPass({
       label: DrawNanitesPass.NAME,
       colorAttachments: [
-        useColorAttachment(screenTexture, getClearColorVec3(), loadOp),
+        useColorAttachment(hdrRenderTexture, getClearColorVec3(), loadOp),
       ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture, loadOp),
       timestampWrites: profiler?.createScopeGpu(DrawNanitesPass.NAME),
