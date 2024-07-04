@@ -7,7 +7,7 @@ import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
 import { CONFIG, MILISECONDS_TO_SECONDS } from './constants.ts';
 import { createErrorSystem } from './utils/errors.ts';
-import { downloadVisibilityBuffer } from './scene/naniteObject.ts';
+import { downloadDrawnMeshletsBuffer } from './scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
 import {
   FileTextReader,
@@ -204,7 +204,7 @@ function showErrorMessage(msg?: string) {
 
 async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
   const resultsAsync = scene.naniteObjects.map((obj) =>
-    downloadVisibilityBuffer(device, obj)
+    downloadDrawnMeshletsBuffer(device, obj)
   );
   const results = await Promise.all(resultsAsync);
   const drawnMeshlets = results.reduce((acc, res) => acc + res.meshletCount, 0);

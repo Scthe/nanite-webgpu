@@ -11,8 +11,8 @@ import {
 import { PassCtx } from '../passCtx.ts';
 import { DEPTH_FORMAT } from '../../constants.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './naniteBillboard.wgsl.ts';
-import { bufferBindingDrawnInstanceIdsParams } from '../cullInstances/cullInstancesBuffer.ts';
-import { bufferBindingBillboardDrawArray } from './naniteBillboardsBuffer.ts';
+import { bufferBindingDrawnInstanceIdsParams } from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
+import { bufferBindingBillboardDrawArray } from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 
 // TODO [CRITICAL] on toggling culling reset all buffers that count stuff. ATM disabling culling leaves old billboard data in the buffer
 /** Render impostor billboards */

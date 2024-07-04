@@ -1,7 +1,11 @@
 import { BYTES_U32 } from '../../constants.ts';
 import { WEBGPU_MINIMAL_BUFFER_SIZE } from '../../utils/webgpu.ts';
 
-export const SHADER_SNIPPET_BILLBOARD_DRAW_PARAMS = (
+///////////////////////////
+/// SHADER CODE
+///////////////////////////
+
+export const BUFFER_DRAWN_IMPOSTORS_PARAMS = (
   bindingIdx: number,
   access: 'read_write' | 'read'
 ) => /* wgsl */ `
@@ -14,20 +18,24 @@ struct DrawIndirect{
   firstInstance : u32,
 }
 @group(0) @binding(${bindingIdx})
-var<storage, ${access}> _billboardDrawParams: DrawIndirect;
+var<storage, ${access}> _drawnImpostorsParams: DrawIndirect;
 `;
 
-export const SHADER_SNIPPET_BILLBOARD_ARRAY = (
+export const BUFFER_DRAWN_IMPOSTORS_LIST = (
   bindingIdx: number,
   access: 'read_write' | 'read'
 ) => /* wgsl */ `
 @group(0) @binding(${bindingIdx})
-var<storage, ${access}> _billboardIdsArray: array<u32>;
+var<storage, ${access}> _drawnImpostorsList: array<u32>;
 `;
 
 const BYTES_PARAMS = Math.max(WEBGPU_MINIMAL_BUFFER_SIZE, 4 * BYTES_U32);
 
-export function createBillboardImpostorsBuffer(
+///////////////////////////
+/// GPU BUFFER
+///////////////////////////
+
+export function createDrawnImpostorsBuffer(
   device: GPUDevice,
   name: string,
   instanceCount: number
@@ -49,7 +57,7 @@ export function createBillboardImpostorsBuffer(
 }
 
 /** zeroe the draw params (between frames) */
-export function cmdClearBillboardDrawParams(
+export function cmdClearDrawnImpostorsDrawParams(
   cmdBuf: GPUCommandEncoder,
   buf: GPUBuffer
 ) {

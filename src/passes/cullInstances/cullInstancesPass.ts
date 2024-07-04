@@ -9,14 +9,14 @@ import {
 import {
   bufferBindingBillboardDrawArray,
   bufferBindingBillboardDrawParams,
-  cmdClearBillboardDrawParams,
-} from '../naniteBillboard/naniteBillboardsBuffer.ts';
+  cmdClearDrawnImpostorsDrawParams,
+} from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import { PassCtx } from '../passCtx.ts';
 import {
   bufferBindingDrawnInstanceIdsParams,
   bufferBindingDrawnInstanceIdsArray,
-  clearDrawnInstancesFrameData,
-} from './cullInstancesBuffer.ts';
+  cmdClearDrawnInstancesDispatchParams,
+} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './cullInstancesPass.wgsl.ts';
 
 export class CullInstancesPass {
@@ -49,8 +49,14 @@ export class CullInstancesPass {
     const { cmdBuf, profiler } = ctx;
 
     // forget draws from previous frame
-    clearDrawnInstancesFrameData(cmdBuf, naniteObject.drawnInstanceIdsBuffer);
-    cmdClearBillboardDrawParams(cmdBuf, naniteObject.billboardImpostorsBuffer);
+    cmdClearDrawnInstancesDispatchParams(
+      cmdBuf,
+      naniteObject.drawnInstanceIdsBuffer
+    );
+    cmdClearDrawnImpostorsDrawParams(
+      cmdBuf,
+      naniteObject.billboardImpostorsBuffer
+    );
 
     const computePass = cmdBuf.beginComputePass({
       timestampWrites: profiler?.createScopeGpu(CullInstancesPass.NAME),

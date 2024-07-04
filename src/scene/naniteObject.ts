@@ -1,18 +1,13 @@
-import {
-  BYTES_U32,
-  BYTES_UVEC4,
-  BYTES_VEC4,
-  VERTS_IN_TRIANGLE,
-} from '../constants.ts';
+import { VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
-import { createArray, getTriangleCount } from '../utils/index.ts';
+import { getTriangleCount } from '../utils/index.ts';
 import { BYTES_DRAW_INDIRECT } from '../utils/webgpu.ts';
-import { downloadBuffer } from '../utils/webgpu.ts';
 import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
 import { Bounds3d } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { NaniteInstancesData } from './instancesData.ts';
 import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
+import { uploadMeshletsToGPU } from './naniteBuffers/meshletsDataBuffer.ts';
 
 export type MeshletId = number;
 
@@ -30,21 +25,6 @@ export type NaniteMeshletTreeNode = Pick<
   createdFrom: NaniteMeshletTreeNode[];
   ownBounds: Bounds3d;
 };
-
-export const SHADER_SNIPPET_MESHLET_TREE_NODES = (bindingIdx: number) => `
-struct NaniteMeshletTreeNode {
-  boundsMidPointAndError: vec4f, // sharedSiblingsBounds.xyz + maxSiblingsError
-  parentBoundsMidPointAndError: vec4f, // parentBounds.xyz + parentError
-  ownBoundingSphere: vec4f, // ownBounds
-  triangleCount: u32,
-  firstIndexOffset: u32,
-  lodLevel: u32, // meshlet level + padding
-  padding1: u32, // padding to fill uvec4
-}
-@group(0) @binding(${bindingIdx})
-var<storage, read> _meshlets: array<NaniteMeshletTreeNode>;
-`;
-export const GPU_MESHLET_SIZE_BYTES = 3 * BYTES_VEC4 + BYTES_UVEC4;
 
 export const BOTTOM_LEVEL_NODE = 0;
 
@@ -180,51 +160,10 @@ export class NaniteObject {
     },
   });
 
-  /** Upload final meshlet data to the GPU */
-  uploadMeshletsToGPU(device: GPUDevice) {
+  finalizeNaniteObject(device: GPUDevice) {
     this.naniteVisibilityBufferCPU.initialize(this.meshletCount); // bonus!
 
-    // ok, actual code starts now
-    const actualSize = this.meshletCount * GPU_MESHLET_SIZE_BYTES;
-    if (actualSize !== this.meshletsBuffer.size) {
-      // prettier-ignore
-      throw new Error(`GPU meshlet data preallocated ${this.meshletsBuffer.size} bytes, but ${actualSize} bytes (${this.meshletCount} meshlets * ${GPU_MESHLET_SIZE_BYTES}) are needed`);
-    }
-
-    let offsetBytes = 0;
-    const data = new ArrayBuffer(GPU_MESHLET_SIZE_BYTES);
-    const dataAsF32 = new Float32Array(data);
-    const dataAsU32 = new Uint32Array(data);
-    this.allMeshlets.forEach((m) => {
-      dataAsF32[0] = m.sharedSiblingsBounds.center[0];
-      dataAsF32[1] = m.sharedSiblingsBounds.center[1];
-      dataAsF32[2] = m.sharedSiblingsBounds.center[2];
-      dataAsF32[3] = m.maxSiblingsError;
-      dataAsF32[4] = m.parentBounds?.center[0] || 0.0;
-      dataAsF32[5] = m.parentBounds?.center[1] || 0.0;
-      dataAsF32[6] = m.parentBounds?.center[2] || 0.0;
-      dataAsF32[7] = m.parentError === Infinity ? 9999999.0 : m.parentError;
-      // own bounds
-      const ownBoundSph = m.ownBounds.sphere;
-      dataAsF32[8] = ownBoundSph.center[0];
-      dataAsF32[9] = ownBoundSph.center[1];
-      dataAsF32[10] = ownBoundSph.center[2];
-      dataAsF32[11] = ownBoundSph.radius;
-      // u32's:
-      dataAsU32[12] = m.triangleCount;
-      dataAsU32[13] = m.firstIndexOffset;
-      dataAsU32[14] = m.lodLevel;
-
-      // write
-      device.queue.writeBuffer(
-        this.meshletsBuffer,
-        offsetBytes,
-        data,
-        0,
-        GPU_MESHLET_SIZE_BYTES
-      );
-      offsetBytes += GPU_MESHLET_SIZE_BYTES;
-    });
+    uploadMeshletsToGPU(device, this.meshletsBuffer, this.allMeshlets);
   }
 
   /** Used only during construction */
@@ -263,50 +202,4 @@ export class NaniteObject {
 
     return node;
   }
-}
-
-/**
- * WARNING: SLOW. DO NOT USE UNLESS FOR DEBUG/TEST PURPOSES.
- *
- * Kinda sucks it's async as weird things happen.
- */
-export async function downloadVisibilityBuffer(
-  device: GPUDevice,
-  naniteObject: NaniteObject
-) {
-  const visiblityBuffer = naniteObject.dangerouslyGetVisibilityBuffer();
-
-  const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
-  const result = parseVisibilityBuffer(naniteObject, data);
-
-  console.log(`[${naniteObject.name}] Visibility buffer`, result);
-  return result;
-}
-
-export type DownloadedVisibilityBuffer = ReturnType<
-  typeof parseVisibilityBuffer
->;
-
-export function parseVisibilityBuffer(
-  naniteObject: NaniteObject,
-  data: Uint32Array
-) {
-  const indirectDraw = data.slice(0, 4);
-  const meshletCount = indirectDraw[1];
-
-  // remember:
-  // 1) it's uvec2,
-  // 2) the buffer has a lot of space, we do not use it whole
-  const offset = BYTES_DRAW_INDIRECT / BYTES_U32;
-  const lastWrittenIdx = 2 * meshletCount; // uvec2
-  const visibilityResultArr = data.slice(offset, offset + lastWrittenIdx);
-  // printTypedArray('visbilityResult', visibilityResultArr);
-
-  // parse uvec2 into something I won't forget next day
-  const meshletIds = createArray(meshletCount).map((_, i) => ({
-    transformId: visibilityResultArr[2 * i],
-    meshletId: visibilityResultArr[2 * i + 1],
-  }));
-
-  return { naniteObject, meshletCount, indirectDraw, meshletIds };
 }

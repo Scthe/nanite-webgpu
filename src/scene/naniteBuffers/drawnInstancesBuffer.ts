@@ -2,7 +2,11 @@ import { BYTES_U32, BYTES_VEC4 } from '../../constants.ts';
 import { BoundingSphere } from '../../utils/calcBounds.ts';
 import { WEBGPU_MINIMAL_BUFFER_SIZE } from '../../utils/webgpu.ts';
 
-export const SHADER_SNIPPET_INSTANCES_CULL_PARAMS = (
+///////////////////////////
+/// SHADER CODE
+///////////////////////////
+
+export const BUFFER_DRAWN_INSTANCES_PARAMS = (
   bindingIdx: number,
   access: 'read_write' | 'read'
 ) => /* wgsl */ `
@@ -20,24 +24,28 @@ struct CullParams{
   allMeshletsCount: u32,
 }
 @group(0) @binding(${bindingIdx})
-var<storage, ${access}> _cullParams: CullParams;
+var<storage, ${access}> _drawnInstancesParams: CullParams;
 `;
 
-export const SHADER_SNIPPET_INSTANCES_CULL_ARRAY = (
-  bindingIdx: number,
-  access: 'read_write' | 'read'
-) => /* wgsl */ `
-@group(0) @binding(${bindingIdx})
-var<storage, ${access}> _drawnInstanceIdsResult: array<u32>;
-`;
-
-export const BYTES_INSTANCE_CULL_DATA = Math.max(
+const BYTES_INSTANCE_CULL_DATA = Math.max(
   WEBGPU_MINIMAL_BUFFER_SIZE,
   3 * BYTES_U32 + // dispatch itself
     BYTES_U32 + // actuallyDrawnInstances
     BYTES_U32 + // allMeshletsCount
     BYTES_VEC4 // bounding sphere
 );
+
+export const BUFFER_DRAWN_INSTANCES_LIST = (
+  bindingIdx: number,
+  access: 'read_write' | 'read'
+) => /* wgsl */ `
+@group(0) @binding(${bindingIdx})
+var<storage, ${access}> _drawnInstancesList: array<u32>;
+`;
+
+///////////////////////////
+/// GPU BUFFER
+///////////////////////////
 
 export function createDrawnInstanceIdsBuffer(
   device: GPUDevice,
@@ -88,7 +96,7 @@ function writeCullData(
   device.queue.writeBuffer(bufferGpu, 0, buffer, 0, BYTES_INSTANCE_CULL_DATA);
 }
 
-export function clearDrawnInstancesFrameData(
+export function cmdClearDrawnInstancesDispatchParams(
   cmdBuf: GPUCommandEncoder,
   buf: GPUBuffer
 ) {

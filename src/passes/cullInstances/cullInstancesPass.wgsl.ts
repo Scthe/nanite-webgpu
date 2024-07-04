@@ -5,13 +5,14 @@ import { SNIPPET_OCCLUSION_CULLING } from '../_shaderSnippets/cullOcclusion.wgsl
 import { SNIPPET_FRUSTUM_CULLING } from '../_shaderSnippets/cullFrustum.wgsl.ts';
 import { SHADER_PARAMS as SHADER_PARAMS_VISIBILITY } from '../naniteGpu/naniteVisibilityPass.wgsl.ts';
 import {
-  SHADER_SNIPPET_INSTANCES_CULL_ARRAY,
-  SHADER_SNIPPET_INSTANCES_CULL_PARAMS,
-} from './cullInstancesBuffer.ts';
+  BUFFER_DRAWN_INSTANCES_LIST,
+  BUFFER_DRAWN_INSTANCES_PARAMS,
+} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 import {
-  SHADER_SNIPPET_BILLBOARD_DRAW_PARAMS,
-  SHADER_SNIPPET_BILLBOARD_ARRAY,
-} from '../naniteBillboard/naniteBillboardsBuffer.ts';
+  BUFFER_DRAWN_IMPOSTORS_PARAMS,
+  BUFFER_DRAWN_IMPOSTORS_LIST,
+} from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
@@ -44,18 +45,17 @@ ${SNIPPET_FRUSTUM_CULLING}
 ${SNIPPET_OCCLUSION_CULLING}
 
 // instance transforms
-@group(0) @binding(${b.instancesTransforms})
-var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
+${BUFFER_INSTANCES(b.instancesTransforms)}
 
 // cull params
-${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(b.dispatchIndirectParams, 'read_write')}
+${BUFFER_DRAWN_INSTANCES_PARAMS(b.dispatchIndirectParams, 'read_write')}
 // cull: array with results
-${SHADER_SNIPPET_INSTANCES_CULL_ARRAY(b.drawnInstanceIdsResult, 'read_write')}
+${BUFFER_DRAWN_INSTANCES_LIST(b.drawnInstanceIdsResult, 'read_write')}
 
 // billboard params
-${SHADER_SNIPPET_BILLBOARD_DRAW_PARAMS(b.billboardsParams, 'read_write')}
+${BUFFER_DRAWN_IMPOSTORS_PARAMS(b.billboardsParams, 'read_write')}
 // billboard: array with results
-${SHADER_SNIPPET_BILLBOARD_ARRAY(b.billboardsIdsResult, 'read_write')}
+${BUFFER_DRAWN_IMPOSTORS_LIST(b.billboardsIdsResult, 'read_write')}
 
 // depth pyramid + sampler
 @group(0) @binding(${b.depthPyramidTexture})
@@ -74,37 +74,37 @@ fn main(
   resetOtherDrawParams(global_id);
 
   let settingsFlags = _uniforms.flags;
-  let boundingSphere = _cullParams.objectBoundingSphere;
+  let boundingSphere = _drawnInstancesParams.objectBoundingSphere;
   let MAX_WORKGROUPS_Y: u32 = ${SHADER_PARAMS_VISIBILITY.maxWorkgroupsY}u;
 
   
   // prepare iters
-  let instanceCount: u32 = arrayLength(&_instanceTransforms);
+  let instanceCount: u32 = _getInstanceCount();
   let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
   let tfxOffset: u32 = global_id.x * iterCount;
 
   for(var i: u32 = 0u; i < iterCount; i++){
     let tfxIdx: u32 = tfxOffset + i;
     if (tfxIdx >= instanceCount) { continue; }
-    let modelMat = _instanceTransforms[tfxIdx];
+    let modelMat = _getInstanceTransform(tfxIdx);
 
     if (!isInstanceRendered(settingsFlags, modelMat, boundingSphere)){
       continue;
     }
 
     if (renderAsBillboard(settingsFlags, modelMat, boundingSphere)) {
-      let idx = atomicAdd(&_billboardDrawParams.instanceCount, 1u);
-      _billboardIdsArray[idx] = tfxIdx;
+      let idx = atomicAdd(&_drawnImpostorsParams.instanceCount, 1u);
+      _drawnImpostorsList[idx] = tfxIdx;
 
     } else {
       // add 1, but no more than MAX_WORKGROUPS_Y.
       // meh impl, but..
-      atomicAdd(&_cullParams.workgroupsY, 1u);
-      atomicMin(&_cullParams.workgroupsY, MAX_WORKGROUPS_Y);
+      atomicAdd(&_drawnInstancesParams.workgroupsY, 1u);
+      atomicMin(&_drawnInstancesParams.workgroupsY, MAX_WORKGROUPS_Y);
       
       // add to the ACTUALL total counter
-      let idx = atomicAdd(&_cullParams.actuallyDrawnInstances, 1u);
-      _drawnInstanceIdsResult[idx] = tfxIdx;
+      let idx = atomicAdd(&_drawnInstancesParams.actuallyDrawnInstances, 1u);
+      _drawnInstancesList[idx] = tfxIdx;
     }
   } 
 }
@@ -166,15 +166,15 @@ fn renderAsBillboard(
 
 fn resetOtherDrawParams(global_id: vec3<u32>){
   if (global_id.x == 0u) {
-    _cullParams.workgroupsX = ceilDivideU32(
-      _cullParams.allMeshletsCount,
+    _drawnInstancesParams.workgroupsX = ceilDivideU32(
+      _drawnInstancesParams.allMeshletsCount,
       ${SHADER_PARAMS_VISIBILITY.workgroupSizeX}u
     );
-    _cullParams.workgroupsZ = 1u;
+    _drawnInstancesParams.workgroupsZ = 1u;
 
-    _billboardDrawParams.vertexCount = 6u; // billboard
-    _billboardDrawParams.firstVertex = 0u;
-    _billboardDrawParams.firstInstance = 0u;
+    _drawnImpostorsParams.vertexCount = 6u; // billboard
+    _drawnImpostorsParams.firstVertex = 0u;
+    _drawnImpostorsParams.firstInstance = 0u;
   }
 }
 

@@ -1,12 +1,13 @@
 import { CONFIG, SHADING_MODE_NORMALS } from '../../constants.ts';
 import { SNIPPET_DITHER } from '../_shaderSnippets/dither.wgsl.ts';
 import { SNIPPET_PACKING } from '../_shaderSnippets/pack.wgsl.ts';
-import { SHADER_SNIPPET_INSTANCES_CULL_PARAMS } from '../cullInstances/cullInstancesBuffer.ts';
+import { BUFFER_DRAWN_INSTANCES_PARAMS } from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { SHADER_SNIPPET_BILLBOARD_ARRAY } from './naniteBillboardsBuffer.ts';
+import { BUFFER_DRAWN_IMPOSTORS_LIST } from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 
 export const SHADER_PARAMS = {
   bindings: {
@@ -35,14 +36,13 @@ ${SNIPPET_SHADING}
 ${SHADER_SNIPPETS.FS_NORMAL_FROM_DERIVATIVES}
 
 // for bounding sphere
-${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(b.wholeObjectCullData, 'read')}
+${BUFFER_DRAWN_INSTANCES_PARAMS(b.wholeObjectCullData, 'read')}
 
 // instance transforms
-@group(0) @binding(${b.instancesTransforms})
-var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
+${BUFFER_INSTANCES(b.instancesTransforms)}
 
 // billboard: array with results
-${SHADER_SNIPPET_BILLBOARD_ARRAY(b.billboardsIdsResult, 'read')}
+${BUFFER_DRAWN_IMPOSTORS_LIST(b.billboardsIdsResult, 'read')}
 
 @group(0) @binding(${b.impostorTexture})
 var _diffuseTexture: texture_2d<f32>;
@@ -73,10 +73,10 @@ fn main_vs(
 ) -> VertexOutput {
   var result: VertexOutput;
   let quadOffset = BILLBOARD_VERTICES[inVertexIndex];
-  let tfxIdx = _billboardIdsArray[inInstanceIndex];
-  let modelMat = _instanceTransforms[tfxIdx];
+  let tfxIdx = _drawnImpostorsList[inInstanceIndex];
+  let modelMat = _getInstanceTransform(tfxIdx);
   
-  let boundingSphere = _cullParams.objectBoundingSphere;
+  let boundingSphere = _drawnInstancesParams.objectBoundingSphere;
   let r = boundingSphere.w;
   let viewMat = _uniforms.viewMatrix;
   let projMat = _uniforms.projMatrix;

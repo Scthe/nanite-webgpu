@@ -1,7 +1,6 @@
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
-import { SHADER_SNIPPET_DRAWN_MESHLETS_LIST } from './naniteVisibilityPass.wgsl.ts';
-import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
+import { BUFFER_MESHLET_DATA } from '../../scene/naniteBuffers/meshletsDataBuffer.ts';
 import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
 import {
@@ -10,6 +9,11 @@ import {
   SHADING_MODE_LOD_LEVEL,
   SHADING_MODE_NORMALS,
 } from '../../constants.ts';
+import { BUFFER_DRAWN_MESHLETS_LIST } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
+import { BUFFER_VERTEX_POSITIONS } from '../../scene/naniteBuffers/vertexPositionsBuffer.ts';
+import { BUFFER_VERTEX_NORMALS } from '../../scene/naniteBuffers/vertexNormalsBuffer.ts';
+import { BUFFER_VERTEX_UVS } from '../../scene/naniteBuffers/vertexUVsBuffer.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 
 export const SHADER_PARAMS = {
   bindings: {
@@ -33,9 +37,6 @@ const b = SHADER_PARAMS.bindings;
 
 export const SHADER_CODE = () => /* wgsl */ `
 
-${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
-${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
-${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.FS_FAKE_LIGHTING}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
@@ -44,19 +45,13 @@ ${SHADER_SNIPPETS.NORMALS_UTILS}
 ${SNIPPET_SHADING_PBR}
 ${SNIPPET_SHADING}
 
-@group(0) @binding(${b.instancesTransforms})
-var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
-
-// WARNING: SSBO with 'array<vec3f>' does not work. Forces 'array<vec4f>'.
-// DO NOT ASK HOW I HAVE DEBUGGED THIS.
-@group(0) @binding(${b.vertexPositions})
-var<storage, read> _vertexPositions: array<vec4f>;
-
-@group(0) @binding(${b.vertexNormals})
-var<storage, read> _vertexNormals: array<vec2f>;
-
-@group(0) @binding(${b.vertexUV})
-var<storage, read> _vertexUV: array<vec2f>;
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${BUFFER_MESHLET_DATA(b.meshlets)}
+${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read')}
+${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
+${BUFFER_VERTEX_NORMALS(b.vertexNormals)}
+${BUFFER_VERTEX_UVS(b.vertexUV)}
+${BUFFER_INSTANCES(b.instancesTransforms)}
 
 @group(0) @binding(${b.indexBuffer})
 var<storage, read> _indexBuffer: array<u32>;
@@ -85,10 +80,10 @@ fn main_vs(
   @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
   var result: VertexOutput;
-  let meshletId: vec2u = _drawnMeshletIds[inInstanceIndex]; // .x - transfromIdx, .y - meshletIdx
+  let meshletId: vec2u = _drawnMeshletsList[inInstanceIndex]; // .x - transfromIdx, .y - meshletIdx
   let meshlet = _meshlets[meshletId.y];
   result.meshletId = meshletId.y;
-  let modelMat = _instanceTransforms[meshletId.x];
+  let modelMat = _getInstanceTransform(meshletId.x);
 
   // We always draw MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less: discard.
   // While this is not the most performant approach, it has tiny memory footprint
@@ -103,9 +98,9 @@ fn main_vs(
   }
 
   let vertexIdx = _indexBuffer[meshlet.firstIndexOffset + inVertexIndex];
-  let vertexPos = _vertexPositions[vertexIdx]; // assumes .w=1
-  let vertexN = decodeOctahedronNormal(_vertexNormals[vertexIdx]);
-  let vertexUV = _vertexUV[vertexIdx];
+  let vertexPos = _getVertexPosition(vertexIdx); // assumes .w=1
+  let vertexN = _getVertexNormal(vertexIdx);
+  let vertexUV = _getVertexUV(vertexIdx);
 
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix);
   let projectedPosition = mvpMatrix * vertexPos;

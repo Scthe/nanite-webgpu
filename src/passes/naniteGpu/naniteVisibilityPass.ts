@@ -16,7 +16,7 @@ import { CONFIG } from '../../constants.ts';
 import {
   bufferBindingDrawnInstanceIdsParams,
   bufferBindingDrawnInstanceIdsArray,
-} from '../cullInstances/cullInstancesBuffer.ts';
+} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 
 /** Pass to cull on meshlet level */
 export class NaniteVisibilityPass {

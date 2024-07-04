@@ -21,7 +21,7 @@ import {
   createReadbackBuffer,
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
-import { parseVisibilityBuffer } from '../../scene/naniteObject.ts';
+import { parseDrawnMeshletsBuffer } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
 import { GPUMesh } from '../../scene/debugMeshes.ts';
 import { ParsedMesh } from '../../scene/objLoader.ts';
@@ -140,7 +140,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   // printTypedArray('resultData', resultData);
 
   // check draw params
-  const parsedResult = parseVisibilityBuffer(naniteObject, resultData);
+  const parsedResult = parseDrawnMeshletsBuffer(naniteObject, resultData);
   const drawParamsResult = parsedResult.indirectDraw;
   // printTypedArray('drawParamsResult ', drawParamsResult);
   assertSameArray(drawParamsResult, [

@@ -16,10 +16,10 @@ import { NaniteObject } from '../../scene/naniteObject.ts';
 import {
   createDrawnInstanceIdsBuffer,
   parseDrawnInstancesBuffer,
-} from './cullInstancesBuffer.ts';
+} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 import { SHADER_PARAMS as SHADER_PARAMS_VISIBILITY } from '../naniteGpu/naniteVisibilityPass.wgsl.ts';
 import { assert, assertAlmostEquals, assertEquals } from 'assert';
-import { createBillboardImpostorsBuffer } from '../naniteBillboard/naniteBillboardsBuffer.ts';
+import { createDrawnImpostorsBuffer } from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import { CONFIG } from '../../constants.ts';
 
 const OBJ_NAME = 'CullInstancesPass-obj';
@@ -55,7 +55,7 @@ Deno.test('CullInstancesPass', async () => {
     BOUNDS
   );
   const bufferReadback = createReadbackBuffer(device, bufferGpu);
-  const billboardImpostorsBuffer = createBillboardImpostorsBuffer(
+  const billboardImpostorsBuffer = createDrawnImpostorsBuffer(
     device,
     OBJ_NAME,
     1

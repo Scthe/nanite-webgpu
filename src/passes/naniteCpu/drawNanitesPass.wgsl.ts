@@ -1,4 +1,5 @@
 import { SHADING_MODE_NORMALS } from '../../constants.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
@@ -20,7 +21,6 @@ const b = SHADER_PARAMS.bindings;
 
 export const SHADER_CODE = () => /* wgsl */ `
 
-${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.GET_RANDOM_COLOR}
 ${SHADER_SNIPPETS.FS_NORMAL_FROM_DERIVATIVES}
@@ -28,8 +28,8 @@ ${SHADER_SNIPPETS.NORMALS_UTILS}
 ${SNIPPET_SHADING_PBR}
 ${SNIPPET_SHADING}
 
-@group(0) @binding(${b.instancesTransforms})
-var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${BUFFER_INSTANCES(b.instancesTransforms)}
 
 @group(0) @binding(${b.diffuseTexture})
 var _diffuseTexture: texture_2d<f32>;
@@ -57,7 +57,7 @@ fn main_vs(
 ) -> VertexOutput {
   var result: VertexOutput;
 
-  let modelMat = _instanceTransforms[inInstanceIndex];
+  let modelMat = _getInstanceTransform(inInstanceIndex);
   let mvpMatrix = getMVP_Mat(modelMat, _uniforms.viewMatrix, _uniforms.projMatrix); // either here or upload from CPU
   let vertexPos = vec4<f32>(inWorldPos.xyz, 1.0);
   var projectedPosition = mvpMatrix * vertexPos;

@@ -1,22 +1,19 @@
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
-import { SHADER_SNIPPET_MESHLET_TREE_NODES } from '../../scene/naniteObject.ts';
+import { BUFFER_MESHLET_DATA } from '../../scene/naniteBuffers/meshletsDataBuffer.ts';
 import { CONFIG } from '../../constants.ts';
 import { SNIPPET_OCCLUSION_CULLING } from '../_shaderSnippets/cullOcclusion.wgsl.ts';
 import { SNIPPET_FRUSTUM_CULLING } from '../_shaderSnippets/cullFrustum.wgsl.ts';
 import { SNIPPET_NANITE_LOD_CULLING } from '../_shaderSnippets/nanite.wgsl.ts';
 import {
-  SHADER_SNIPPET_INSTANCES_CULL_PARAMS,
-  SHADER_SNIPPET_INSTANCES_CULL_ARRAY,
-} from '../cullInstances/cullInstancesBuffer.ts';
-
-export const SHADER_SNIPPET_DRAWN_MESHLETS_LIST = (
-  bindingIdx: number,
-  access: 'read_write' | 'read'
-) => `
-@group(0) @binding(${bindingIdx})
-var<storage, ${access}> _drawnMeshletIds: array<vec2<u32>>;
-`;
+  BUFFER_DRAWN_INSTANCES_PARAMS,
+  BUFFER_DRAWN_INSTANCES_LIST,
+} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
+import {
+  BUFFER_DRAWN_MESHLETS_LIST,
+  BUFFER_DRAWN_MESHLETS_PARAMS,
+} from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
@@ -48,34 +45,23 @@ const b = SHADER_PARAMS.bindings;
 
 export const SHADER_CODE = () => /* wgsl */ `
 
-${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
-${SHADER_SNIPPET_MESHLET_TREE_NODES(b.meshlets)}
-${SHADER_SNIPPET_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.UTILS}
 ${SNIPPET_OCCLUSION_CULLING}
 ${SNIPPET_FRUSTUM_CULLING}
 ${SNIPPET_NANITE_LOD_CULLING}
 
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${BUFFER_MESHLET_DATA(b.meshlets)}
+${BUFFER_DRAWN_MESHLETS_PARAMS(b.drawIndirectParams, 'read_write')}
+${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
+${BUFFER_INSTANCES(b.instancesTransforms)}
+
 @group(0) @binding(${b.depthPyramidTexture})
 var _depthPyramidTexture: texture_2d<f32>;
 
 @group(0) @binding(${b.depthSampler})
 var _depthSampler: sampler;
-
-
-/** arg for https://developer.mozilla.org/en-US/docs/Web/API/GPURenderPassEncoder/drawIndirect */
-struct DrawIndirect{
-  vertexCount: u32,
-  instanceCount: atomic<u32>,
-  firstVertex: u32,
-  firstInstance : u32,
-}
-@group(0) @binding(${b.drawIndirectParams})
-var<storage, read_write> _drawIndirectResult: DrawIndirect;
-
-@group(0) @binding(${b.instancesTransforms})
-var<storage, read> _instanceTransforms: array<mat4x4<f32>>;
 
 
 /** JS uses errorValue=Infnity when parent does not exist. I don't want to risk CPU->GPU transfer for inifinity, so I use ridiculous value */
@@ -104,10 +90,10 @@ fn main_SpreadYZ(
 
   // reconstruct instanceId
   let tfxIdx: u32 = (global_id.z * ${c.maxWorkgroupsY}u) + global_id.y;
-  if (tfxIdx >= arrayLength(&_instanceTransforms)) {
+  if (tfxIdx >= _getInstanceCount()) {
     return;
   }
-  let modelMat = _instanceTransforms[tfxIdx];
+  let modelMat = _getInstanceTransform(tfxIdx);
 
   let settingsFlags = _uniforms.flags;
   if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
@@ -137,12 +123,12 @@ fn main_Iter(
   let settingsFlags = _uniforms.flags;
 
   // prepare iters
-  let instanceCount: u32 = arrayLength(&_instanceTransforms);
+  let instanceCount: u32 = _getInstanceCount();
   let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
   let tfxOffset: u32 = global_id.y * iterCount;
   for(var i: u32 = 0u; i < iterCount; i++){
     let tfxIdx: u32 = tfxOffset + i;
-    let modelMat = _instanceTransforms[tfxIdx];
+    let modelMat = _getInstanceTransform(tfxIdx);
 
     if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
       registerDraw(tfxIdx, meshletIdx);
@@ -157,12 +143,9 @@ fn main_Iter(
 
 
 // cull params
-${SHADER_SNIPPET_INSTANCES_CULL_PARAMS(
-  b.indirectDispatchIndirectParams,
-  'read'
-)}
+${BUFFER_DRAWN_INSTANCES_PARAMS(b.indirectDispatchIndirectParams, 'read')}
 // array with results
-${SHADER_SNIPPET_INSTANCES_CULL_ARRAY(b.indirectDrawnInstanceIdsResult, 'read')}
+${BUFFER_DRAWN_INSTANCES_LIST(b.indirectDrawnInstanceIdsResult, 'read')}
 
 @compute
 @workgroup_size(${c.workgroupSizeX}, 1, 1)
@@ -181,13 +164,13 @@ fn main_Indirect(
   let settingsFlags = _uniforms.flags;
 
   // prepare iters
-  let instanceCount: u32 = _cullParams.actuallyDrawnInstances; //arrayLength(&_instanceTransforms);
+  let instanceCount: u32 = _drawnInstancesParams.actuallyDrawnInstances;
   let iterCount: u32 = ceilDivideU32(instanceCount, ${c.maxWorkgroupsY}u);
   let tfxOffset: u32 = global_id.y * iterCount;
   for(var i: u32 = 0u; i < iterCount; i++){
     let iterOffset: u32 = tfxOffset + i;
-    let tfxIdx: u32 = _drawnInstanceIdsResult[iterOffset];
-    let modelMat = _instanceTransforms[tfxIdx];
+    let tfxIdx: u32 = _drawnInstancesList[iterOffset];
+    let modelMat = _getInstanceTransform(tfxIdx);
 
     if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
       registerDraw(tfxIdx, meshletIdx);
@@ -225,9 +208,9 @@ fn isMeshletRendered(
 fn resetOtherDrawParams(global_id: vec3<u32>){
   if (global_id.x == 0u) {
     // We always draw 'MAX_MESHLET_TRIANGLES * VERTS_PER_TRIANGLE(3)' verts. Draw pass will discard if the meshlet has less.
-    _drawIndirectResult.vertexCount = ${c.maxMeshletTriangles} * 3u;
-    _drawIndirectResult.firstVertex = 0u;
-    _drawIndirectResult.firstInstance = 0u;
+    _drawnMeshletsParams.vertexCount = ${c.maxMeshletTriangles} * 3u;
+    _drawnMeshletsParams.firstVertex = 0u;
+    _drawnMeshletsParams.firstInstance = 0u;
   }
 }
 
@@ -239,7 +222,7 @@ fn registerDraw(tfxIdx: u32, meshletIdx: u32){
    // some threads in warp add 1 to the atomic. It *COULD* then add
    // to the global atomic the sum ONCE and re-distribute result among the threads.
    // See NV_shader_thread_group, functionality 4.
-   let idx = atomicAdd(&_drawIndirectResult.instanceCount, 1u);
-   _drawnMeshletIds[idx] = vec2u(tfxIdx, meshletIdx);
+   let idx = atomicAdd(&_drawnMeshletsParams.instanceCount, 1u);
+   _drawnMeshletsList[idx] = vec2u(tfxIdx, meshletIdx);
 }
 `;

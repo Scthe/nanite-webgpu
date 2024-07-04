@@ -1,26 +1,23 @@
-import { vec3 } from 'wgpu-matrix';
-import { BYTES_U32, BYTES_UVEC2, CONFIG } from '../constants.ts';
-import {
-  BOTTOM_LEVEL_NODE,
-  GPU_MESHLET_SIZE_BYTES,
-  NaniteMeshletTreeNode,
-  NaniteObject,
-} from '../scene/naniteObject.ts';
+import { BYTES_U32, CONFIG } from '../constants.ts';
+import { NaniteMeshletTreeNode, NaniteObject } from '../scene/naniteObject.ts';
 import {
   createArray,
   getBytesForTriangles,
   getTriangleCount,
 } from '../utils/index.ts';
-import { BYTES_DRAW_INDIRECT, createGPUBuffer } from '../utils/webgpu.ts';
 import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { ParsedMesh } from './objLoader.ts';
 import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 import { NaniteInstancesData } from './instancesData.ts';
-import { createDrawnInstanceIdsBuffer } from '../passes/cullInstances/cullInstancesBuffer.ts';
-import { createBillboardImpostorsBuffer } from '../passes/naniteBillboard/naniteBillboardsBuffer.ts';
+import { createDrawnInstanceIdsBuffer } from './naniteBuffers/drawnInstancesBuffer.ts';
+import { createDrawnImpostorsBuffer } from './naniteBuffers/drawnImpostorsBuffer.ts';
 import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
+import { createMeshletsDataBuffer } from './naniteBuffers/meshletsDataBuffer.ts';
+import { createDrawnMeshletsBuffer } from './naniteBuffers/drawnMeshletsBuffer.ts';
+import { createNaniteVertexPositionsBuffer } from './naniteBuffers/vertexPositionsBuffer.ts';
+import { createOctahedronNormals } from './naniteBuffers/vertexNormalsBuffer.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -33,7 +30,7 @@ export function createNaniteObject(
 ): NaniteObject {
   // allocate single shared index buffer. Meshlets will use slices of it
   const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
-  const vertexPositionsAsVec4Buffer = createVertexBufferForStorageAsVec4(
+  const vertexPositionsAsVec4Buffer = createNaniteVertexPositionsBuffer(
     device,
     name,
     loadedObj.positions
@@ -43,8 +40,12 @@ export function createNaniteObject(
     name,
     loadedObj.normals
   );
-  const meshletsBuffer = createMeshletsDataBuffer(device, name, allWIPMeshlets);
-  const visiblityBuffer = createMeshletsVisiblityBuffer(
+  const meshletsBuffer = createMeshletsDataBuffer(
+    device,
+    name,
+    allWIPMeshlets.length
+  );
+  const visiblityBuffer = createDrawnMeshletsBuffer(
     device,
     name,
     allWIPMeshlets,
@@ -57,7 +58,7 @@ export function createNaniteObject(
     instances.count,
     loadedObj.bounds.sphere
   );
-  const billboardImpostorsBuffer = createBillboardImpostorsBuffer(
+  const billboardImpostorsBuffer = createDrawnImpostorsBuffer(
     device,
     name,
     instances.count
@@ -140,7 +141,7 @@ export function createNaniteObject(
   });
 
   // upload meshlet data to the GPU for GPU visibility check/render
-  naniteObject.uploadMeshletsToGPU(device);
+  naniteObject.finalizeNaniteObject(device);
 
   // finalize
   assertValidNaniteObject(naniteObject);
@@ -171,94 +172,5 @@ function createIndexBuffer(
     size: getBytesForTriangles(totalTriangleCount),
     usage:
       GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-  });
-}
-
-/** We Java now */
-function createVertexBufferForStorageAsVec4(
-  device: GPUDevice,
-  name: string,
-  vertices: Float32Array
-): GPUBuffer {
-  const vertexCount = vertices.length / 3;
-  const data = new Float32Array(vertexCount * 4);
-  for (let i = 0; i < vertexCount; i++) {
-    data[i * 4] = vertices[i * 3];
-    data[i * 4 + 1] = vertices[i * 3 + 1];
-    data[i * 4 + 2] = vertices[i * 3 + 2];
-    data[i * 4 + 3] = 1.0;
-  }
-  return createGPUBuffer(
-    device,
-    `${name}-nanite-vertex-buffer-vec4`,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    data
-  );
-}
-
-/** https://knarkowicz.wordpress.com/2014/04/16/octahedron-normal-vector-encoding/ */
-function createOctahedronNormals(
-  device: GPUDevice,
-  name: string,
-  normals: Float32Array
-): GPUBuffer {
-  const vertexCount = normals.length / 3;
-  const data = new Float32Array(vertexCount * 2);
-  const n = vec3.create();
-
-  for (let i = 0; i < vertexCount; i++) {
-    vec3.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2], n);
-    const a = Math.abs(n[0]) + Math.abs(n[1]) + Math.abs(n[2]);
-    vec3.mulScalar(n, 1 / a, n);
-    if (n[2] < 0) {
-      // OctWrap
-      const x = n[0];
-      const y = n[1];
-      n[0] = (1.0 - Math.abs(y)) * (x >= 0.0 ? 1.0 : -1.0);
-      n[1] = (1.0 - Math.abs(x)) * (y >= 0.0 ? 1.0 : -1.0);
-    }
-    data[2 * i] = n[0] * 0.5 + 0.5;
-    data[2 * i + 1] = n[1] * 0.5 + 0.5;
-  }
-  return createGPUBuffer(
-    device,
-    `${name}-nanite-octahedron-normals`,
-    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    data
-  );
-}
-
-function createMeshletsDataBuffer(
-  device: GPUDevice,
-  name: string,
-  allWIPMeshlets: MeshletWIP[]
-): GPUBuffer {
-  const meshletCount = allWIPMeshlets.length;
-  return device.createBuffer({
-    label: `${name}-nanite-meshlets`,
-    size: meshletCount * GPU_MESHLET_SIZE_BYTES,
-    usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-  });
-}
-
-function createMeshletsVisiblityBuffer(
-  device: GPUDevice,
-  name: string,
-  allWIPMeshlets: MeshletWIP[],
-  instanceCount: number
-): GPUBuffer {
-  const bottomMeshletCount = allWIPMeshlets.filter(
-    (m) => m.lodLevel === BOTTOM_LEVEL_NODE
-  ).length;
-  const dataSize = bottomMeshletCount * BYTES_UVEC2 * instanceCount;
-
-  return device.createBuffer({
-    label: `${name}-nanite-visiblity`,
-    size: BYTES_DRAW_INDIRECT + dataSize,
-    usage:
-      GPUBufferUsage.STORAGE |
-      GPUBufferUsage.INDIRECT |
-      GPUBufferUsage.COPY_DST |
-      GPUBufferUsage.COPY_SRC, // for stats, debug etc.
   });
 }
