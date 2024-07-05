@@ -6,23 +6,14 @@ import {
 import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
 import { getTriangleCount, getVertexCount } from '../utils/index.ts';
 import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
+import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
 import { ParsedMesh } from './objLoader.ts';
 
 export interface DebugMeshes {
-  mesh: GPUMesh;
+  mesh: GPUOriginalMesh;
   meshlets: MeshletRenderPckg;
-  meshoptimizerLODs: GPUMesh[];
+  meshoptimizerLODs: GPUOriginalMesh[];
   meshoptimizerMeshletLODs: MeshletRenderPckg[];
-}
-
-/** Used only in debug */
-export interface GPUMesh {
-  vertexCount: number;
-  triangleCount: number;
-  vertexBuffer: GPUBuffer;
-  normalsBuffer: GPUBuffer;
-  uvBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
 }
 
 /** Used only in debug */
@@ -33,7 +24,7 @@ export type MeshletRenderPckg = meshopt_Meshlets & {
 
 export async function createDebugMeshes(
   device: GPUDevice,
-  originalMesh: GPUMesh,
+  originalMesh: GPUOriginalMesh,
   parsedMesh: ParsedMesh
 ): Promise<DebugMeshes> {
   const originalIndices = parsedMesh.indices;
@@ -77,18 +68,18 @@ export async function createDebugMeshes(
 
 async function createMeshLODs(
   device: GPUDevice,
-  originalMesh: GPUMesh,
+  originalMesh: GPUOriginalMesh,
   parsedMesh: ParsedMesh,
   originalIndices: Uint32Array
-): Promise<Array<[GPUMesh, Uint32Array]>> {
+): Promise<Array<[GPUOriginalMesh, Uint32Array]>> {
   const MAX_LODS = 10;
   const vertices = parsedMesh.positions;
   const originalTriangleCount = getTriangleCount(originalIndices);
   const finalTargetTriangleCount = originalTriangleCount / 10;
   let triangleCount = originalTriangleCount;
-  const meshLODs: Array<[GPUMesh, Uint32Array]> = [];
+  const meshLODs: Array<[GPUOriginalMesh, Uint32Array]> = [];
 
-  const addMeshLod = (mesh: GPUMesh, indexData: Uint32Array) => {
+  const addMeshLod = (mesh: GPUOriginalMesh, indexData: Uint32Array) => {
     meshLODs.push([mesh, indexData]);
   };
   addMeshLod(originalMesh, originalIndices);
@@ -118,7 +109,7 @@ async function createMeshLODs(
       `dbg-lod-test-index-buffer-${level}`,
       simplifiedMesh.indexBuffer
     );
-    const meshLod: GPUMesh = {
+    const meshLod: GPUOriginalMesh = {
       ...originalMesh,
       indexBuffer,
       vertexCount: getVertexCount(vertices),
@@ -132,7 +123,7 @@ async function createMeshLODs(
 
 async function createMeshletsMesh(
   device: GPUDevice,
-  originalMesh: GPUMesh,
+  originalMesh: GPUOriginalMesh,
   mesh: ParsedMesh,
   indices: Uint32Array,
   labelSuffix: string = ''

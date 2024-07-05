@@ -1,4 +1,4 @@
-import { BYTES_VEC2, BYTES_VEC3, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { VERTS_IN_TRIANGLE } from '../../constants.ts';
 import {
   BindingsCache,
   PIPELINE_DEPTH_STENCIL_ON,
@@ -8,7 +8,6 @@ import {
   labelPipeline,
   labelShader,
   setNaniteDrawStats,
-  setNaniteInstancesStats,
   useColorAttachment,
   useDepthStencilAttachment,
 } from '../_shared.ts';
@@ -21,42 +20,7 @@ import { NaniteObject } from '../../scene/naniteObject.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './drawNanitesPass.wgsl.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 import { getDiffuseTexture } from '../../scene/scene.ts';
-
-export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [
-  {
-    attributes: [
-      {
-        shaderLocation: 0, // position
-        offset: 0,
-        format: 'float32x3',
-      },
-    ],
-    arrayStride: BYTES_VEC3,
-    stepMode: 'vertex',
-  },
-  {
-    attributes: [
-      {
-        shaderLocation: 1, // normals
-        offset: 0,
-        format: 'float32x3', // only nanite object uses octahedron normals
-      },
-    ],
-    arrayStride: BYTES_VEC3,
-    stepMode: 'vertex',
-  },
-  {
-    attributes: [
-      {
-        shaderLocation: 2, // uv
-        offset: 0,
-        format: 'float32x2',
-      },
-    ],
-    arrayStride: BYTES_VEC2,
-    stepMode: 'vertex',
-  },
-];
+import { VERTEX_ATTRIBUTES } from '../../scene/GPUOriginalMesh.ts';
 
 export class DrawNanitesPass {
   public static NAME: string = DrawNanitesPass.name;
@@ -111,9 +75,6 @@ export class DrawNanitesPass {
 
   uploadFrameStats({ scene }: PassCtx) {
     setNaniteDrawStats(scene, this.drawnMeshletsCount, this.drawnTriangleCount);
-    const drawnInstancesCount =
-      scene.totalInstancesCount - this.culledInstancesCount;
-    setNaniteInstancesStats(scene, drawnInstancesCount);
   }
 
   draw(ctx: PassCtx, naniteObject: NaniteObject, loadOp: GPULoadOp) {

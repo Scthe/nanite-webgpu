@@ -202,11 +202,19 @@ function showErrorMessage(msg?: string) {
   }
 }
 
+/** WARNING: SLOW! */
 async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
-  const resultsAsync = scene.naniteObjects.map((obj) =>
-    downloadDrawnMeshletsBuffer(device, obj)
-  );
-  const results = await Promise.all(resultsAsync);
-  const drawnMeshlets = results.reduce((acc, res) => acc + res.meshletCount, 0);
-  setNaniteDrawStats(scene, drawnMeshlets, undefined);
+  let drawnMeshlets = 0;
+  let drawnTriangles = 0;
+  const resultsAsync = scene.naniteObjects.map(async (obj) => {
+    const res = await downloadDrawnMeshletsBuffer(device, obj);
+    drawnMeshlets += res.meshletCount;
+    for (let i = 0; i < res.meshletCount; i++) {
+      const meshletId = res.meshletIds[i].meshletId;
+      const meshlet = obj.find(meshletId);
+      drawnTriangles += meshlet ? meshlet.triangleCount : 0;
+    }
+  });
+  await Promise.all(resultsAsync);
+  setNaniteDrawStats(scene, drawnMeshlets, drawnTriangles);
 }

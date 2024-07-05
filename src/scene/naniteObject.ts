@@ -7,7 +7,7 @@ import { NaniteInstancesData } from './instancesData.ts';
 import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
 import { uploadMeshletsToGPU } from './naniteBuffers/meshletsDataBuffer.ts';
 import { NaniteObjectBuffers } from './naniteBuffers/index.ts';
-import { GPUMesh } from './debugMeshes.ts';
+import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
 
 export type MeshletId = number;
 
@@ -40,7 +40,7 @@ export class NaniteObject {
   constructor(
     public name: string,
     public readonly bounds: Bounds3d,
-    public readonly originalMesh: GPUMesh,
+    public readonly originalMesh: GPUOriginalMesh,
     public readonly buffers: NaniteObjectBuffers,
     public readonly impostor: ImpostorBillboardTexture,
     public readonly instances: NaniteInstancesData

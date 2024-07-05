@@ -1,7 +1,7 @@
 import { BYTES_U32, CONFIG } from '../../constants.ts';
 import { MeshletWIP } from '../../meshPreprocessing/index.ts';
 import { getTriangleCount, getBytesForTriangles } from '../../utils/index.ts';
-import { GPUMesh } from '../debugMeshes.ts';
+import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
 import { ParsedMesh } from '../objLoader.ts';
 import {
   BYTES_DRAWN_IMPOSTORS_PARAMS,
@@ -49,7 +49,7 @@ export class NaniteObjectBuffers {
   constructor(
     device: GPUDevice,
     name: string,
-    originalMesh: GPUMesh,
+    originalMesh: GPUOriginalMesh,
     loadedObj: ParsedMesh,
     allWIPMeshlets: MeshletWIP[],
     instanceCount: number

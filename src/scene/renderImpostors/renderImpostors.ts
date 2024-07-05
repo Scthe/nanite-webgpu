@@ -14,9 +14,9 @@ import {
 import { SHADER_CODE, SHADER_PARAMS } from './renderImpostors.wgsl.ts';
 import { BoundingSphere } from '../../utils/calcBounds.ts';
 import { createArray, dgr2rad } from '../../utils/index.ts';
-import { VERTEX_ATTRIBUTES } from '../../passes/naniteCpu/drawNanitesPass.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 import { createSampler } from '../../utils/textures.ts';
+import { VERTEX_ATTRIBUTES } from '../GPUOriginalMesh.ts';
 
 export class ImpostorBillboardTexture {
   public readonly textureView: GPUTextureView;

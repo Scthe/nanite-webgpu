@@ -12,7 +12,6 @@ import { PassCtx } from '../passCtx.ts';
 import { DEPTH_FORMAT } from '../../constants.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './naniteBillboard.wgsl.ts';
 
-// TODO [CRITICAL] on toggling culling reset all buffers that count stuff. ATM disabling culling leaves old billboard data in the buffer
 /** Render impostor billboards */
 export class NaniteBillboardPass {
   public static NAME: string = NaniteBillboardPass.name;

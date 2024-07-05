@@ -102,35 +102,22 @@ export class BindingsCache {
 }
 
 export function resetNaniteStats() {
-  STATS.update('Nanite meshlets', '-');
-  STATS.update('Nanite triangles', '-');
-  STATS.update('Drawn instances', '-');
+  STATS.update('Rendered meshlets', '-');
+  STATS.update('Rendered triangles', '-');
 }
 
 export function setNaniteDrawStats(
   scene: Scene,
   drawnMeshletsCount: number,
-  drawnTriangleCount: number | undefined // not always available
+  drawnTriangleCount: number
 ) {
   STATS.update(
-    'Nanite meshlets',
+    'Rendered meshlets',
     formatPercentageNumber(drawnMeshletsCount, scene.naiveMeshletCount)
   );
 
-  if (drawnTriangleCount) {
-    STATS.update(
-      'Nanite triangles',
-      formatPercentageNumber(drawnTriangleCount, scene.naiveTriangleCount)
-    );
-  }
-}
-
-export function setNaniteInstancesStats(
-  scene: Scene,
-  drawnInstancesCount: number
-) {
   STATS.update(
-    'Drawn instances',
-    formatPercentageNumber(drawnInstancesCount, scene.totalInstancesCount)
+    'Rendered triangles',
+    formatPercentageNumber(drawnTriangleCount, scene.naiveTriangleCount)
   );
 }

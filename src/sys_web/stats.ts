@@ -22,15 +22,17 @@ const AvailableStats = {
   s0: { categoryName: 'Memory' } as StatOpts,
   'Index buffer': {} as StatOpts,
   'Meshlets data': { visibilityDevice: 'gpu' } as StatOpts,
-  'Visibility buffer': { visibilityDevice: 'gpu' } as StatOpts,
+  'Instance tfxs': { visibilityDevice: 'gpu' } as StatOpts,
+  'Drawn instances': { visibilityDevice: 'gpu' } as StatOpts,
+  'Drawn impostors': { visibilityDevice: 'gpu' } as StatOpts,
+  'Drawn meshlets': { visibilityDevice: 'gpu' } as StatOpts,
   // Geometry
   s1: { categoryName: 'Geometry' } as StatOpts,
   'Preprocessing': {} as StatOpts,
   'Scene meshlets': {} as StatOpts,
   'Scene triangles': {} as StatOpts,
-  'Nanite meshlets': {} as StatOpts,
-  'Nanite triangles': { visibilityDevice: 'cpu' } as StatOpts,
-  'Drawn instances': { visibilityDevice: 'cpu' } as StatOpts,
+  'Rendered meshlets': {} as StatOpts,
+  'Rendered triangles': {} as StatOpts, // in GPU mode does not count impostors
   'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
@@ -60,7 +62,7 @@ class Stats {
       this.parentEl = undefined!;
     }
 
-    this.values['Nanite meshlets'] = '-';
+    this.values['Rendered meshlets'] = '-';
   }
 
   update(name: StatName, value: StatsValue) {

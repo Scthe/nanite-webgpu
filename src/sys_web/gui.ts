@@ -65,7 +65,7 @@ export function initializeGUI(
 
   addNaniteFolder();
   addInstanceCullingFolder();
-  addCullingFolder();
+  addMeshletCullingFolder();
   addColorMgmt();
   addDbgFolder();
 
@@ -156,20 +156,21 @@ export function initializeGUI(
     dir.add(imp, 'ditherStrength', 0.0, 1.0).name('Billboard dither');
   }
 
-  function addCullingFolder() {
+  function addMeshletCullingFolder() {
     const dir = gui.addFolder('Meshlet culling');
     dir.open();
-    const { render } = CONFIG.nanite;
+    const cfg = CONFIG.cullingMeshlets;
+    const cfgNanite = CONFIG.nanite.render;
 
     // Frustum culling
-    dir.add(render, 'useFrustumCulling').name('Frustum culling');
+    dir.add(cfg, 'frustumCulling').name('Frustum culling');
 
     // Occlusion culling
-    dir.add(render, 'useOcclusionCulling').name('Occlusion culling');
-    dir.add(render, 'isOverrideOcclusionCullMipmap').name('OC override');
+    dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
+    dir.add(cfgNanite, 'isOverrideOcclusionCullMipmap').name('OC override');
     dir
       .add(
-        render,
+        cfgNanite,
         'occlusionCullOverrideMipmapLevel',
         0,
         MAX_DEPTH_PYRAMID_LEVEL
@@ -179,7 +180,7 @@ export function initializeGUI(
 
     // SW backface cull
     // softwareBackfaceCullCtrl = dir
-    // .add(CONFIG.nanite.render, 'useSoftwareBackfaceCull')
+    // .add(cfg, 'useSoftwareBackfaceCull')
     // .name('SW backface cull');
   }
 
@@ -211,6 +212,7 @@ export function initializeGUI(
       CONFIG.displayMode = e;
       // deno-lint-ignore no-explicit-any
       (modeCtrl as any).__onFinishChange();
+      modeCtrl.updateDisplay();
     };
 
     const [debugMeshes, naniteObject] = getDebugTestObject(scene);

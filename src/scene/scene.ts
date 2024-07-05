@@ -17,7 +17,8 @@ import {
   createGPU_IndexBuffer,
 } from '../utils/webgpu.ts';
 import { createNaniteObject } from './createNaniteObject.ts';
-import { DebugMeshes, GPUMesh, createDebugMeshes } from './debugMeshes.ts';
+import { DebugMeshes, createDebugMeshes } from './debugMeshes.ts';
+import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
 import { NaniteObject } from './naniteObject.ts';
 import { ParsedMesh, loadObjFile } from './objLoader.ts';
 import {
@@ -241,7 +242,7 @@ export function createOriginalMesh(
   device: GPUDevice,
   sceneName: string,
   mesh: ParsedMesh
-): GPUMesh {
+): GPUOriginalMesh {
   const vertexBuffer = createGPU_VertexBuffer(
     device,
     `${sceneName}-original-vertices`,
@@ -284,10 +285,14 @@ function updateSceneStats(
   let naiveMeshletCount = 0;
   let totalInstancesCount = 0;
   let maxSimplifiedTriangles = 0;
-  // memory
-  let meshletsDataBytes = 0;
-  let visibilityBufferBytes = 0;
+  // memory - data
   let indexBufferBytes = 0;
+  let meshletsDataBytes = 0;
+  let instancesTfxBytes = 0;
+  // memory - drawn ids buffers
+  let drawnInstancesBytes = 0;
+  let drawnImpostorsBytes = 0;
+  let drawnMeshletsBytes = 0;
 
   for (const naniteObj of naniteObjects) {
     naiveTriangleCount +=
@@ -299,14 +304,23 @@ function updateSceneStats(
       naniteObj.roots.reduce((acc, m) => acc + m.triangleCount, 0) *
       naniteObj.instancesCount;
 
-    meshletsDataBytes += naniteObj.buffers.meshletsDataBuffer.size;
-    visibilityBufferBytes += naniteObj.buffers.drawnMeshletsBuffer.size;
     indexBufferBytes += naniteObj.buffers.indexBuffer.size;
+    meshletsDataBytes += naniteObj.buffers.meshletsDataBuffer.size;
+    instancesTfxBytes += naniteObj.instances.transformsBuffer.size;
+    // drawn
+    drawnInstancesBytes += naniteObj.buffers.drawnInstancesBuffer.size;
+    drawnImpostorsBytes += naniteObj.buffers.drawnImpostorsBuffer.size;
+    drawnMeshletsBytes += naniteObj.buffers.drawnMeshletsBuffer.size;
   }
 
+  // memory
   STATS.update('Index buffer', formatBytes(indexBufferBytes));
   STATS.update('Meshlets data', formatBytes(meshletsDataBytes));
-  STATS.update('Visibility buffer', formatBytes(visibilityBufferBytes));
+  STATS.update('Instance tfxs', formatBytes(instancesTfxBytes));
+  STATS.update('Drawn instances', formatBytes(drawnInstancesBytes));
+  STATS.update('Drawn impostors', formatBytes(drawnImpostorsBytes));
+  STATS.update('Drawn meshlets', formatBytes(drawnMeshletsBytes));
+  // geometry
   STATS.update('Scene meshlets', formatNumber(naiveMeshletCount, 1));
   STATS.update('Scene triangles', formatNumber(naiveTriangleCount, 1));
 

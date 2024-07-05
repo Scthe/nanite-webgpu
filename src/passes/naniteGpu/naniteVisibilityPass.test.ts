@@ -23,7 +23,7 @@ import {
 } from '../../utils/webgpu.ts';
 import { parseDrawnMeshletsBuffer } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { NaniteVisibilityBufferCPU } from '../naniteCpu/types.ts';
-import { GPUMesh } from '../../scene/debugMeshes.ts';
+import { GPUOriginalMesh } from '../../scene/GPUOriginalMesh.ts';
 import { ParsedMesh } from '../../scene/objLoader.ts';
 import { createGrid, createInstancesData } from '../../scene/instancesData.ts';
 import { ImpostorBillboardTexture } from '../../scene/renderImpostors/renderImpostors.ts';
@@ -41,7 +41,10 @@ const EXPECTED_DRAWN_MESHLETS_COUNT = 2;
 
 Deno.test('NaniteVisibilityPass', async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
-  CONFIG.nanite.render.useFrustumCulling = false; // disabled as would require precise mock data
+  // disabled as would require precise mock data
+  CONFIG.cullingMeshlets.frustumCulling = false;
+  // disabled as infuences which culling algo is chooses.
+  // We don't want the indirect dispatch, we want the 'manual' one.
   CONFIG.cullingInstances.enabled = false;
 
   // prettier-ignore
@@ -70,7 +73,7 @@ Deno.test('NaniteVisibilityPass', async () => {
 
   // mock mesh data, does not matter as visibility buffer only operates on instances+meshlets
   // It never has to step down to the actuall geometry
-  const mockOriginalMesh: GPUMesh = {
+  const mockOriginalMesh: GPUOriginalMesh = {
     vertexBuffer: { size: 'mocked-vertex-buffer-size' },
     // deno-lint-ignore no-explicit-any
   } as any;

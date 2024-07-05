@@ -195,7 +195,10 @@ export class Renderer {
         this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
       }
       this.drawNaniteGPUPass.draw(ctx, naniteObject, loadOp);
-      this.naniteBillboardPass.cmdRenderBillboards(ctx, naniteObject, 'load');
+
+      if (CONFIG.cullingInstances.enabled) {
+        this.naniteBillboardPass.cmdRenderBillboards(ctx, naniteObject, 'load');
+      }
     }
 
     // depth pyramid

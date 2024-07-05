@@ -1,10 +1,8 @@
 import {
-  absPathFromRepoRoot,
   injectMeshoptimizerWASM,
   injectMetisWASM,
   relativePath,
 } from '../sys_deno/testUtils.ts';
-import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptimizerUtils.ts';
 import { SceneName } from './sceneFiles.ts';
 import { FileTextReader, loadObject } from './scene.ts';
 import { assertEquals, assertExists } from 'assert';
@@ -13,9 +11,7 @@ const FAILING_SCENE: SceneName = 'cube'; // does not matter, we override .obj an
 const TEST_FILE = relativePath(import.meta, '__test__/invalid-mesh.obj');
 
 import '../lib/meshoptimizer.d.ts';
-import '../lib/metis.d.ts';
-OVERRIDE_MESHOPTIMIZER_WASM_PATH.value =
-  'file:///' + absPathFromRepoRoot('static/meshoptimizer.wasm');
+injectMeshoptimizerWASM();
 
 Deno.test({
   name: 'loadScene() with object that is impossible to simplify',

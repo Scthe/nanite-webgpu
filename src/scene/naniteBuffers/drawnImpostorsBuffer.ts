@@ -45,7 +45,6 @@ export function createDrawnImpostorsBuffer(
 ): GPUBuffer {
   const arraySizeBytes = BYTES_U32 * instanceCount;
 
-  // TODO [HIGH] extract this to util createStorageBuffer()
   const bufferGpu = device.createBuffer({
     label: `${name}-nanite-billboards`,
     size: BYTES_DRAWN_IMPOSTORS_PARAMS + arraySizeBytes,

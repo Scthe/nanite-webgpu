@@ -1,4 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { VERTEX_ATTRIBUTE_POSITION } from '../../scene/GPUOriginalMesh.ts';
 import { getDebugTestObject } from '../../scene/scene.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -10,7 +11,6 @@ import {
   useColorAttachment,
   useDepthStencilAttachment,
 } from '../_shared.ts';
-import { VERTEX_ATTRIBUTES } from '../naniteCpu/drawNanitesPass.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { SHADER_CODE } from './dbgMeshoptimizerPass.wgsl.ts';
@@ -53,7 +53,7 @@ export class DbgMeshoptimizerPass {
       vertex: {
         module: shaderModule,
         entryPoint: 'main_vs',
-        buffers: VERTEX_ATTRIBUTES,
+        buffers: [VERTEX_ATTRIBUTE_POSITION],
       },
       fragment: {
         module: shaderModule,
@@ -86,8 +86,6 @@ export class DbgMeshoptimizerPass {
     const [debugMeshes, _nanite] = getDebugTestObject(scene);
     const mesh = debugMeshes.meshoptimizerLODs[CONFIG.dbgMeshoptimizerLodLevel];
     renderPass.setVertexBuffer(0, mesh.vertexBuffer);
-    renderPass.setVertexBuffer(1, mesh.normalsBuffer); // not used but required?! Chrome WebGPU..
-    renderPass.setVertexBuffer(2, mesh.uvBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(mesh.indexBuffer, 'uint32');
     const vertexCount = mesh.triangleCount * VERTS_IN_TRIANGLE;
     renderPass.drawIndexed(vertexCount, 1, 0, 0, 0);

@@ -1,4 +1,5 @@
 import { CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { VERTEX_ATTRIBUTE_POSITION } from '../../scene/GPUOriginalMesh.ts';
 import { Scene, getDebugTestObject } from '../../scene/scene.ts';
 import {
   PIPELINE_DEPTH_STENCIL_ON,
@@ -10,7 +11,6 @@ import {
   useColorAttachment,
   useDepthStencilAttachment,
 } from '../_shared.ts';
-import { VERTEX_ATTRIBUTES } from '../naniteCpu/drawNanitesPass.ts';
 import { PassCtx } from '../passCtx.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import {
@@ -56,7 +56,7 @@ export class DbgMeshoptimizerMeshletsPass {
       vertex: {
         module: shaderModule,
         entryPoint: 'main_vs',
-        buffers: VERTEX_ATTRIBUTES,
+        buffers: [VERTEX_ATTRIBUTE_POSITION],
       },
       fragment: {
         module: shaderModule,
@@ -102,13 +102,11 @@ export class DbgMeshoptimizerMeshletsPass {
     renderPass: GPURenderPassEncoder,
     scene: Scene
   ) {
-    const [debugMeshes, nanite] = getDebugTestObject(scene);
+    const [debugMeshes, _nanite] = getDebugTestObject(scene);
     const meshlets =
       debugMeshes.meshoptimizerMeshletLODs[CONFIG.dbgMeshoptimizerLodLevel];
 
     renderPass.setVertexBuffer(0, meshlets.vertexBuffer);
-    renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
-    renderPass.setVertexBuffer(2, nanite.originalMesh.uvBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(meshlets.indexBuffer, 'uint32');
     let nextIdx = 0;
     meshlets.meshlets.forEach((m, firstInstance) => {
@@ -122,8 +120,6 @@ export class DbgMeshoptimizerMeshletsPass {
   private drawNaniteDbg(renderPass: GPURenderPassEncoder, scene: Scene) {
     const [_debugMeshes, nanite] = getDebugTestObject(scene);
     renderPass.setVertexBuffer(0, nanite.originalMesh.vertexBuffer);
-    renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
-    renderPass.setVertexBuffer(2, nanite.originalMesh.uvBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setIndexBuffer(nanite.buffers.indexBuffer, 'uint32');
 
     const drawnMeshlets = nanite.allMeshlets.filter(

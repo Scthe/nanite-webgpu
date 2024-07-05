@@ -250,7 +250,7 @@ export function splitIndicesPerMeshlets(meshlets: meshopt_Meshlets) {
   });
 }
 
-function computeMeshletBounds(
+function _computeMeshletBounds(
   module: WasmModule,
   vertices: Float32Array,
   vertexCount: number,

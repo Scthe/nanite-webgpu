@@ -3,7 +3,6 @@ import {
   assertBinarySnapshot,
   createGpuDevice_TESTS,
   injectMeshoptimizerWASM,
-  injectMetisWASM,
   relativePath,
 } from '../../sys_deno/testUtils.ts';
 import { Dimensions } from '../../utils/index.ts';
@@ -23,12 +22,9 @@ import {
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
 
-// needed cause stray imports TODO [LOW] fix imports?
+// needed cause OBJ loader optimizes the mesh
 import '../../lib/meshoptimizer.d.ts';
-import '../../lib/metis.d.ts';
-
 injectMeshoptimizerWASM();
-injectMetisWASM();
 
 const TEST_FILE = relativePath(import.meta, '__test__/cube.obj');
 

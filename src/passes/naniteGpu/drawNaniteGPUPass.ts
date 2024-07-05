@@ -15,8 +15,6 @@ import { SHADER_CODE, SHADER_PARAMS } from './drawNaniteGPUPass.wgsl.ts';
 import { getDiffuseTexture } from '../../scene/scene.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 
-export const VERTEX_ATTRIBUTES: GPUVertexBufferLayout[] = [];
-
 export class DrawNaniteGPUPass {
   public static NAME: string = DrawNaniteGPUPass.name;
 
@@ -39,14 +37,13 @@ export class DrawNaniteGPUPass {
       code: SHADER_CODE(),
     });
 
-    // TODO duplicated code from normal DrawNanitePass
     return device.createRenderPipeline({
       label: labelPipeline(DrawNaniteGPUPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
         entryPoint: 'main_vs',
-        buffers: VERTEX_ATTRIBUTES,
+        buffers: [], // no vertex attributes
       },
       fragment: {
         module: shaderModule,
@@ -79,40 +76,11 @@ export class DrawNaniteGPUPass {
     renderPass.setBindGroup(0, bindings);
 
     // draw
-    // this.debugRenderNaniteObjects(ctx, renderPass);
     renderPass.drawIndirect(naniteObject.buffers.drawnMeshletsBuffer, 0);
 
     // fin
     renderPass.end();
   }
-
-  /*
-  private debugRenderNaniteObjects(ctx: PassCtx, renderPass: GPURenderPassEncoder) {
-    // const instances = ctx.scene.naniteInstances.transforms;
-    const nanite = ctx.scene.naniteObject;
-
-    // renderPass.setVertexBuffer(0, nanite.vertexBuffer);
-    // renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
-    renderPass.set(nanite.indexBuffer, 'uint32');
-
-    const drawnMeshlets = nanite.allMeshlets.filter((m) => m.lodLevel === 0);
-    // this.reportDrawn(drawnMeshlets);
-    const vertexCount =
-      CONFIG.nanite.preprocess.meshletMaxTriangles * VERTS_IN_TRIANGLE;
-
-    drawnMeshlets.forEach((meshlet) => {
-      renderPass.draw(
-        vertexCount,
-        1, // instance count
-        0, // first vertex
-        meshlet.id // instanceId
-      );
-    });
-  }
-  
-  // deno-lint-ignore no-explicit-any
-  private reportDrawn = once((...args: any[]) => console.log('Drawn', ...args));
-  */
 
   private createBindings = (
     { device, globalUniforms, scene }: PassCtx,

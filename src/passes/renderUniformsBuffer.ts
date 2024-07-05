@@ -182,6 +182,7 @@ export class RenderUniformsBuffer {
   private encodeFlags() {
     const naniteCfg = CONFIG.nanite.render;
     const ci = CONFIG.cullingInstances;
+    const cm = CONFIG.cullingMeshlets;
     const imp = CONFIG.impostors;
 
     let flags = 0;
@@ -190,19 +191,20 @@ export class RenderUniformsBuffer {
     };
 
     // frustum cull
-    setFlag(FLAG_FRUSTUM_CULLING, naniteCfg.useFrustumCulling);
+    setFlag(FLAG_FRUSTUM_CULLING, cm.frustumCulling);
 
     // occlusion culling: skip if we don't have depth pyramid yet
-    const occlCull =
-      naniteCfg.hasValidDepthPyramid && naniteCfg.useOcclusionCulling;
+    let occlCull = naniteCfg.hasValidDepthPyramid && cm.occlusionCulling;
     setFlag(FLAG_OCCLUSION_CULLING, occlCull);
 
     // b3,4 - shading mode
     let bits = naniteCfg.shadingMode & 0b111;
     flags = flags | (bits << 2);
 
+    // instances culling
+    occlCull = naniteCfg.hasValidDepthPyramid && ci.occlusionCulling;
     setFlag(FLAG_INSTANCES_FRUSTUM_CULLING, ci.frustumCulling);
-    setFlag(FLAG_INSTANCES_OCCLUSION_CULLING, ci.occlusionCulling);
+    setFlag(FLAG_INSTANCES_OCCLUSION_CULLING, occlCull);
 
     // dbgDepthPyramidLevel
     bits = CONFIG.dbgDepthPyramidLevel & 0b1111;

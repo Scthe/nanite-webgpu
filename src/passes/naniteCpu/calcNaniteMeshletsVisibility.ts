@@ -83,7 +83,7 @@ function checkIsInsideFrustum(
   modelMat: Mat4,
   bounds: Bounds3d
 ): boolean {
-  if (!CONFIG.nanite.render.useFrustumCulling) return true;
+  if (!CONFIG.cullingMeshlets.frustumCulling) return true;
 
   TMP_CACHED_VEC4[0] = bounds.sphere.center[0];
   TMP_CACHED_VEC4[1] = bounds.sphere.center[1];

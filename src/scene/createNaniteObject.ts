@@ -3,7 +3,7 @@ import { NaniteMeshletTreeNode, NaniteObject } from '../scene/naniteObject.ts';
 import { createArray, getBytesForTriangles } from '../utils/index.ts';
 import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
-import { GPUMesh } from './debugMeshes.ts';
+import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
 import { ParsedMesh } from './objLoader.ts';
 import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 import { NaniteInstancesData } from './instancesData.ts';
@@ -13,7 +13,7 @@ import { NaniteObjectBuffers } from './naniteBuffers/index.ts';
 export function createNaniteObject(
   device: GPUDevice,
   name: string,
-  originalMesh: GPUMesh,
+  originalMesh: GPUOriginalMesh,
   loadedObj: ParsedMesh,
   allWIPMeshlets: MeshletWIP[],
   instances: NaniteInstancesData,
