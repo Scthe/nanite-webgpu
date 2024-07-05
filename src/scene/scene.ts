@@ -291,16 +291,17 @@ function updateSceneStats(
 
   for (const naniteObj of naniteObjects) {
     naiveTriangleCount +=
-      naniteObj.rawObjectTriangleCount * naniteObj.instancesCount;
-    naiveMeshletCount += naniteObj.rawMeshletCount * naniteObj.instancesCount;
+      naniteObj.bottomTriangleCount * naniteObj.instancesCount;
+    naiveMeshletCount +=
+      naniteObj.bottomMeshletCount * naniteObj.instancesCount;
     totalInstancesCount += naniteObj.instancesCount;
     maxSimplifiedTriangles +=
       naniteObj.roots.reduce((acc, m) => acc + m.triangleCount, 0) *
       naniteObj.instancesCount;
 
-    meshletsDataBytes += naniteObj.meshletsBuffer.size;
-    visibilityBufferBytes += naniteObj.dangerouslyGetVisibilityBuffer().size;
-    indexBufferBytes += naniteObj.indexBuffer.size;
+    meshletsDataBytes += naniteObj.buffers.meshletsDataBuffer.size;
+    visibilityBufferBytes += naniteObj.buffers.drawnMeshletsBuffer.size;
+    indexBufferBytes += naniteObj.buffers.indexBuffer.size;
   }
 
   STATS.update('Index buffer', formatBytes(indexBufferBytes));

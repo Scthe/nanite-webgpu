@@ -13,10 +13,6 @@ import { PassCtx } from '../passCtx.ts';
 import { STATS } from '../../sys_web/stats.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './naniteVisibilityPass.wgsl.ts';
 import { CONFIG } from '../../constants.ts';
-import {
-  bufferBindingDrawnInstanceIdsParams,
-  bufferBindingDrawnInstanceIdsArray,
-} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 
 /** Pass to cull on meshlet level */
 export class NaniteVisibilityPass {
@@ -82,7 +78,7 @@ export class NaniteVisibilityPass {
     const { cmdBuf, profiler } = ctx;
 
     // forget draws from previous frame
-    naniteObject.cmdClearDrawParams(cmdBuf);
+    naniteObject.buffers.cmdClearDrawnMeshletsParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
       timestampWrites: profiler?.createScopeGpu(NaniteVisibilityPass.NAME),
@@ -193,7 +189,7 @@ export class NaniteVisibilityPass {
 
     // dispatch
     computePass.dispatchWorkgroupsIndirect(
-      naniteObject.drawnInstanceIdsBuffer,
+      naniteObject.buffers.drawnInstancesBuffer,
       0
     );
   }
@@ -208,14 +204,15 @@ export class NaniteVisibilityPass {
     naniteObject: NaniteObject
   ) {
     const b = SHADER_PARAMS.bindings;
+    const buffers = naniteObject.buffers;
     assertIsGPUTextureView(prevFrameDepthPyramidTexture);
 
     return [
       globalUniforms.createBindingDesc(b.renderUniforms),
-      naniteObject.bufferBindingMeshlets(b.meshlets),
-      naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
-      naniteObject.bufferBindingIndirectDrawParams(b.drawIndirectParams),
-      naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
+      buffers.bindMeshletData(b.meshlets),
+      buffers.bindDrawnMeshletsList(b.drawnMeshletIds),
+      buffers.bindDrawnMeshletsParams(b.drawIndirectParams),
+      naniteObject.bindInstanceTransforms(b.instancesTransforms),
       {
         binding: b.depthPyramidTexture,
         resource: prevFrameDepthPyramidTexture,
@@ -249,7 +246,8 @@ export class NaniteVisibilityPass {
     const { device } = ctx;
     const b = SHADER_PARAMS.bindings;
     const bindGroups = this.getTheUsuallBindGroups(ctx, naniteObject);
-    const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
+
+    const buffers = naniteObject.buffers;
 
     return assignResourcesToBindings2(
       NaniteVisibilityPass,
@@ -258,14 +256,8 @@ export class NaniteVisibilityPass {
       pipeline,
       [
         ...bindGroups,
-        bufferBindingDrawnInstanceIdsParams(
-          drawnInstanceIdsBuffer,
-          b.indirectDispatchIndirectParams
-        ),
-        bufferBindingDrawnInstanceIdsArray(
-          drawnInstanceIdsBuffer,
-          b.indirectDrawnInstanceIdsResult
-        ),
+        buffers.bindDrawnInstancesParams(b.indirectDispatchIndirectParams),
+        buffers.bindDrawnInstancesList(b.indirectDrawnInstanceIdsResult),
       ]
     );
   };

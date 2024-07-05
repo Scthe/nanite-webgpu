@@ -13,6 +13,9 @@ export interface Dimensions {
 
 export type ValueOf<T> = T[keyof T];
 
+/** Remove readonly from object properties */
+export type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+
 export const dgr2rad = (dgr: number) => (dgr * Math.PI) / 180;
 
 export function createCameraProjectionMat(viewportSize: Dimensions): Mat4 {

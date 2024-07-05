@@ -111,7 +111,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   );
 
   // retrieve visiblityBuffer
-  const visiblityBuffer = naniteObject.dangerouslyGetVisibilityBuffer();
+  const visiblityBuffer = naniteObject.buffers.drawnMeshletsBuffer;
   const readbackVisiblityBuffer = createReadbackBuffer(device, visiblityBuffer);
 
   // pass

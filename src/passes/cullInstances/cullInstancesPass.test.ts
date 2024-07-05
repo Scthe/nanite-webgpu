@@ -1,6 +1,7 @@
 import {
   createGpuDevice_TESTS,
   createMockPassCtx,
+  mockNaniteObjectBuffers,
 } from '../../sys_deno/testUtils.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import {
@@ -61,16 +62,18 @@ Deno.test('CullInstancesPass', async () => {
     1
   );
 
+  // mock nanite buffers
+  const mockBuffers = mockNaniteObjectBuffers();
+  mockBuffers.drawnInstancesBuffer = bufferGpu;
+  mockBuffers.drawnImpostorsBuffer = billboardImpostorsBuffer;
+
   // nanite object
   const mockNaniteObject: NaniteObject = {
-    drawnInstanceIdsBuffer: bufferGpu,
     name: OBJ_NAME,
     meshletCount: ALL_MESHLETS_COUNT,
     instancesCount: mockInstances.count,
-    billboardImpostorsBuffer,
-    bufferBindingInstanceTransforms: (
-      bindingIdx: number
-    ): GPUBindGroupEntry => ({
+    buffers: mockBuffers,
+    bindInstanceTransforms: (bindingIdx: number): GPUBindGroupEntry => ({
       binding: bindingIdx,
       resource: { buffer: mockInstances.transformsBuffer },
     }),

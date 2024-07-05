@@ -27,7 +27,7 @@ struct CullParams{
 var<storage, ${access}> _drawnInstancesParams: CullParams;
 `;
 
-const BYTES_INSTANCE_CULL_DATA = Math.max(
+export const BYTES_DRAWN_INSTANCES_PARAMS = Math.max(
   WEBGPU_MINIMAL_BUFFER_SIZE,
   3 * BYTES_U32 + // dispatch itself
     BYTES_U32 + // actuallyDrawnInstances
@@ -59,7 +59,7 @@ export function createDrawnInstanceIdsBuffer(
   // TODO [NOW] create util for this createStorageBuffer()
   const bufferGpu = device.createBuffer({
     label: `${name}-nanite-drawn-instances-ids`,
-    size: BYTES_INSTANCE_CULL_DATA + dataSize,
+    size: BYTES_DRAWN_INSTANCES_PARAMS + dataSize,
     usage:
       GPUBufferUsage.STORAGE |
       GPUBufferUsage.INDIRECT |
@@ -79,7 +79,7 @@ function writeCullData(
   wholeObjectBounds: BoundingSphere
 ) {
   // write const data
-  const buffer = new ArrayBuffer(BYTES_INSTANCE_CULL_DATA);
+  const buffer = new ArrayBuffer(BYTES_DRAWN_INSTANCES_PARAMS);
   const bufferF32 = new Float32Array(buffer);
   const bufferU32 = new Uint32Array(buffer);
 
@@ -93,44 +93,20 @@ function writeCullData(
   bufferU32[offset0 + 4] = allMeshletsCount;
 
   // write
-  device.queue.writeBuffer(bufferGpu, 0, buffer, 0, BYTES_INSTANCE_CULL_DATA);
-}
-
-export function cmdClearDrawnInstancesDispatchParams(
-  cmdBuf: GPUCommandEncoder,
-  buf: GPUBuffer
-) {
-  cmdBuf.clearBuffer(buf, 0, 4 * BYTES_U32);
-}
-
-export const bufferBindingDrawnInstanceIdsParams = (
-  buffer: GPUBuffer,
-  bindingIdx: number
-): GPUBindGroupEntry => ({
-  binding: bindingIdx,
-  resource: {
+  device.queue.writeBuffer(
+    bufferGpu,
+    0,
     buffer,
-    offset: 0,
-    size: BYTES_INSTANCE_CULL_DATA,
-  },
-});
-
-export const bufferBindingDrawnInstanceIdsArray = (
-  buffer: GPUBuffer,
-  bindingIdx: number
-): GPUBindGroupEntry => ({
-  binding: bindingIdx,
-  resource: {
-    buffer,
-    offset: BYTES_INSTANCE_CULL_DATA,
-  },
-});
+    0,
+    BYTES_DRAWN_INSTANCES_PARAMS
+  );
+}
 
 export const parseDrawnInstancesBuffer = (data: Uint32Array) => {
   const dataF32 = new Float32Array(data.buffer);
   const actuallyDrawnInstances = data[3];
 
-  const offset = BYTES_INSTANCE_CULL_DATA / BYTES_U32;
+  const offset = BYTES_DRAWN_INSTANCES_PARAMS / BYTES_U32;
   const lastWrittenIdx = actuallyDrawnInstances;
   const instanceIds = data.slice(offset, offset + lastWrittenIdx);
 

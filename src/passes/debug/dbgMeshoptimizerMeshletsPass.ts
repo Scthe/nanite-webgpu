@@ -124,7 +124,7 @@ export class DbgMeshoptimizerMeshletsPass {
     renderPass.setVertexBuffer(0, nanite.originalMesh.vertexBuffer);
     renderPass.setVertexBuffer(1, nanite.originalMesh.normalsBuffer); // not used but required?! Chrome WebGPU..
     renderPass.setVertexBuffer(2, nanite.originalMesh.uvBuffer); // not used but required?! Chrome WebGPU..
-    renderPass.setIndexBuffer(nanite.indexBuffer, 'uint32');
+    renderPass.setIndexBuffer(nanite.buffers.indexBuffer, 'uint32');
 
     const drawnMeshlets = nanite.allMeshlets.filter(
       (m) => m.lodLevel === CONFIG.dbgNaniteLodLevel

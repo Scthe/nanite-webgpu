@@ -11,8 +11,6 @@ import {
 import { PassCtx } from '../passCtx.ts';
 import { DEPTH_FORMAT } from '../../constants.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './naniteBillboard.wgsl.ts';
-import { bufferBindingDrawnInstanceIdsParams } from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
-import { bufferBindingBillboardDrawArray } from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 
 // TODO [CRITICAL] on toggling culling reset all buffers that count stuff. ATM disabling culling leaves old billboard data in the buffer
 /** Render impostor billboards */
@@ -79,7 +77,7 @@ export class NaniteBillboardPass {
     renderPass.setBindGroup(0, bindings);
 
     // draw
-    renderPass.drawIndirect(naniteObject.billboardImpostorsBuffer, 0);
+    renderPass.drawIndirect(naniteObject.buffers.drawnImpostorsBuffer, 0);
 
     // fin
     renderPass.end();
@@ -90,8 +88,7 @@ export class NaniteBillboardPass {
     naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
-    const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
-    const billboardImpostorsBuffer = naniteObject.billboardImpostorsBuffer;
+    const buffers = naniteObject.buffers;
 
     return assignResourcesToBindings2(
       NaniteBillboardPass,
@@ -100,15 +97,9 @@ export class NaniteBillboardPass {
       this.pipeline,
       [
         globalUniforms.createBindingDesc(b.renderUniforms),
-        naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
-        bufferBindingDrawnInstanceIdsParams(
-          drawnInstanceIdsBuffer,
-          b.wholeObjectCullData
-        ),
-        bufferBindingBillboardDrawArray(
-          billboardImpostorsBuffer,
-          b.billboardsIdsResult
-        ),
+        naniteObject.bindInstanceTransforms(b.instancesTransforms),
+        buffers.bindDrawnInstancesParams(b.wholeObjectCullData),
+        buffers.bindDrawnImpostorsList(b.billboardsIdsResult),
         naniteObject.impostor.bind(b.impostorTexture),
         // needs nearest as we will also sample packed normals
         { binding: b.sampler, resource: scene.samplerNearest },

@@ -2,6 +2,7 @@ import * as path from 'std-path';
 import { assertEquals } from 'assert';
 import {
   Dimensions,
+  Writeable,
   createCameraProjectionMat,
   getClassName,
   getModelViewProjectionMatrix,
@@ -18,6 +19,7 @@ import { OVERRIDE_MESHOPTIMIZER_WASM_PATH } from '../meshPreprocessing/meshoptim
 import { OVERRIDE_METIS_WASM_PATH } from '../meshPreprocessing/partitionGraph.ts';
 import { createDepthPyramidSampler } from '../passes/depthPyramid/depthPyramidPass.ts';
 import { existsSync } from 'fs';
+import { NaniteObjectBuffers } from '../scene/naniteBuffers/index.ts';
 
 export function absPathFromRepoRoot(filePath: string) {
   const __dirname = path.dirname(path.fromFileUrl(import.meta.url));
@@ -259,4 +261,9 @@ export async function assertBinarySnapshot(
     console.log(`Creating new snapshot: '${filepath}'`);
     await Deno.writeFile(filepath, bytesU8);
   }
+}
+
+export function mockNaniteObjectBuffers(): Writeable<NaniteObjectBuffers> {
+  // deno-lint-ignore no-explicit-any
+  return new (NaniteObjectBuffers as any)();
 }

@@ -1,23 +1,14 @@
 import { BYTES_U32, CONFIG } from '../constants.ts';
 import { NaniteMeshletTreeNode, NaniteObject } from '../scene/naniteObject.ts';
-import {
-  createArray,
-  getBytesForTriangles,
-  getTriangleCount,
-} from '../utils/index.ts';
+import { createArray, getBytesForTriangles } from '../utils/index.ts';
 import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
 import { calculateBounds } from '../utils/calcBounds.ts';
 import { GPUMesh } from './debugMeshes.ts';
 import { ParsedMesh } from './objLoader.ts';
 import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
 import { NaniteInstancesData } from './instancesData.ts';
-import { createDrawnInstanceIdsBuffer } from './naniteBuffers/drawnInstancesBuffer.ts';
-import { createDrawnImpostorsBuffer } from './naniteBuffers/drawnImpostorsBuffer.ts';
 import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
-import { createMeshletsDataBuffer } from './naniteBuffers/meshletsDataBuffer.ts';
-import { createDrawnMeshletsBuffer } from './naniteBuffers/drawnMeshletsBuffer.ts';
-import { createNaniteVertexPositionsBuffer } from './naniteBuffers/vertexPositionsBuffer.ts';
-import { createOctahedronNormals } from './naniteBuffers/vertexNormalsBuffer.ts';
+import { NaniteObjectBuffers } from './naniteBuffers/index.ts';
 
 export function createNaniteObject(
   device: GPUDevice,
@@ -28,39 +19,12 @@ export function createNaniteObject(
   instances: NaniteInstancesData,
   impostor: ImpostorBillboardTexture
 ): NaniteObject {
-  // allocate single shared index buffer. Meshlets will use slices of it
-  const indexBuffer = createIndexBuffer(device, name, allWIPMeshlets);
-  const vertexPositionsAsVec4Buffer = createNaniteVertexPositionsBuffer(
+  const naniteBuffers = new NaniteObjectBuffers(
     device,
     name,
-    loadedObj.positions
-  );
-  const octahedronNormalsBuffer = createOctahedronNormals(
-    device,
-    name,
-    loadedObj.normals
-  );
-  const meshletsBuffer = createMeshletsDataBuffer(
-    device,
-    name,
-    allWIPMeshlets.length
-  );
-  const visiblityBuffer = createDrawnMeshletsBuffer(
-    device,
-    name,
+    originalMesh,
+    loadedObj,
     allWIPMeshlets,
-    instances.count
-  );
-  const instanceCullBuffer = createDrawnInstanceIdsBuffer(
-    device,
-    name,
-    allWIPMeshlets.length,
-    instances.count,
-    loadedObj.bounds.sphere
-  );
-  const billboardImpostorsBuffer = createDrawnImpostorsBuffer(
-    device,
-    name,
     instances.count
   );
 
@@ -68,13 +32,7 @@ export function createNaniteObject(
     name,
     loadedObj.bounds,
     originalMesh,
-    vertexPositionsAsVec4Buffer,
-    octahedronNormalsBuffer,
-    indexBuffer,
-    meshletsBuffer,
-    visiblityBuffer,
-    instanceCullBuffer,
-    billboardImpostorsBuffer,
+    naniteBuffers,
     impostor,
     instances
   );
@@ -108,7 +66,7 @@ export function createNaniteObject(
 
     // write index buffer slice
     device.queue.writeBuffer(
-      indexBuffer,
+      naniteBuffers.indexBuffer,
       indexBufferOffsetBytes,
       meshlet.indices,
       0
@@ -151,26 +109,9 @@ export function createNaniteObject(
     console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
     console.log('[Nanite] Root meshlets:', naniteObject.roots);
     console.log(
-      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${naniteObject.rawMeshletCount} bottom level meshlets)`
+      `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${naniteObject.bottomMeshletCount} bottom level meshlets)`
     );
   }
 
   return naniteObject;
-}
-
-function createIndexBuffer(
-  device: GPUDevice,
-  name: string,
-  meshlets: MeshletWIP[]
-): GPUBuffer {
-  const totalTriangleCount = meshlets.reduce(
-    (acc, m) => acc + getTriangleCount(m.indices),
-    0
-  );
-  return device.createBuffer({
-    label: `${name}-nanite-index-buffer`,
-    size: getBytesForTriangles(totalTriangleCount),
-    usage:
-      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
-  });
 }

@@ -321,7 +321,7 @@ function estimateFinalMeshletCount(indices: Uint32Array) {
 export class SimplificationError extends Error {
   constructor(lodLevel: number, vertexCount: number) {
     // Flat shading turns each triangle into something like it's own sub-mesh.
-    // All 3 triangle vertices share normal same normal, but a triangle
+    // All 3 triangle vertices share same normal, but a triangle
     // next to it has different normal, so 3 more vertices.
     // In that case, 2 triangles next to each other have 6 different unique
     // vertices instead of 4. This is impossible to simplify.

@@ -1,7 +1,11 @@
 import { BYTES_U32, BYTES_UVEC2 } from '../../constants.ts';
 import { MeshletWIP } from '../../meshPreprocessing/index.ts';
 import { createArray } from '../../utils/index.ts';
-import { BYTES_DRAW_INDIRECT, downloadBuffer } from '../../utils/webgpu.ts';
+import {
+  BYTES_DRAW_INDIRECT,
+  WEBGPU_MINIMAL_BUFFER_SIZE,
+  downloadBuffer,
+} from '../../utils/webgpu.ts';
 import { BOTTOM_LEVEL_NODE, NaniteObject } from '../naniteObject.ts';
 
 ///////////////////////////
@@ -23,6 +27,10 @@ struct DrawIndirect{
 @group(0) @binding(${bindingIdx})
 var<storage, ${access}> _drawnMeshletsParams: DrawIndirect;
 `;
+export const BYTES_DRAWN_MESHLETS_PARAMS = Math.max(
+  WEBGPU_MINIMAL_BUFFER_SIZE,
+  4 * BYTES_U32
+);
 
 export const BUFFER_DRAWN_MESHLETS_LIST = (
   bindingIdx: number,
@@ -68,7 +76,7 @@ export async function downloadDrawnMeshletsBuffer(
   device: GPUDevice,
   naniteObject: NaniteObject
 ) {
-  const visiblityBuffer = naniteObject.dangerouslyGetVisibilityBuffer();
+  const visiblityBuffer = naniteObject.buffers.drawnMeshletsBuffer;
 
   const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
   const result = parseDrawnMeshletsBuffer(naniteObject, data);

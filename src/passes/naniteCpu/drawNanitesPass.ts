@@ -157,7 +157,7 @@ export class DrawNanitesPass {
     renderPass.setVertexBuffer(0, naniteObject.originalMesh.vertexBuffer);
     renderPass.setVertexBuffer(1, naniteObject.originalMesh.normalsBuffer);
     renderPass.setVertexBuffer(2, naniteObject.originalMesh.uvBuffer);
-    renderPass.setIndexBuffer(naniteObject.indexBuffer, 'uint32');
+    renderPass.setIndexBuffer(naniteObject.buffers.indexBuffer, 'uint32');
 
     const cotHalfFov = calcCotHalfFov(); // ~2.414213562373095,
 

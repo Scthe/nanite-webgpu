@@ -6,17 +6,7 @@ import {
   labelPipeline,
   labelShader,
 } from '../_shared.ts';
-import {
-  bufferBindingBillboardDrawArray,
-  bufferBindingBillboardDrawParams,
-  cmdClearDrawnImpostorsDrawParams,
-} from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import { PassCtx } from '../passCtx.ts';
-import {
-  bufferBindingDrawnInstanceIdsParams,
-  bufferBindingDrawnInstanceIdsArray,
-  cmdClearDrawnInstancesDispatchParams,
-} from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './cullInstancesPass.wgsl.ts';
 
 export class CullInstancesPass {
@@ -49,14 +39,8 @@ export class CullInstancesPass {
     const { cmdBuf, profiler } = ctx;
 
     // forget draws from previous frame
-    cmdClearDrawnInstancesDispatchParams(
-      cmdBuf,
-      naniteObject.drawnInstanceIdsBuffer
-    );
-    cmdClearDrawnImpostorsDrawParams(
-      cmdBuf,
-      naniteObject.billboardImpostorsBuffer
-    );
+    naniteObject.buffers.cmdClearDrawnInstancesDispatchParams(cmdBuf);
+    naniteObject.buffers.cmdClearDrawnImpostorsParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
       timestampWrites: profiler?.createScopeGpu(CullInstancesPass.NAME),
@@ -102,8 +86,8 @@ export class CullInstancesPass {
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
     assertIsGPUTextureView(prevFrameDepthPyramidTexture);
-    const drawnInstanceIdsBuffer = naniteObject.drawnInstanceIdsBuffer;
-    const billboardImpostorsBuffer = naniteObject.billboardImpostorsBuffer;
+
+    const buffers = naniteObject.buffers;
 
     return assignResourcesToBindings2(
       CullInstancesPass,
@@ -112,23 +96,11 @@ export class CullInstancesPass {
       pipeline,
       [
         globalUniforms.createBindingDesc(b.renderUniforms),
-        naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
-        bufferBindingDrawnInstanceIdsParams(
-          drawnInstanceIdsBuffer,
-          b.dispatchIndirectParams
-        ),
-        bufferBindingDrawnInstanceIdsArray(
-          drawnInstanceIdsBuffer,
-          b.drawnInstanceIdsResult
-        ),
-        bufferBindingBillboardDrawParams(
-          billboardImpostorsBuffer,
-          b.billboardsParams
-        ),
-        bufferBindingBillboardDrawArray(
-          billboardImpostorsBuffer,
-          b.billboardsIdsResult
-        ),
+        naniteObject.bindInstanceTransforms(b.instancesTransforms),
+        buffers.bindDrawnInstancesParams(b.dispatchIndirectParams),
+        buffers.bindDrawnInstancesList(b.drawnInstanceIdsResult),
+        buffers.bindDrawnImpostorsParams(b.billboardsParams),
+        buffers.bindDrawnImpostorsList(b.billboardsIdsResult),
         {
           binding: b.depthPyramidTexture,
           resource: prevFrameDepthPyramidTexture,

@@ -29,7 +29,10 @@ export const BUFFER_DRAWN_IMPOSTORS_LIST = (
 var<storage, ${access}> _drawnImpostorsList: array<u32>;
 `;
 
-const BYTES_PARAMS = Math.max(WEBGPU_MINIMAL_BUFFER_SIZE, 4 * BYTES_U32);
+export const BYTES_DRAWN_IMPOSTORS_PARAMS = Math.max(
+  WEBGPU_MINIMAL_BUFFER_SIZE,
+  4 * BYTES_U32
+);
 
 ///////////////////////////
 /// GPU BUFFER
@@ -45,7 +48,7 @@ export function createDrawnImpostorsBuffer(
   // TODO [HIGH] extract this to util createStorageBuffer()
   const bufferGpu = device.createBuffer({
     label: `${name}-nanite-billboards`,
-    size: BYTES_PARAMS + arraySizeBytes,
+    size: BYTES_DRAWN_IMPOSTORS_PARAMS + arraySizeBytes,
     usage:
       GPUBufferUsage.STORAGE |
       GPUBufferUsage.INDIRECT |
@@ -55,34 +58,3 @@ export function createDrawnImpostorsBuffer(
 
   return bufferGpu;
 }
-
-/** zeroe the draw params (between frames) */
-export function cmdClearDrawnImpostorsDrawParams(
-  cmdBuf: GPUCommandEncoder,
-  buf: GPUBuffer
-) {
-  cmdBuf.clearBuffer(buf, 0, BYTES_PARAMS);
-}
-
-export const bufferBindingBillboardDrawParams = (
-  buffer: GPUBuffer,
-  bindingIdx: number
-): GPUBindGroupEntry => ({
-  binding: bindingIdx,
-  resource: {
-    buffer,
-    offset: 0,
-    size: BYTES_PARAMS,
-  },
-});
-
-export const bufferBindingBillboardDrawArray = (
-  buffer: GPUBuffer,
-  bindingIdx: number
-): GPUBindGroupEntry => ({
-  binding: bindingIdx,
-  resource: {
-    buffer,
-    offset: BYTES_PARAMS,
-  },
-});

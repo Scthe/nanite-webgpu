@@ -80,7 +80,7 @@ export class DrawNaniteGPUPass {
 
     // draw
     // this.debugRenderNaniteObjects(ctx, renderPass);
-    renderPass.drawIndirect(naniteObject.drawIndirectBuffer, 0);
+    renderPass.drawIndirect(naniteObject.buffers.drawnMeshletsBuffer, 0);
 
     // fin
     renderPass.end();
@@ -119,6 +119,7 @@ export class DrawNaniteGPUPass {
     naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
+    const buffers = naniteObject.buffers;
     const diffuseTextureView = getDiffuseTexture(scene, naniteObject);
     assertIsGPUTextureView(diffuseTextureView);
 
@@ -129,15 +130,13 @@ export class DrawNaniteGPUPass {
       this.renderPipeline,
       [
         globalUniforms.createBindingDesc(b.renderUniforms),
-        naniteObject.bufferBindingMeshlets(b.meshlets),
-        naniteObject.bufferBindingVisibility(b.drawnMeshletIds),
-        naniteObject.bufferBindingInstanceTransforms(b.instancesTransforms),
-        naniteObject.bufferBindingVertexBufferForStorageAsVec4(
-          b.vertexPositions
-        ),
-        naniteObject.bufferBindingOctahedronNormals(b.vertexNormals),
-        naniteObject.bufferBindingUV(b.vertexUV),
-        naniteObject.bufferBindingIndexBuffer(b.indexBuffer),
+        buffers.bindMeshletData(b.meshlets),
+        buffers.bindDrawnMeshletsList(b.drawnMeshletIds),
+        naniteObject.bindInstanceTransforms(b.instancesTransforms),
+        buffers.bindVertexPositions(b.vertexPositions),
+        buffers.bindVertexNormals(b.vertexNormals),
+        buffers.bindVertexUVs(b.vertexUV),
+        buffers.bindIndexBuffer(b.indexBuffer),
         { binding: b.diffuseTexture, resource: diffuseTextureView },
         { binding: b.sampler, resource: scene.samplerLinear },
       ]
