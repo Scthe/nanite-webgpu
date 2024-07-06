@@ -100,6 +100,19 @@ export function createGPU_IndexBuffer(
   );
 }
 
+export function createGPU_StorageBuffer(
+  device: GPUDevice,
+  label: string,
+  data: Uint32Array | Float32Array
+) {
+  return createGPUBuffer(
+    device,
+    label,
+    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    data
+  );
+}
+
 export function writeMatrixToGPUBuffer(
   device: GPUDevice,
   gpuBuffer: GPUBuffer,

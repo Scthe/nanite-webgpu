@@ -14,6 +14,7 @@ import { BUFFER_VERTEX_POSITIONS } from '../../scene/naniteBuffers/vertexPositio
 import { BUFFER_VERTEX_NORMALS } from '../../scene/naniteBuffers/vertexNormalsBuffer.ts';
 import { BUFFER_VERTEX_UVS } from '../../scene/naniteBuffers/vertexUVsBuffer.ts';
 import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
+import { BUFFER_INDEX_BUFFER } from '../../scene/naniteBuffers/index.ts';
 
 export const SHADER_PARAMS = {
   bindings: {
@@ -52,9 +53,7 @@ ${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
 ${BUFFER_VERTEX_NORMALS(b.vertexNormals)}
 ${BUFFER_VERTEX_UVS(b.vertexUV)}
 ${BUFFER_INSTANCES(b.instancesTransforms)}
-
-@group(0) @binding(${b.indexBuffer})
-var<storage, read> _indexBuffer: array<u32>;
+${BUFFER_INDEX_BUFFER(b.indexBuffer)}
 
 @group(0) @binding(${b.diffuseTexture})
 var _diffuseTexture: texture_2d<f32>;

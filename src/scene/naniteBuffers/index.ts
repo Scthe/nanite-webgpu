@@ -19,6 +19,12 @@ import { createMeshletsDataBuffer } from './meshletsDataBuffer.ts';
 import { createOctahedronNormals } from './vertexNormalsBuffer.ts';
 import { createNaniteVertexPositionsBuffer } from './vertexPositionsBuffer.ts';
 
+export const BUFFER_INDEX_BUFFER = (bindingIdx: number) => /* wgsl */ `
+
+@group(0) @binding(${bindingIdx})
+var<storage, read> _indexBuffer: array<u32>;
+`;
+
 export class NaniteObjectBuffers {
   /** Allocate single shared index buffer. Meshlets will use slices of it */
   public readonly indexBuffer: GPUBuffer = undefined!;
