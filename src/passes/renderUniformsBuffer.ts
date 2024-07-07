@@ -47,8 +47,8 @@ export class RenderUniformsBuffer {
       // b23..32 - not used
       flags: u32,
       billboardThreshold: f32,
+      softwareRasterizerThreshold: f32,
       padding0: u32,
-      padding1: u32,
       colorMgmt: vec4f,
     };
     @binding(0) @group(${group})
@@ -121,6 +121,7 @@ export class RenderUniformsBuffer {
     const nanite = c.nanite.render;
     const imp = c.impostors;
     const col = c.colors;
+    const swr = c.softwareRasterizer;
 
     let offsetBytes = 0;
     offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
@@ -144,8 +145,9 @@ export class RenderUniformsBuffer {
     // misc
     offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
     offsetBytes = this.writeF32(offsetBytes, imp.billboardThreshold);
+    offsetBytes = this.writeF32(offsetBytes, swr.threshold);
     // padding
-    offsetBytes += 2 * BYTES_U32;
+    offsetBytes += 1 * BYTES_U32;
     // color mgmt
     offsetBytes = this.writeF32(offsetBytes, col.gamma);
     offsetBytes = this.writeF32(offsetBytes, col.exposure);

@@ -24,6 +24,8 @@ import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDeb
 import { CullInstancesPass } from './passes/cullInstances/cullInstancesPass.ts';
 import { NaniteBillboardPass } from './passes/naniteBillboard/naniteBillboardPass.ts';
 import { PresentPass } from './passes/presentPass/presentPass.ts';
+import { RasterizeSwPass } from './passes/rasterizeSw/rasterizeSwPass.ts';
+import { RasterizeCombine } from './passes/rasterizeCombine/rasterizeCombine.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -31,6 +33,7 @@ export class Renderer {
   private readonly cameraFrustum: Frustum = new Frustum();
   private projectionMat: Mat4;
   private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
+  private readonly viewportSize: Dimensions = { width: 0, height: 0 };
   private frameIdx = 0;
 
   // render target textures
@@ -42,9 +45,11 @@ export class Renderer {
   // passes
   private readonly drawMeshPass: DrawNanitesPass;
   private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
+  private readonly rasterizeSwPass: RasterizeSwPass;
   private readonly naniteVisibilityPass: NaniteVisibilityPass;
   private readonly cullInstancesPass: CullInstancesPass;
   private readonly naniteBillboardPass: NaniteBillboardPass;
+  private readonly rasterizeCombine: RasterizeCombine;
   private readonly presentPass: PresentPass;
   // depth pyramid
   private readonly depthPyramidPass: DepthPyramidPass;
@@ -66,12 +71,14 @@ export class Renderer {
       device,
       HDR_RENDER_TEX_FORMAT
     );
+    this.rasterizeSwPass = new RasterizeSwPass(device);
     this.naniteVisibilityPass = new NaniteVisibilityPass(device);
     this.cullInstancesPass = new CullInstancesPass(device);
     this.naniteBillboardPass = new NaniteBillboardPass(
       device,
       HDR_RENDER_TEX_FORMAT
     );
+    this.rasterizeCombine = new RasterizeCombine(device, HDR_RENDER_TEX_FORMAT);
     this.depthPyramidPass = new DepthPyramidPass(device);
     this.depthPyramidDebugDrawPass = new DepthPyramidDebugDrawPass(
       device,
@@ -104,7 +111,6 @@ export class Renderer {
   cmdRender(
     cmdBuf: GPUCommandEncoder,
     scene: Scene,
-    viewport: Dimensions,
     screenTexture: GPUTextureView
   ) {
     assertIsGPUTextureView(screenTexture);
@@ -125,9 +131,10 @@ export class Renderer {
     const ctx: PassCtx = {
       frameIdx: this.frameIdx,
       cmdBuf,
-      viewport,
+      viewport: this.viewportSize,
       scene,
       hdrRenderTexture: this.hdrRenderTextureView,
+      rasterizerSwResult: this.rasterizeSwPass.resultBuffer,
       device: this.device,
       profiler: this.profiler,
       viewMatrix,
@@ -182,6 +189,9 @@ export class Renderer {
 
   private cmdDrawNanite_GPU(ctx: PassCtx) {
     const { naniteObjects } = ctx.scene;
+    const softwareRastEnabled = CONFIG.softwareRasterizer.threshold > 0;
+
+    this.rasterizeSwPass.clearFramebuffer(ctx);
 
     // draw objects
     for (let i = 0; i < naniteObjects.length; i++) {
@@ -194,11 +204,22 @@ export class Renderer {
         }
         this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
       }
-      this.drawNaniteGPUPass.draw(ctx, naniteObject, loadOp);
+
+      // draw: hardware
+      this.drawNaniteGPUPass.cmdHardwareRasterize(ctx, naniteObject, loadOp);
+      // draw: software
+      if (softwareRastEnabled) {
+        this.rasterizeSwPass.cmdSoftwareRasterize(ctx, naniteObject);
+      }
 
       if (CONFIG.cullingInstances.enabled) {
         this.naniteBillboardPass.cmdRenderBillboards(ctx, naniteObject, 'load');
       }
+    }
+
+    // combine hardware + software rasterizer results
+    if (softwareRastEnabled) {
+      this.rasterizeCombine.cmdCombineRasterResults(ctx);
     }
 
     // depth pyramid
@@ -217,6 +238,9 @@ export class Renderer {
   private handleViewportResize = (viewportSize: Dimensions) => {
     console.log(`Viewport resize`, viewportSize);
     CONFIG.nanite.render.hasValidDepthPyramid = false;
+
+    this.viewportSize.width = viewportSize.width;
+    this.viewportSize.height = viewportSize.height;
 
     this.projectionMat = createCameraProjectionMat(viewportSize);
 
@@ -251,12 +275,14 @@ export class Renderer {
     this.depthPyramidDebugDrawPass.onViewportResize();
     this.naniteVisibilityPass.onViewportResize();
     this.cullInstancesPass.onViewportResize();
+    this.rasterizeSwPass.onViewportResize(this.device, viewportSize);
     this.depthPyramidPass.verifyResultTexture(
       this.device,
       this.depthTexture,
       this.depthTextureView,
       true
     );
+    this.rasterizeCombine.onViewportResize();
     this.presentPass.onViewportResize();
   };
 

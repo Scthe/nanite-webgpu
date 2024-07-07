@@ -14,6 +14,11 @@ import {
   BUFFER_DRAWN_MESHLETS_PARAMS,
 } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
+import { SHADER_PARAMS as SHADER_PARAMS_RASTERIZE_SW } from '../rasterizeSw/rasterizeSwPass.wgsl.ts';
+import {
+  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
+  BUFFER_DRAWN_MESHLETS_SW_LIST,
+} from '../../scene/naniteBuffers/drawnMeshletsSwBuffer.ts';
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
@@ -21,14 +26,16 @@ export const SHADER_PARAMS = {
   maxMeshletTriangles: `${CONFIG.nanite.preprocess.meshletMaxTriangles}u`,
   bindings: {
     renderUniforms: 0,
-    meshlets: 1,
-    drawnMeshletIds: 2,
-    drawIndirectParams: 3,
-    instancesTransforms: 4,
-    depthPyramidTexture: 5,
-    depthSampler: 6,
-    indirectDispatchIndirectParams: 7,
-    indirectDrawnInstanceIdsResult: 8,
+    meshletsData: 1,
+    instancesTransforms: 2,
+    drawnMeshletsParams: 3,
+    drawnMeshletsList: 4,
+    drawnMeshletsSwParams: 5,
+    drawnMeshletsSwList: 6,
+    depthPyramidTexture: 7,
+    depthSampler: 8,
+    drawnInstancesParams: 9,
+    drawnInstancesList: 10,
   },
 };
 
@@ -52,9 +59,11 @@ ${SNIPPET_FRUSTUM_CULLING}
 ${SNIPPET_NANITE_LOD_CULLING}
 
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
-${BUFFER_MESHLET_DATA(b.meshlets)}
-${BUFFER_DRAWN_MESHLETS_PARAMS(b.drawIndirectParams, 'read_write')}
-${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read_write')}
+${BUFFER_MESHLET_DATA(b.meshletsData)}
+${BUFFER_DRAWN_MESHLETS_PARAMS(b.drawnMeshletsParams, 'read_write')}
+${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletsList, 'read_write')}
+${BUFFER_DRAWN_MESHLETS_SW_PARAMS(b.drawnMeshletsSwParams, 'read_write')}
+${BUFFER_DRAWN_MESHLETS_SW_LIST(b.drawnMeshletsSwList, 'read_write')}
 ${BUFFER_INSTANCES(b.instancesTransforms)}
 
 @group(0) @binding(${b.depthPyramidTexture})
@@ -143,9 +152,9 @@ fn main_Iter(
 
 
 // cull params
-${BUFFER_DRAWN_INSTANCES_PARAMS(b.indirectDispatchIndirectParams, 'read')}
+${BUFFER_DRAWN_INSTANCES_PARAMS(b.drawnInstancesParams, 'read')}
 // array with results
-${BUFFER_DRAWN_INSTANCES_LIST(b.indirectDrawnInstanceIdsResult, 'read')}
+${BUFFER_DRAWN_INSTANCES_LIST(b.drawnInstancesList, 'read')}
 
 @compute
 @workgroup_size(${c.workgroupSizeX}, 1, 1)
@@ -211,18 +220,43 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
     _drawnMeshletsParams.vertexCount = ${c.maxMeshletTriangles} * 3u;
     _drawnMeshletsParams.firstVertex = 0u;
     _drawnMeshletsParams.firstInstance = 0u;
+
+    _drawnMeshletsSwParams.workgroupsX = ceilDivideU32(
+      ${CONFIG.nanite.preprocess.meshletMaxTriangles}u,
+      ${SHADER_PARAMS_RASTERIZE_SW.workgroupSizeX}u
+    );
+    _drawnMeshletsSwParams.workgroupsZ = 1u;
   }
 }
 
 fn registerDraw(tfxIdx: u32, meshletIdx: u32){
-   // TODO [LOW] Aggregate atomic writes. Use ballot like [Wihlidal 2015]:
-   // "Optimizing the Graphics Pipeline with Compute"
-   // 
-   // TBH this *could* be optimized by the shader compiler. It can assume that
-   // some threads in warp add 1 to the atomic. It *COULD* then add
-   // to the global atomic the sum ONCE and re-distribute result among the threads.
-   // See NV_shader_thread_group, functionality 4.
-   let idx = atomicAdd(&_drawnMeshletsParams.instanceCount, 1u);
-   _drawnMeshletsList[idx] = vec2u(tfxIdx, meshletIdx);
+  // TODO [LOW] Aggregate atomic writes. Use ballot like [Wihlidal 2015]:
+  // "Optimizing the Graphics Pipeline with Compute"
+  // 
+  // TBH this *could* be optimized by the shader compiler. It can assume that
+  // some threads in warp add 1 to the atomic. It *COULD* then add
+  // to the global atomic the sum ONCE and re-distribute result among the threads.
+  // See NV_shader_thread_group, functionality 4.
+
+  // TODO  finish this. For now it's OFF, but we have pretend it could be used so WGSL does not delete uniform
+  let useSoftwareRasterizer = f32(meshletIdx) < -99999.0; 
+
+  if (useSoftwareRasterizer) {
+    // (software rasterizer)
+    // add 1, but no more than MAX_WORKGROUPS_Y.
+    // meh impl, but..
+    let MAX_WORKGROUPS_Y: u32 = ${SHADER_PARAMS_RASTERIZE_SW.maxWorkgroupsY}u;
+    atomicAdd(&_drawnMeshletsSwParams.workgroupsY, 1u);
+    atomicMin(&_drawnMeshletsSwParams.workgroupsY, MAX_WORKGROUPS_Y);
+      
+    // add to the ACTUALL total counter
+    let idx = atomicAdd(&_drawnMeshletsSwParams.actuallyDrawnMeshlets, 1u);
+    _drawnMeshletsSwList[idx] = vec2u(tfxIdx, meshletIdx);
+
+  } else {
+     // (hardware rasterizer)
+    let idx = atomicAdd(&_drawnMeshletsParams.instanceCount, 1u);
+    _drawnMeshletsList[idx] = vec2u(tfxIdx, meshletIdx);
+  }
 }
 `;

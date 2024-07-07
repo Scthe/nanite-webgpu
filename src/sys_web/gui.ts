@@ -19,6 +19,7 @@ import { resetNaniteStats } from '../passes/_shared.ts';
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
 const MAX_DEPTH_PYRAMID_LEVEL = 14;
+const MAX_SCREEN_SPACE_AABB_THRESHOLD = 1000.0;
 
 export let setDisplayMode: undefined | ((e: DisplayMode) => unknown) =
   undefined;
@@ -35,6 +36,7 @@ export function initializeGUI(
   let gpuFreezeVisiblityCtrl: GuiCtrl;
   // let gpuVisiblityImplCtrl: GuiCtrl;
   let _gpuShadingMode: GuiCtrl;
+  let gpuSoftwareRasterizerThrsh: GuiCtrl;
 
   const gui = new dat.GUI();
 
@@ -80,6 +82,7 @@ export function initializeGUI(
     // gpu
     setVisible(getGPUStatsCtrl, nextDevice == 'gpu');
     setVisible(gpuFreezeVisiblityCtrl, nextDevice == 'gpu');
+    setVisible(gpuSoftwareRasterizerThrsh, nextDevice == 'gpu');
     // setVisible(gpuVisiblityImplCtrl, nextDevice == 'gpu');
     // setVisible(gpuShadingMode, nextDevice == 'gpu'); // normals preview works on the CPU
     // cpu
@@ -138,6 +141,11 @@ export function initializeGUI(
     getGPUStatsCtrl = dir
       .add(dummyObject, 'getGpuDrawStats')
       .name('Get GPU visibility stats');
+
+    const cfgSr = CONFIG.softwareRasterizer;
+    gpuSoftwareRasterizerThrsh = dir
+      .add(cfgSr, 'threshold', 0.0, MAX_SCREEN_SPACE_AABB_THRESHOLD)
+      .name('Sw raster. threshold [px]');
   }
 
   function addInstanceCullingFolder() {
@@ -150,7 +158,7 @@ export function initializeGUI(
     dir.add(cfg, 'frustumCulling').name('Frustum culling');
     dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
     dir
-      .add(imp, 'billboardThreshold', 0.0, 1000.0)
+      .add(imp, 'billboardThreshold', 0.0, MAX_SCREEN_SPACE_AABB_THRESHOLD)
       .name('Billboard threshold [px]');
     dir.add(imp, 'forceOnlyBillboards').name('Force billboards');
     dir.add(imp, 'ditherStrength', 0.0, 1.0).name('Billboard dither');

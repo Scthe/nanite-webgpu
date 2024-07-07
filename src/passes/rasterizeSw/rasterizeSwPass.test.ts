@@ -4,23 +4,20 @@ import {
   mockNaniteObjectBuffers,
   relativePath,
 } from '../../sys_deno/testUtils.ts';
-import { BYTES_U32 } from '../../constants.ts';
 import { RasterizeSwPass } from './rasterizeSwPass.ts';
 import { Dimensions, ensureTypedArray } from '../../utils/index.ts';
-
-import '../../lib/meshoptimizer.d.ts'; // TODO ??? remove
-import '../../lib/metis.d.ts'; // TODO ??? remove
 import {
   cmdCopyToReadbackBuffer,
-  createGPU_IndexBuffer,
   createGPU_StorageBuffer,
-  createGPU_VertexBuffer,
   createReadbackBuffer,
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
 import { writePng } from '../../sys_deno/fakeCanvas.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
+
+import '../../lib/meshoptimizer.d.ts'; // TODO ??? remove
+import '../../lib/metis.d.ts'; // TODO ??? remove
 
 const RESULT_SIZE: Dimensions = {
   width: 64,
@@ -36,6 +33,7 @@ const VERTEX_POSITIONS = [
 ].flat();
 const INDEX_BUFFER = [0, 1, 2];
 
+// TODO actually add an assertion
 Deno.test('RasterizeSwPass', async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
 
@@ -65,21 +63,14 @@ Deno.test('RasterizeSwPass', async () => {
     // deno-lint-ignore no-explicit-any
   } as any;
 
-  // result framebuffer as flat buffer
-  const resultBuffer = device.createBuffer({
-    label: `rasterize-sw-test`,
-    size: BYTES_U32 * RESULT_SIZE.width * RESULT_SIZE.height,
-    usage:
-      GPUBufferUsage.STORAGE |
-      GPUBufferUsage.INDIRECT |
-      GPUBufferUsage.COPY_DST |
-      GPUBufferUsage.COPY_SRC, // for stats, debug etc.
-  });
-  // readback buffer (allows Usage.MAP_READ)
-  const resultReadbackBuffer = createReadbackBuffer(device, resultBuffer);
-
   // pass
   const pass = new RasterizeSwPass(device);
+  pass.onViewportResize(device, RESULT_SIZE);
+
+  // result framebuffer as flat buffer
+  const resultBuffer = pass.resultBuffer;
+  // readback buffer (allows Usage.MAP_READ)
+  const resultReadbackBuffer = createReadbackBuffer(device, resultBuffer);
 
   // submit
   const cmdBuf = device.createCommandEncoder();
@@ -90,7 +81,7 @@ Deno.test('RasterizeSwPass', async () => {
   passCtx.globalUniforms = uniforms;
   passCtx.viewport = RESULT_SIZE;
   uniforms.update(passCtx);
-  pass.cmdRasterizeInSoftware(passCtx, resultBuffer, mockNaniteObject);
+  pass.cmdSoftwareRasterize(passCtx, mockNaniteObject);
   cmdCopyToReadbackBuffer(cmdBuf, resultBuffer, resultReadbackBuffer);
   device.queue.submit([cmdBuf.finish()]);
 

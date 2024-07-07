@@ -108,9 +108,8 @@ const SCENE_FILE: SceneName = 'jinx';
 
     // record commands
     const cmdBuf = device.createCommandEncoder(mainCmdBufDesc);
-    const viewport = canvasResizeSystem.getViewportSize();
     const screenTexture = canvasResizeSystem.getScreenTextureView();
-    renderer.cmdRender(cmdBuf, scene, viewport, screenTexture);
+    renderer.cmdRender(cmdBuf, scene, screenTexture);
 
     // submit commands
     profiler.endFrame(cmdBuf);

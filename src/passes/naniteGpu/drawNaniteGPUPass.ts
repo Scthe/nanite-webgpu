@@ -55,7 +55,11 @@ export class DrawNaniteGPUPass {
     });
   }
 
-  draw(ctx: PassCtx, naniteObject: NaniteObject, loadOp: GPULoadOp) {
+  cmdHardwareRasterize(
+    ctx: PassCtx,
+    naniteObject: NaniteObject,
+    loadOp: GPULoadOp
+  ) {
     const { cmdBuf, profiler, depthTexture, hdrRenderTexture } = ctx;
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass

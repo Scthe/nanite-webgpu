@@ -162,6 +162,7 @@ export class DepthPyramidPass {
 
     // no need to clear previous values, as we override every pixel
     const computePass = cmdBuf.beginComputePass({
+      label: DepthPyramidPass.NAME,
       timestampWrites: profiler?.createScopeGpu(DepthPyramidPass.NAME),
     });
 

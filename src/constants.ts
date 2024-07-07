@@ -107,7 +107,7 @@ export const CONFIG = {
   impostors: {
     views: 12,
     textureSize: 512, // TODO [NOW] adjust
-    /** Every object that is smaller than this on screen becomes impostor billboard. Calculated as screen space AABB width * height. */
+    /** Every object that is smaller than this on screen becomes impostor billboard. Calculated as `screen space AABB width * height`. */
     billboardThreshold: 800,
     /** Do not render mesh, ONLY billboards regardless of everything */
     forceOnlyBillboards: false,
@@ -127,6 +127,13 @@ export const CONFIG = {
      * - test on dense meshes. Probably works better then
      */
     // useSoftwareBackfaceCull: false,
+  },
+
+  ///////////////
+  /// SOFTWARE RASTERIZER
+  softwareRasterizer: {
+    /** Every meshlet that is less pixels than this will be software rendered. Calculated as `screen space AABB width * height`. */
+    threshold: 0.0,
   },
 
   ///////////////

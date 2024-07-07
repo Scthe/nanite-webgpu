@@ -13,8 +13,9 @@ UE5
 */
 
 export const SHADER_PARAMS = {
-  workgroupSizeX: 1, // TODO
-  workgroupSizeY: 1, // TODO
+  workgroupSizeX: 1, // TODO set better value
+  workgroupSizeY: 1, // TODO remove, hardcode as 1
+  maxWorkgroupsY: 1 << 15, // Spec says limit is 65535 (2^16 - 1), so we use 32768
   bindings: {
     renderUniforms: 0,
     resultBuffer: 1,
@@ -22,6 +23,17 @@ export const SHADER_PARAMS = {
     indexBuffer: 3,
   },
 };
+
+export const BUFFER_SOFTWARE_RASTERIZER_RESULT = (
+  bindingIdx: number,
+  access: 'read_write' | 'read'
+) => /* wgsl */ `
+
+@group(0) @binding(${bindingIdx})
+var<storage, ${access}> _softwareRasterizerResult: ${
+  access === 'read_write' ? 'array<atomic<u32>>' : 'array<u32>'
+};
+`;
 
 ///////////////////////////
 /// SHADER CODE
@@ -34,9 +46,7 @@ export const SHADER_CODE = () => /* wgsl */ `
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
 ${BUFFER_INDEX_BUFFER(b.indexBuffer)}
-
-@group(0) @binding(${b.resultBuffer})
-var<storage, read_write> _result: array<atomic<u32>>;
+${BUFFER_SOFTWARE_RASTERIZER_RESULT(b.resultBuffer, 'read_write')}
 
 const COLOR_RED: u32 = 0xff0000ffu;
 const COLOR_GREEN: u32 = 0xff00ff00u;
@@ -50,6 +60,10 @@ const COLOR_YELLOW: u32 = 0xff00ffffu;
 fn main(
   @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
+  // x - triangle id inside meshlet, always 0-124. You might have to discard
+  // y - entry index into drawn meshlets SW list
+  // z - 1
+
   let viewportSize: vec2f = _uniforms.viewport.xy;
   // storeResult(viewportSize, global_id.xy, 0x8fff0000u); // ABGR
 
@@ -154,6 +168,6 @@ fn storeResult(viewportSize: vec2u, posPx: vec2u, value: u32) {
   }
   let y = viewportSize.y - posPx.y; // invert cause WebGPU coordinates
   let idx: u32 = y * viewportSize.x + posPx.x;
-  atomicStore(&_result[idx], value);
+  atomicStore(&_softwareRasterizerResult[idx], value);
 }
 `;

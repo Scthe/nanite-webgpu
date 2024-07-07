@@ -79,8 +79,10 @@ export class NaniteVisibilityPass {
 
     // forget draws from previous frame
     naniteObject.buffers.cmdClearDrawnMeshletsParams(cmdBuf);
+    naniteObject.buffers.cmdClearDrawnMeshletsSwParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
+      label: NaniteVisibilityPass.NAME,
       timestampWrites: profiler?.createScopeGpu(NaniteVisibilityPass.NAME),
     });
 
@@ -209,9 +211,11 @@ export class NaniteVisibilityPass {
 
     return [
       globalUniforms.createBindingDesc(b.renderUniforms),
-      buffers.bindMeshletData(b.meshlets),
-      buffers.bindDrawnMeshletsList(b.drawnMeshletIds),
-      buffers.bindDrawnMeshletsParams(b.drawIndirectParams),
+      buffers.bindMeshletData(b.meshletsData),
+      buffers.bindDrawnMeshletsParams(b.drawnMeshletsParams),
+      buffers.bindDrawnMeshletsList(b.drawnMeshletsList),
+      buffers.bindDrawnMeshletsSwParams(b.drawnMeshletsSwParams),
+      buffers.bindDrawnMeshletsSwList(b.drawnMeshletsSwList),
       naniteObject.bindInstanceTransforms(b.instancesTransforms),
       {
         binding: b.depthPyramidTexture,
@@ -256,8 +260,8 @@ export class NaniteVisibilityPass {
       pipeline,
       [
         ...bindGroups,
-        buffers.bindDrawnInstancesParams(b.indirectDispatchIndirectParams),
-        buffers.bindDrawnInstancesList(b.indirectDrawnInstanceIdsResult),
+        buffers.bindDrawnInstancesParams(b.drawnInstancesParams),
+        buffers.bindDrawnInstancesList(b.drawnInstancesList),
       ]
     );
   };

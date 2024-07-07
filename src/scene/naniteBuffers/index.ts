@@ -15,6 +15,10 @@ import {
   BYTES_DRAWN_MESHLETS_PARAMS,
   createDrawnMeshletsBuffer,
 } from './drawnMeshletsBuffer.ts';
+import {
+  BYTES_DRAWN_MESHLETS_SW_PARAMS,
+  createDrawnMeshletsSwBuffer,
+} from './drawnMeshletsSwBuffer.ts';
 import { createMeshletsDataBuffer } from './meshletsDataBuffer.ts';
 import { createOctahedronNormals } from './vertexNormalsBuffer.ts';
 import { createNaniteVertexPositionsBuffer } from './vertexPositionsBuffer.ts';
@@ -35,9 +39,7 @@ export class NaniteObjectBuffers {
   ///////////////
   // vertex buffers
 
-  /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`.
-   * TODO [MEDIUM] https://momentsingraphics.de/ToyRenderer2SceneManagement.html#Quantization,
-   */
+  /** SSBO with `array<vec3f>` does not work. Forces `array<vec4f>`. */
   public readonly vertexPositionsBuffer: GPUBuffer = undefined!;
   public readonly vertexNormalsBuffer: GPUBuffer = undefined!;
   public readonly vertexUVsBuffer: GPUBuffer = undefined!;
@@ -49,8 +51,10 @@ export class NaniteObjectBuffers {
   public readonly drawnInstancesBuffer: GPUBuffer = undefined!;
   /** GPU-flow: Draw params and instanceIds for billboards. Holds 1 draw indirect and `Array<tfxId>` */
   public readonly drawnImpostorsBuffer: GPUBuffer = undefined!;
-  /** GPU-flow: temporary structure between passes. Holds 1 draw indirect and `Array<(tfxId, meshletId)>` */
+  /** GPU-flow: [Hardware rasterizing] Temporary structure between passes. Holds 1 draw indirect and `Array<(tfxId, meshletId)>` */
   public readonly drawnMeshletsBuffer: GPUBuffer = undefined!;
+  /** GPU-flow: [Software rasterizing] Temporary structure between passes. Holds 1 dispatch indirect and `Array<(tfxId, meshletId)>` */
+  public readonly drawnMeshletsSwBuffer: GPUBuffer = undefined!;
 
   constructor(
     device: GPUDevice,
@@ -83,6 +87,12 @@ export class NaniteObjectBuffers {
       allWIPMeshlets.length
     );
     this.drawnMeshletsBuffer = createDrawnMeshletsBuffer(
+      device,
+      name,
+      allWIPMeshlets,
+      instanceCount
+    );
+    this.drawnMeshletsSwBuffer = createDrawnMeshletsSwBuffer(
       device,
       name,
       allWIPMeshlets,
@@ -128,7 +138,7 @@ export class NaniteObjectBuffers {
   });
 
   ///////////////////////
-  // Drawn meshlets
+  // Drawn meshlets - hardware
 
   cmdClearDrawnMeshletsParams(cmdBuf: GPUCommandEncoder) {
     cmdBuf.clearBuffer(this.drawnMeshletsBuffer, 0, 4 * BYTES_U32);
@@ -148,6 +158,30 @@ export class NaniteObjectBuffers {
     resource: {
       buffer: this.drawnMeshletsBuffer,
       offset: BYTES_DRAWN_MESHLETS_PARAMS,
+    },
+  });
+
+  ///////////////////////
+  // Drawn meshlets - software
+
+  cmdClearDrawnMeshletsSwParams(cmdBuf: GPUCommandEncoder) {
+    cmdBuf.clearBuffer(this.drawnMeshletsSwBuffer, 0, 4 * BYTES_U32);
+  }
+
+  bindDrawnMeshletsSwParams = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: {
+      buffer: this.drawnMeshletsSwBuffer,
+      offset: 0,
+      size: BYTES_DRAWN_MESHLETS_SW_PARAMS,
+    },
+  });
+
+  bindDrawnMeshletsSwList = (bindingIdx: number): GPUBindGroupEntry => ({
+    binding: bindingIdx,
+    resource: {
+      buffer: this.drawnMeshletsSwBuffer,
+      offset: BYTES_DRAWN_MESHLETS_SW_PARAMS,
     },
   });
 

@@ -37,7 +37,7 @@ export const SCENES = {
   // lucy: [sceneModel('lucy', 100, 10, 0)],
   lucy: [sceneModel('lucy', 10, 10, 0)],
   dragon: [sceneModel('dragon', 1, 1)],
-  cube: [sceneModel('cube')],
+  cube: [sceneModel('cube', 1, 1)],
   plane: [sceneModel('plane', 1, 1)],
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
   displacedPlane: [sceneModel('displacedPlane', 1, 1)],

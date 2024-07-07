@@ -57,7 +57,7 @@ export function createDrawnMeshletsBuffer(
   const dataSize = bottomMeshletCount * BYTES_UVEC2 * instanceCount;
 
   return device.createBuffer({
-    label: `${name}-nanite-visiblity`,
+    label: `${name}-nanite-drawn-meshlets`,
     size: BYTES_DRAW_INDIRECT + dataSize,
     usage:
       GPUBufferUsage.STORAGE |
@@ -81,7 +81,7 @@ export async function downloadDrawnMeshletsBuffer(
   const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
   const result = parseDrawnMeshletsBuffer(naniteObject, data);
 
-  console.log(`[${naniteObject.name}] Visibility buffer`, result);
+  console.log(`[${naniteObject.name}] Drawn meshlets buffer`, result);
   return result;
 }
 

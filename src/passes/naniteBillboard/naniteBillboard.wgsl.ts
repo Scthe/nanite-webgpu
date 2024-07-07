@@ -88,7 +88,7 @@ fn main_vs(
   // TODO modify .z to bring closer/FURTHER in view space? Further means occ. cull will be more conservative
 
   result.position = projMat * cornerVS;
-  result.positionWS = modelMat * vec4f(boundingSphere.xyz, 1.); // TODO viewMatInv * cornerVS; would be better
+  result.positionWS = modelMat * vec4f(boundingSphere.xyz, 1.); // TODO [IGNORE] viewMatInv * cornerVS; would be better
   result.uv = (quadOffset.xy + 1.0) / 2.0;
   result.uv.y = 1.0 - result.uv.y;
 

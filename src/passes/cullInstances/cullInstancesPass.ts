@@ -43,6 +43,7 @@ export class CullInstancesPass {
     naniteObject.buffers.cmdClearDrawnImpostorsParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
+      label: CullInstancesPass.NAME,
       timestampWrites: profiler?.createScopeGpu(CullInstancesPass.NAME),
     });
 

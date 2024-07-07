@@ -18,10 +18,11 @@ const b = SHADER_PARAMS.bindings;
 
 export const SHADER_CODE = () => /* wgsl */ `
 
-${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${FULLSCREEN_TRIANGLE_POSITION}
 ${SNIPPET_DITHER}
 ${SNIPPET_ACES}
+
+${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 
 @group(0) @binding(${b.textureSrc})
 var _textureSrc: texture_2d<f32>;
