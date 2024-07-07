@@ -145,7 +145,7 @@ export function initializeGUI(
     const cfgSr = CONFIG.softwareRasterizer;
     gpuSoftwareRasterizerThrsh = dir
       .add(cfgSr, 'threshold', 0.0, MAX_SCREEN_SPACE_AABB_THRESHOLD)
-      .name('Sw raster. threshold [px]');
+      .name('Softw. raster. threshold [px]');
   }
 
   function addInstanceCullingFolder() {

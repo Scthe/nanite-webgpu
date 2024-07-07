@@ -11,6 +11,7 @@ export const SHADER_PARAMS = {
 
 ///////////////////////////
 /// SHADER CODE
+/// I wish I could use compute pass, but WGSL has.. problems
 ///////////////////////////
 const b = SHADER_PARAMS.bindings;
 

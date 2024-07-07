@@ -160,4 +160,24 @@ fn projectSphereView(
 
   return true;
 }
+
+
+fn projectSphereToScreen(
+  modelMat: mat4x4<f32>,
+  boundingSphere: vec4f,
+  pixelSpan: ptr<function,vec2f>
+) -> bool {
+  // get AABB in projection space
+  // TODO [LOW] duplicate from occlusion culling
+  let viewportSize = _uniforms.viewport.xy;
+  let viewMat = _uniforms.viewMatrix;
+  let projMat = _uniforms.projMatrix;
+  var aabb = vec4f();
+  let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
+  let r = boundingSphere.w;
+  let projectionOK = projectSphereView(projMat, center.xyz, r, &aabb);
+  pixelSpan.x = abs(aabb.z - aabb.x) * viewportSize.x;
+  pixelSpan.y = abs(aabb.w - aabb.y) * viewportSize.y;
+  return projectionOK;
+}
 `;

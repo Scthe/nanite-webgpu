@@ -1,6 +1,13 @@
+import {
+  BUFFER_DRAWN_MESHLETS_SW_LIST,
+  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
+} from '../../scene/naniteBuffers/drawnMeshletsSwBuffer.ts';
 import { BUFFER_INDEX_BUFFER } from '../../scene/naniteBuffers/index.ts';
+import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
+import { BUFFER_MESHLET_DATA } from '../../scene/naniteBuffers/meshletsDataBuffer.ts';
 import { BUFFER_VERTEX_POSITIONS } from '../../scene/naniteBuffers/vertexPositionsBuffer.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
+import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 
 /*
 https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/
@@ -10,17 +17,24 @@ https://jtsorlinis.github.io/rendering-tutorial/
 UE5
 - https://github.com/EpicGames/UnrealEngine/blob/c830445187784f1269f43b56f095493a27d5a636/Engine/Source/Developer/NaniteUtilities/Public/Rasterizer.h#L117
 - https://github.com/EpicGames/UnrealEngine/blob/c830445187784f1269f43b56f095493a27d5a636/Engine/Shaders/Private/Nanite/NaniteRasterizer.ush#L221
+
+Other possible features:
+- supersampling 
+- transparency from textures. It actually has to mix the pixel behind. But we do not know the pixel behind.
 */
 
 export const SHADER_PARAMS = {
-  workgroupSizeX: 1, // TODO set better value
-  workgroupSizeY: 1, // TODO remove, hardcode as 1
+  workgroupSizeX: 32, // TODO [LOW] set better value
   maxWorkgroupsY: 1 << 15, // Spec says limit is 65535 (2^16 - 1), so we use 32768
   bindings: {
     renderUniforms: 0,
     resultBuffer: 1,
     vertexPositions: 2,
     indexBuffer: 3,
+    meshletsData: 4,
+    drawnMeshletIds: 5,
+    drawnMeshletParams: 6,
+    instancesTransforms: 7,
   },
 };
 
@@ -43,11 +57,19 @@ const b = SHADER_PARAMS.bindings;
 
 export const SHADER_CODE = () => /* wgsl */ `
 
+${SHADER_SNIPPETS.GET_MVP_MAT}
+${SHADER_SNIPPETS.UTILS}
+
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
+${BUFFER_MESHLET_DATA(b.meshletsData)}
+${BUFFER_DRAWN_MESHLETS_SW_PARAMS(b.drawnMeshletParams, 'read')}
+${BUFFER_DRAWN_MESHLETS_SW_LIST(b.drawnMeshletIds, 'read')}
 ${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
 ${BUFFER_INDEX_BUFFER(b.indexBuffer)}
+${BUFFER_INSTANCES(b.instancesTransforms)}
 ${BUFFER_SOFTWARE_RASTERIZER_RESULT(b.resultBuffer, 'read_write')}
 
+// test colors in ABGR
 const COLOR_RED: u32 = 0xff0000ffu;
 const COLOR_GREEN: u32 = 0xff00ff00u;
 const COLOR_BLUE: u32 = 0xffff0000u;
@@ -56,7 +78,7 @@ const COLOR_PINK: u32 = 0xffff00ffu;
 const COLOR_YELLOW: u32 = 0xff00ffffu;
 
 @compute
-@workgroup_size(${c.workgroupSizeX}, ${c.workgroupSizeY}, 1)
+@workgroup_size(${c.workgroupSizeX}, 1, 1)
 fn main(
   @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {
@@ -65,39 +87,68 @@ fn main(
   // z - 1
 
   let viewportSize: vec2f = _uniforms.viewport.xy;
-  // storeResult(viewportSize, global_id.xy, 0x8fff0000u); // ABGR
+  let viewMatrix = _uniforms.viewMatrix;
+  let projMatrix = _uniforms.projMatrix;
 
-  let triangleIdx = global_id.x;
-  rasterize(viewportSize, triangleIdx);
+  let triangleIdx: u32 = global_id.x;
+
+  // prepare iters
+  let drawnMeshletCnt: u32 = _drawnMeshletsSwParams.actuallyDrawnMeshlets;
+  let iterCount: u32 = ceilDivideU32(drawnMeshletCnt, ${c.maxWorkgroupsY}u);
+  let tfxOffset: u32 = global_id.y * iterCount;
+
+  for(var i: u32 = 0u; i < iterCount; i++){
+    let iterOffset: u32 = tfxOffset + i;
+    if (iterOffset >= drawnMeshletCnt) { continue; }
+
+    // get meshlet
+    let meshletId: vec2u = _drawnMeshletsSwList[iterOffset]; // .x - transfromIdx, .y - meshletIdx
+    let meshlet = _meshlets[meshletId.y];
+    if (triangleIdx >= meshlet.triangleCount) { continue; }
+
+    // get tfx
+    let modelMat = _getInstanceTransform(meshletId.x);
+    let mvpMat = getMVP_Mat(modelMat, viewMatrix, projMatrix);
+
+    // draw
+    let indexOffset = meshlet.firstIndexOffset;
+    rasterize(
+      mvpMat,
+      viewportSize,
+      indexOffset,
+      triangleIdx
+    );
+  } 
 }
 
 fn rasterize(
+  mvpMat: mat4x4f,
   viewportSizeF32: vec2f,
+  indexOffset: u32,
   triangleIdx: u32
 ) {
   let viewportSize = vec2u(viewportSizeF32);
 
-  // TODO bounds check
-  let idx0 = _indexBuffer[triangleIdx * 3u];
-  let idx1 = _indexBuffer[triangleIdx * 3u + 1u]; // swap idx1 and idx2 for CCW
-  let idx2 = _indexBuffer[triangleIdx * 3u + 2u];
+  let idx0 = _indexBuffer[indexOffset + triangleIdx * 3u];
+  let idx1 = _indexBuffer[indexOffset + triangleIdx * 3u + 1u]; // swap idx1 and idx2 for CCW
+  let idx2 = _indexBuffer[indexOffset + triangleIdx * 3u + 2u];
   let vertexPos0 = _getVertexPosition(idx0); // assumes .w=1
   let vertexPos1 = _getVertexPosition(idx1); // assumes .w=1
   let vertexPos2 = _getVertexPosition(idx2); // assumes .w=1
-  let v0_NDC: vec3f = projectVertex(vertexPos0);
-  let v1_NDC: vec3f = projectVertex(vertexPos1);
-  let v2_NDC: vec3f = projectVertex(vertexPos2);
+  let v0_NDC: vec3f = projectVertex(mvpMat, vertexPos0);
+  let v1_NDC: vec3f = projectVertex(mvpMat, vertexPos1);
+  let v2_NDC: vec3f = projectVertex(mvpMat, vertexPos2);
   let v0: vec2f = ndc2viewportPx(viewportSizeF32.xy, v0_NDC); // in pixels
   let v1: vec2f = ndc2viewportPx(viewportSizeF32.xy, v1_NDC); // in pixels
   let v2: vec2f = ndc2viewportPx(viewportSizeF32.xy, v2_NDC); // in pixels
-  // TODO [IGNORE?] following should also affect result just in case
   // storeResult(viewportSize, vec2u(v0.xy), COLOR_RED); // dbg
   // storeResult(viewportSize, vec2u(v1.xy), COLOR_GREEN); // dbg
   // storeResult(viewportSize, vec2u(v2.xy), COLOR_BLUE); // dbg
   
-  // backface culling - CW is OK, CCW fails
-  let triangleArea = edgeFunction(v0, v1, v2);
+  // backface culling - CCW is OK, CW fails
+  let triangleArea = -edgeFunction(v0, v1, v2); // negative cause CCW is default in WebGPU
   if (triangleArea < 0.) { return; }
+  // NOTE: to handle CW, just swap v1 and v2
 
   // get bounding box XY points. All values in pixels as f32
   // MAX: top right on screen, but remember Y is inverted!
@@ -118,9 +169,9 @@ fn rasterize(
       let p = vec2f(x, y);
 
       // barycentric coordinates
-      let C0 = edgeFunction(v1, v2, p) / triangleArea; // for vertex 0
-      let C1 = edgeFunction(v2, v0, p) / triangleArea; // for vertex 1
-      let C2 = edgeFunction(v0, v1, p) / triangleArea; // for vertex 2
+      let C0 = edgeFunction(v2, v1, p) / triangleArea; // for vertex 0
+      let C1 = edgeFunction(v0, v2, p) / triangleArea; // for vertex 1
+      let C2 = edgeFunction(v1, v0, p) / triangleArea; // for vertex 2
 
       if (C0 >= 0 && C1 >= 0 && C2 >= 0) {
         // let value = COLOR_TEAL;
@@ -146,10 +197,10 @@ fn debugBarycentric(C0: f32, C1: f32, C2: f32) -> u32 {
   );
 }
 
-fn projectVertex(pos: vec4f) -> vec3f {
-  // TODO multiply by MVP, do perspective divide
-  // return vec3f(pos.xy * 0.5 + 0.5, pos.z); // to [0-1]
-  return pos.xyz;
+fn projectVertex(mvpMat:mat4x4f, pos: vec4f) -> vec3f {
+  let posClip = mvpMat * pos;
+  let posNDC = posClip / posClip.w;
+  return posNDC.xyz;
 }
 
 fn ndc2viewportPx(viewportSize: vec2f, pos: vec3f) -> vec2f {

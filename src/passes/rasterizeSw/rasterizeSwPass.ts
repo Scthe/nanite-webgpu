@@ -1,7 +1,6 @@
 import { BYTES_U32 } from '../../constants.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import { Dimensions, ensureTypedArray } from '../../utils/index.ts';
-import { createGPU_StorageBuffer } from '../../utils/webgpu.ts';
+import { Dimensions } from '../../utils/index.ts';
 import {
   labelShader,
   labelPipeline,
@@ -19,8 +18,6 @@ export class RasterizeSwPass {
 
   /** result framebuffer as flat buffer */
   public resultBuffer: GPUBuffer = undefined!; // see this.handleViewportResize()
-  private readonly MOCK_vertexPositionsBuffer: GPUBuffer;
-  private readonly MOCK_indexBuffer: GPUBuffer;
 
   constructor(device: GPUDevice) {
     const shaderModule = device.createShaderModule({
@@ -35,25 +32,6 @@ export class RasterizeSwPass {
         entryPoint: 'main',
       },
     });
-
-    //////// MOCKS
-    const VERTEX_POSITIONS = [
-      [0, 0.2, 0.0, 1.0],
-      [0.25, -0.2, 0.0, 1.0], // remember: CCW vs CW (ALWAYS USE CW)
-      [-0.25, -0.2, 0.0, 1.0],
-    ].flat();
-    const INDEX_BUFFER = [0, 1, 2];
-    const OBJ_NAME = 'RasterizeSwPass-obj';
-    this.MOCK_vertexPositionsBuffer = createGPU_StorageBuffer(
-      device,
-      `${OBJ_NAME}-vertices`,
-      ensureTypedArray(Float32Array, VERTEX_POSITIONS)
-    );
-    this.MOCK_indexBuffer = createGPU_StorageBuffer(
-      device,
-      `${OBJ_NAME}-indices`,
-      ensureTypedArray(Uint32Array, INDEX_BUFFER)
-    );
   }
 
   /** Clears to 0. We cannot select a number */
@@ -95,12 +73,10 @@ export class RasterizeSwPass {
     computePass.setBindGroup(0, bindings);
 
     // dispatch
-    /*computePass.dispatchWorkgroupsIndirect(
+    computePass.dispatchWorkgroupsIndirect(
       naniteObject.buffers.drawnMeshletsSwBuffer,
       0
-    );*/
-    const triangleCount = 1;
-    computePass.dispatchWorkgroups(triangleCount, 1, 1);
+    );
 
     computePass.end();
   }
@@ -108,29 +84,25 @@ export class RasterizeSwPass {
   private createBindings = (
     { device, globalUniforms }: PassCtx,
     resultBuffer: GPUBuffer,
-    _naniteObject: NaniteObject
+    naniteObject: NaniteObject
   ): GPUBindGroup => {
     const b = SHADER_PARAMS.bindings;
-    // const buffers = naniteObject.buffers;
+    const buffers = naniteObject.buffers;
 
     return assignResourcesToBindings2(
       RasterizeSwPass,
-      'test', // naniteObject.name,
+      naniteObject.name,
       device,
       this.pipeline,
       [
         globalUniforms.createBindingDesc(b.renderUniforms),
         { binding: b.resultBuffer, resource: { buffer: resultBuffer } },
-        // buffers.bindVertexPositions(b.vertexPositions),
-        // buffers.bindIndexBuffer(b.indexBuffer),
-        {
-          binding: b.vertexPositions,
-          resource: { buffer: this.MOCK_vertexPositionsBuffer },
-        },
-        {
-          binding: b.indexBuffer,
-          resource: { buffer: this.MOCK_indexBuffer },
-        },
+        buffers.bindVertexPositions(b.vertexPositions),
+        buffers.bindIndexBuffer(b.indexBuffer),
+        buffers.bindMeshletData(b.meshletsData),
+        buffers.bindDrawnMeshletsSwList(b.drawnMeshletIds),
+        buffers.bindDrawnMeshletsSwParams(b.drawnMeshletParams),
+        naniteObject.bindInstanceTransforms(b.instancesTransforms),
       ]
     );
   };

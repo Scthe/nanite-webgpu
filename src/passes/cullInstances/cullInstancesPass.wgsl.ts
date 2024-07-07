@@ -146,21 +146,11 @@ fn renderAsBillboard(
     return true;
   }
 
-  // get AABB in projection space
-  // TODO [LOW] duplicate from occlusion culling
-  let viewportSize = _uniforms.viewport.xy;
-  let viewMat = _uniforms.viewMatrix;
-  let projMat = _uniforms.projMatrix;
-  var aabb = vec4f();
-  let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
-  let r = boundingSphere.w;
-  let projectionOK = projectSphereView(projMat, center.xyz, r, &aabb);
-  let pixelSpanW = abs(aabb.z - aabb.x) * viewportSize.x;
-  let pixelSpanH = abs(aabb.w - aabb.y) * viewportSize.y;
-  let pixelSpan = pixelSpanW * pixelSpanH;
+  var pixelSpan = vec2f();
+  let projectionOK = projectSphereToScreen(modelMat, boundingSphere, &pixelSpan);
   return (
     projectionOK &&
-    pixelSpan < _uniforms.billboardThreshold
+    pixelSpan.x * pixelSpan.y < _uniforms.billboardThreshold
   );
 }
 

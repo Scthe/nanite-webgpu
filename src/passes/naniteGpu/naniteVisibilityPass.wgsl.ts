@@ -106,7 +106,7 @@ fn main_SpreadYZ(
 
   let settingsFlags = _uniforms.flags;
   if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
-    registerDraw(tfxIdx, meshletIdx);
+    registerDraw(modelMat, meshlet.ownBoundingSphere, tfxIdx, meshletIdx);
   }
 }
 
@@ -140,7 +140,7 @@ fn main_Iter(
     let modelMat = _getInstanceTransform(tfxIdx);
 
     if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
-      registerDraw(tfxIdx, meshletIdx);
+      registerDraw(modelMat, meshlet.ownBoundingSphere, tfxIdx, meshletIdx);
     }
   } 
 }
@@ -182,7 +182,7 @@ fn main_Indirect(
     let modelMat = _getInstanceTransform(tfxIdx);
 
     if (isMeshletRendered(settingsFlags, modelMat, meshlet)){
-      registerDraw(tfxIdx, meshletIdx);
+      registerDraw(modelMat, meshlet.ownBoundingSphere, tfxIdx, meshletIdx);
     }
   } 
 }
@@ -229,7 +229,12 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
   }
 }
 
-fn registerDraw(tfxIdx: u32, meshletIdx: u32){
+fn registerDraw(
+  modelMat: mat4x4f,
+  boundingSphere: vec4f,
+  tfxIdx: u32,
+  meshletIdx: u32
+){
   // TODO [LOW] Aggregate atomic writes. Use ballot like [Wihlidal 2015]:
   // "Optimizing the Graphics Pipeline with Compute"
   // 
@@ -238,8 +243,11 @@ fn registerDraw(tfxIdx: u32, meshletIdx: u32){
   // to the global atomic the sum ONCE and re-distribute result among the threads.
   // See NV_shader_thread_group, functionality 4.
 
-  // TODO  finish this. For now it's OFF, but we have pretend it could be used so WGSL does not delete uniform
-  let useSoftwareRasterizer = f32(meshletIdx) < -99999.0; 
+  
+  var pixelSpan = vec2f();
+  let projectionOK = projectSphereToScreen(modelMat, boundingSphere, &pixelSpan);
+  let useSoftwareRasterizer = projectionOK &&
+    pixelSpan.x * pixelSpan.y < _uniforms.softwareRasterizerThreshold; 
 
   if (useSoftwareRasterizer) {
     // (software rasterizer)
