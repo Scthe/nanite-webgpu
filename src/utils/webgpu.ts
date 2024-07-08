@@ -5,14 +5,9 @@ import {
   getClassName,
   getTypeName,
 } from './index.ts';
-import { BYTES_U32, CONFIG } from '../constants.ts';
+import { CONFIG } from '../constants.ts';
 
 export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
-
-export const BYTES_DRAW_INDIRECT = Math.max(
-  WEBGPU_MINIMAL_BUFFER_SIZE,
-  4 * BYTES_U32
-);
 
 export async function createGpuDevice() {
   try {

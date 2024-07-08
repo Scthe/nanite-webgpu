@@ -13,12 +13,9 @@ import {
 } from './drawnInstancesBuffer.ts';
 import {
   BYTES_DRAWN_MESHLETS_PARAMS,
+  BYTES_DRAWN_MESHLETS_SW_PARAMS,
   createDrawnMeshletsBuffer,
 } from './drawnMeshletsBuffer.ts';
-import {
-  BYTES_DRAWN_MESHLETS_SW_PARAMS,
-  createDrawnMeshletsSwBuffer,
-} from './drawnMeshletsSwBuffer.ts';
 import { createMeshletsDataBuffer } from './meshletsDataBuffer.ts';
 import { createOctahedronNormals } from './vertexNormalsBuffer.ts';
 import { createNaniteVertexPositionsBuffer } from './vertexPositionsBuffer.ts';
@@ -51,10 +48,13 @@ export class NaniteObjectBuffers {
   public readonly drawnInstancesBuffer: GPUBuffer = undefined!;
   /** GPU-flow: Draw params and instanceIds for billboards. Holds 1 draw indirect and `Array<tfxId>` */
   public readonly drawnImpostorsBuffer: GPUBuffer = undefined!;
-  /** GPU-flow: [Hardware rasterizing] Temporary structure between passes. Holds 1 draw indirect and `Array<(tfxId, meshletId)>` */
+  /** GPU-flow: [Hardware+Software rasterizing] Temporary structure between passes. Holds:
+   * - 1 draw indirect for hardware draw (aligned to 256bytes),
+   * - 1 dispatch indirect for software draw (aligned to 256bytes),
+   * - list of drawn meshlets: `Array<(tfxId, meshletId)>`
+   * See more in the respective file
+   */
   public readonly drawnMeshletsBuffer: GPUBuffer = undefined!;
-  /** GPU-flow: [Software rasterizing] Temporary structure between passes. Holds 1 dispatch indirect and `Array<(tfxId, meshletId)>` */
-  public readonly drawnMeshletsSwBuffer: GPUBuffer = undefined!;
 
   constructor(
     device: GPUDevice,
@@ -87,12 +87,6 @@ export class NaniteObjectBuffers {
       allWIPMeshlets.length
     );
     this.drawnMeshletsBuffer = createDrawnMeshletsBuffer(
-      device,
-      name,
-      allWIPMeshlets,
-      instanceCount
-    );
-    this.drawnMeshletsSwBuffer = createDrawnMeshletsSwBuffer(
       device,
       name,
       allWIPMeshlets,
@@ -138,10 +132,24 @@ export class NaniteObjectBuffers {
   });
 
   ///////////////////////
-  // Drawn meshlets - hardware
+  // Drawn meshlets - software + hardware
 
   cmdClearDrawnMeshletsParams(cmdBuf: GPUCommandEncoder) {
-    cmdBuf.clearBuffer(this.drawnMeshletsBuffer, 0, 4 * BYTES_U32);
+    let offset = 0; // clear hardware draw params
+    cmdBuf.clearBuffer(this.drawnMeshletsBuffer, offset, 4 * BYTES_U32);
+    offset = BYTES_DRAWN_MESHLETS_PARAMS; // clear software draw params
+    cmdBuf.clearBuffer(this.drawnMeshletsBuffer, offset, 4 * BYTES_U32);
+  }
+
+  cmdDrawMeshletsHardwareIndirect(renderPass: GPURenderPassEncoder) {
+    renderPass.drawIndirect(this.drawnMeshletsBuffer, 0);
+  }
+
+  cmdDrawMeshletsSoftwareIndirect(computePass: GPUComputePassEncoder) {
+    computePass.dispatchWorkgroupsIndirect(
+      this.drawnMeshletsBuffer,
+      BYTES_DRAWN_MESHLETS_PARAMS
+    );
   }
 
   bindDrawnMeshletsParams = (bindingIdx: number): GPUBindGroupEntry => ({
@@ -153,37 +161,41 @@ export class NaniteObjectBuffers {
     },
   });
 
-  bindDrawnMeshletsList = (bindingIdx: number): GPUBindGroupEntry => ({
+  bindDrawnMeshletsSwParams = (bindingIdx: number): GPUBindGroupEntry => ({
     binding: bindingIdx,
     resource: {
       buffer: this.drawnMeshletsBuffer,
       offset: BYTES_DRAWN_MESHLETS_PARAMS,
-    },
-  });
-
-  ///////////////////////
-  // Drawn meshlets - software
-
-  cmdClearDrawnMeshletsSwParams(cmdBuf: GPUCommandEncoder) {
-    cmdBuf.clearBuffer(this.drawnMeshletsSwBuffer, 0, 4 * BYTES_U32);
-  }
-
-  bindDrawnMeshletsSwParams = (bindingIdx: number): GPUBindGroupEntry => ({
-    binding: bindingIdx,
-    resource: {
-      buffer: this.drawnMeshletsSwBuffer,
-      offset: 0,
       size: BYTES_DRAWN_MESHLETS_SW_PARAMS,
     },
   });
 
-  bindDrawnMeshletsSwList = (bindingIdx: number): GPUBindGroupEntry => ({
+  bindDrawnMeshletsList = (bindingIdx: number): GPUBindGroupEntry => ({
     binding: bindingIdx,
     resource: {
-      buffer: this.drawnMeshletsSwBuffer,
-      offset: BYTES_DRAWN_MESHLETS_SW_PARAMS,
+      buffer: this.drawnMeshletsBuffer,
+      offset: BYTES_DRAWN_MESHLETS_PARAMS + BYTES_DRAWN_MESHLETS_SW_PARAMS,
     },
   });
+
+  _mockMeshletSoftwareDraw(device: GPUDevice, params: Uint32Array) {
+    device.queue.writeBuffer(
+      this.drawnMeshletsBuffer,
+      BYTES_DRAWN_MESHLETS_PARAMS,
+      params
+    );
+  }
+
+  _mockMeshletsDrawList(device: GPUDevice, list: Uint32Array) {
+    if (list.length % 2 !== 0) {
+      throw new Error(`Invalid list provided to _mockMeshletsDrawList(). Should have even length.`); // prettier-ignore
+    }
+    device.queue.writeBuffer(
+      this.drawnMeshletsBuffer,
+      BYTES_DRAWN_MESHLETS_PARAMS + BYTES_DRAWN_MESHLETS_SW_PARAMS,
+      list
+    );
+  }
 
   ///////////////////////
   // Drawn instances

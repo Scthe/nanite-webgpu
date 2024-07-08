@@ -80,7 +80,7 @@ export class DrawNaniteGPUPass {
     renderPass.setBindGroup(0, bindings);
 
     // draw
-    renderPass.drawIndirect(naniteObject.buffers.drawnMeshletsBuffer, 0);
+    naniteObject.buffers.cmdDrawMeshletsHardwareIndirect(renderPass);
 
     // fin
     renderPass.end();

@@ -79,7 +79,6 @@ export class NaniteVisibilityPass {
 
     // forget draws from previous frame
     naniteObject.buffers.cmdClearDrawnMeshletsParams(cmdBuf);
-    naniteObject.buffers.cmdClearDrawnMeshletsSwParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
       label: NaniteVisibilityPass.NAME,
@@ -215,7 +214,6 @@ export class NaniteVisibilityPass {
       buffers.bindDrawnMeshletsParams(b.drawnMeshletsParams),
       buffers.bindDrawnMeshletsList(b.drawnMeshletsList),
       buffers.bindDrawnMeshletsSwParams(b.drawnMeshletsSwParams),
-      buffers.bindDrawnMeshletsSwList(b.drawnMeshletsSwList),
       naniteObject.bindInstanceTransforms(b.instancesTransforms),
       {
         binding: b.depthPyramidTexture,

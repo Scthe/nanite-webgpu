@@ -73,10 +73,7 @@ export class RasterizeSwPass {
     computePass.setBindGroup(0, bindings);
 
     // dispatch
-    computePass.dispatchWorkgroupsIndirect(
-      naniteObject.buffers.drawnMeshletsSwBuffer,
-      0
-    );
+    naniteObject.buffers.cmdDrawMeshletsSoftwareIndirect(computePass);
 
     computePass.end();
   }
@@ -101,7 +98,7 @@ export class RasterizeSwPass {
         buffers.bindVertexNormals(b.vertexNormals),
         buffers.bindIndexBuffer(b.indexBuffer),
         buffers.bindMeshletData(b.meshletsData),
-        buffers.bindDrawnMeshletsSwList(b.drawnMeshletIds),
+        buffers.bindDrawnMeshletsList(b.drawnMeshletIds),
         buffers.bindDrawnMeshletsSwParams(b.drawnMeshletParams),
         naniteObject.bindInstanceTransforms(b.instancesTransforms),
       ]

@@ -79,10 +79,10 @@ fn main_vs(
   @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
   var result: VertexOutput;
-  let meshletId: vec2u = _drawnMeshletsList[inInstanceIndex]; // .x - transfromIdx, .y - meshletIdx
-  let meshlet = _meshlets[meshletId.y];
-  result.meshletId = meshletId.y;
-  let modelMat = _getInstanceTransform(meshletId.x);
+  let drawData: vec2u = _getMeshletHardwareDraw(inInstanceIndex); // .x - transformIdx, .y - meshletIdx
+  let meshlet = _meshlets[drawData.y];
+  result.meshletId = drawData.y;
+  let modelMat = _getInstanceTransform(drawData.x);
 
   // We always draw MAX_MESHLET_TRIANGLES * 3u, but meshlet might have less: discard.
   // While this is not the most performant approach, it has tiny memory footprint
@@ -108,7 +108,7 @@ fn main_vs(
   result.positionWS = positionWS;
   result.normalWS = transformNormalToWorldSpace(modelMat, vertexN);
   result.uv = vertexUV;
-  result.instanceIdx = meshletId.x;
+  result.instanceIdx = drawData.x;
   result.triangleIdx = inVertexIndex;
 
   return result;

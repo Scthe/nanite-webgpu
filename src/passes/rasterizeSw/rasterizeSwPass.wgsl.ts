@@ -1,7 +1,3 @@
-import {
-  BUFFER_DRAWN_MESHLETS_SW_LIST,
-  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
-} from '../../scene/naniteBuffers/drawnMeshletsSwBuffer.ts';
 import { BUFFER_INDEX_BUFFER } from '../../scene/naniteBuffers/index.ts';
 import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 import { BUFFER_MESHLET_DATA } from '../../scene/naniteBuffers/meshletsDataBuffer.ts';
@@ -10,6 +6,10 @@ import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { LINEAR_DEPTH } from '../_shaderSnippets/linearDepth.wgsl.ts';
 import { BUFFER_VERTEX_NORMALS } from '../../scene/naniteBuffers/vertexNormalsBuffer.ts';
+import {
+  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
+  BUFFER_DRAWN_MESHLETS_LIST,
+} from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 
 /*
 https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/
@@ -68,7 +68,7 @@ ${LINEAR_DEPTH}
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${BUFFER_MESHLET_DATA(b.meshletsData)}
 ${BUFFER_DRAWN_MESHLETS_SW_PARAMS(b.drawnMeshletParams, 'read')}
-${BUFFER_DRAWN_MESHLETS_SW_LIST(b.drawnMeshletIds, 'read')}
+${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletIds, 'read')}
 ${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
 ${BUFFER_VERTEX_NORMALS(b.vertexNormals)}
 ${BUFFER_INDEX_BUFFER(b.indexBuffer)}
@@ -108,12 +108,12 @@ fn main(
     if (iterOffset >= drawnMeshletCnt) { continue; }
 
     // get meshlet
-    let meshletId: vec2u = _drawnMeshletsSwList[iterOffset]; // .x - transfromIdx, .y - meshletIdx
-    let meshlet = _meshlets[meshletId.y];
+    let drawData: vec2u = _getMeshletSoftwareDraw(iterOffset); // .x - transfromIdx, .y - meshletIdx
+    let meshlet = _meshlets[drawData.y];
     if (triangleIdx >= meshlet.triangleCount) { continue; }
 
     // get tfx
-    let modelMat = _getInstanceTransform(meshletId.x);
+    let modelMat = _getInstanceTransform(drawData.x);
     let mvpMat = getMVP_Mat(modelMat, viewMatrix, projMatrix);
 
     // draw
@@ -175,7 +175,14 @@ fn rasterize(
   // storeResult(viewportSize, vec2u(boundRectMax), COLOR_PINK); // dbg
   // storeResult(viewportSize, vec2u(boundRectMin), COLOR_PINK); // dbg
 
-  // TODO  check if triangle covers only 1 pixel
+  // check if triangle covers only 1 pixel. It would do 0 iters.
+  // But most samples (incl. UE5) ignore this case?
+  /*if(boundRectMin.x == boundRectMax.x && boundRectMin.y == boundRectMax.y) {
+    let depth: f32 = (v0_NDC.z + v1_NDC.z + v2_NDC.z) / 3.0; // ?
+    let n: vec3f = normalize(n0 + n1 + n2); // [-1, 1] // ?
+    let value = createPayload(depth, n);
+    storeResult(viewportSize, vec2u(u32(boundRectMin.x), u32(boundRectMin.y)), value);
+  }*/
   
   // iterate row-by-row
   for (var y: f32 = boundRectMin.y; y < boundRectMax.y; y+=1.0) {
@@ -193,27 +200,10 @@ fn rasterize(
         // let value = COLOR_TEAL;
         // let value = debugBarycentric(C0, C1, C2);
         
-        // TODO [IGNORE] We could also ignore color data in 565 instead of normals.
-        //      But HDR would wreck us. So tonemap here (and also in hw rasterizer)?
-        //      Feels like crap.
+        let depth: f32 = v0_NDC.z * C0 + v1_NDC.z * C1 + v2_NDC.z * C2;
+        let n: vec3f = normalize(n0 * C0 + n1 * C1 + n2 * C2); // [-1, 1]
         
-        // encode depth in 16bits
-        let U16_MAX = 65535.0;
-        var depth: f32 = v0_NDC.z * C0 + v1_NDC.z * C1 + v2_NDC.z * C2;
-        // depth = linearizeDepth_0_1(depth); // debug, otherwise non-linear depth is not visible
-        depth = 1.0 - depth; // reverse so we can take max instead of min. The buffer clear set all values 0, so can't use min
-        let depthU16 = clamp(depth * U16_MAX, 0., U16_MAX - 1); // depth in range fit for u16
-
-        // encode normals. We could use pack4x8snorm(), but too lazy to debug
-        var n: vec3f = normalize(n0 * C0 + n1 * C1 + n2 * C2); // [-1, 1]
-        // let n_0_1 = n * 0.5 + 0.5; // [0-1] // VERSION 0: NO OCT. ENCODED, XY ONLY
-        let n_0_1 = encodeOctahedronNormal(n);
-        let nPacked: u32 = (
-          (u32(n_0_1.x * 255) << 8) |
-           u32(n_0_1.y * 255)
-        );
-
-        let value = (u32(depthU16) << 16) | nPacked;
+        let value = createPayload(depth, n);
         storeResult(viewportSize, vec2u(u32(x), u32(y)), value);
       }
     }
@@ -222,6 +212,29 @@ fn rasterize(
 
 fn edgeFunction(v0: vec2f, v1: vec2f, p: vec2f) -> f32 {
   return (p.x - v0.x) * (v1.y - v0.y) - (p.y - v0.y) * (v1.x - v0.x);
+}
+
+const U16_MAX: f32 = 65535.0;
+
+fn createPayload(depth0: f32, n: vec3f) -> u32 {
+  // TODO [IGNORE] We could also store color data in 565 format instead of normals.
+  //      But HDR would wreck us. So tonemap here (and also in hw rasterizer)?
+  //      Feels like crap.
+
+  // encode depth in 16bits
+  // let depth = linearizeDepth_0_1(depth0); // debug, otherwise non-linear depth is not visible
+  let depth = 1.0 - depth0; // reverse so we can take max instead of min. The buffer clear set all values to 0, so can't use min
+  let depthU16 = clamp(depth * U16_MAX, 0., U16_MAX - 1); // depth in range fit for u16
+
+  // encode normals. We could use pack4x8snorm(), but too lazy to debug
+  // let n_0_1 = n * 0.5 + 0.5; // [0-1] // VERSION 0: NO OCT. ENCODED, XY ONLY
+  let n_0_1 = encodeOctahedronNormal(n);
+  let nPacked: u32 = (
+    (u32(n_0_1.x * 255) << 8) |
+     u32(n_0_1.y * 255)
+  );
+
+  return (u32(depthU16) << 16) | nPacked;
 }
 
 fn debugBarycentric(C0: f32, C1: f32, C2: f32) -> u32 {

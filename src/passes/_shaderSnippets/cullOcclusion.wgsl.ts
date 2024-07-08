@@ -176,8 +176,10 @@ fn projectSphereToScreen(
   let center = viewMat * modelMat * vec4f(boundingSphere.xyz, 1.);
   let r = boundingSphere.w;
   let projectionOK = projectSphereView(projMat, center.xyz, r, &aabb);
-  pixelSpan.x = abs(aabb.z - aabb.x) * viewportSize.x;
-  pixelSpan.y = abs(aabb.w - aabb.y) * viewportSize.y;
+  *pixelSpan = vec2f(
+    abs(aabb.z - aabb.x) * viewportSize.x,
+    abs(aabb.w - aabb.y) * viewportSize.y
+  );
   return projectionOK;
 }
 `;

@@ -12,13 +12,10 @@ import {
 import {
   BUFFER_DRAWN_MESHLETS_LIST,
   BUFFER_DRAWN_MESHLETS_PARAMS,
+  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
 } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { BUFFER_INSTANCES } from '../../scene/naniteBuffers/instancesBuffer.ts';
 import { SHADER_PARAMS as SHADER_PARAMS_RASTERIZE_SW } from '../rasterizeSw/rasterizeSwPass.wgsl.ts';
-import {
-  BUFFER_DRAWN_MESHLETS_SW_PARAMS,
-  BUFFER_DRAWN_MESHLETS_SW_LIST,
-} from '../../scene/naniteBuffers/drawnMeshletsSwBuffer.ts';
 
 export const SHADER_PARAMS = {
   workgroupSizeX: 32,
@@ -29,13 +26,12 @@ export const SHADER_PARAMS = {
     meshletsData: 1,
     instancesTransforms: 2,
     drawnMeshletsParams: 3,
-    drawnMeshletsList: 4,
-    drawnMeshletsSwParams: 5,
-    drawnMeshletsSwList: 6,
-    depthPyramidTexture: 7,
-    depthSampler: 8,
-    drawnInstancesParams: 9,
-    drawnInstancesList: 10,
+    drawnMeshletsSwParams: 4,
+    drawnMeshletsList: 5,
+    depthPyramidTexture: 6,
+    depthSampler: 7,
+    drawnInstancesParams: 8,
+    drawnInstancesList: 9,
   },
 };
 
@@ -61,9 +57,8 @@ ${SNIPPET_NANITE_LOD_CULLING}
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${BUFFER_MESHLET_DATA(b.meshletsData)}
 ${BUFFER_DRAWN_MESHLETS_PARAMS(b.drawnMeshletsParams, 'read_write')}
-${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletsList, 'read_write')}
 ${BUFFER_DRAWN_MESHLETS_SW_PARAMS(b.drawnMeshletsSwParams, 'read_write')}
-${BUFFER_DRAWN_MESHLETS_SW_LIST(b.drawnMeshletsSwList, 'read_write')}
+${BUFFER_DRAWN_MESHLETS_LIST(b.drawnMeshletsList, 'read_write')}
 ${BUFFER_INSTANCES(b.instancesTransforms)}
 
 @group(0) @binding(${b.depthPyramidTexture})
@@ -246,6 +241,7 @@ fn registerDraw(
   
   var pixelSpan = vec2f();
   let projectionOK = projectSphereToScreen(modelMat, boundingSphere, &pixelSpan);
+  // let useSoftwareRasterizer = true; // mock
   let useSoftwareRasterizer = projectionOK &&
     pixelSpan.x * pixelSpan.y < _uniforms.softwareRasterizerThreshold; 
 
@@ -259,12 +255,12 @@ fn registerDraw(
       
     // add to the ACTUALL total counter
     let idx = atomicAdd(&_drawnMeshletsSwParams.actuallyDrawnMeshlets, 1u);
-    _drawnMeshletsSwList[idx] = vec2u(tfxIdx, meshletIdx);
+    _storeMeshletSoftwareDraw(idx, tfxIdx, meshletIdx);
 
   } else {
      // (hardware rasterizer)
     let idx = atomicAdd(&_drawnMeshletsParams.instanceCount, 1u);
-    _drawnMeshletsList[idx] = vec2u(tfxIdx, meshletIdx);
+    _storeMeshletHardwareDraw(idx, tfxIdx, meshletIdx);
   }
 }
 `;

@@ -13,7 +13,6 @@ import {
   u8_to_f32,
 } from '../../utils/index.ts';
 import {
-  WEBGPU_MINIMAL_BUFFER_SIZE,
   cmdCopyToReadbackBuffer,
   createGPU_StorageBuffer,
   createReadbackBuffer,
@@ -31,7 +30,7 @@ import {
   createMeshletsDataBuffer,
   uploadMeshletsToGPU,
 } from '../../scene/naniteBuffers/meshletsDataBuffer.ts';
-import { createDrawnMeshletsSwBuffer } from '../../scene/naniteBuffers/drawnMeshletsSwBuffer.ts';
+import { createDrawnMeshletsBuffer } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import {
   createOctahedronNormals,
   decodeOctahedronNormal,
@@ -188,25 +187,15 @@ function createMockNaniteObject(device: GPUDevice) {
   uploadMeshletsToGPU(device, mockBuffers.meshletsDataBuffer, meshlets);
 
   // drawn meshlet
-  mockBuffers.drawnMeshletsSwBuffer = createDrawnMeshletsSwBuffer(
+  mockBuffers.drawnMeshletsBuffer = createDrawnMeshletsBuffer(
     device,
     OBJ_NAME,
     // deno-lint-ignore no-explicit-any
     meshlets as any,
     mockInstances.count
   );
-  const mockDrawParams = new Uint32Array([1, 1, 1, 1]);
-  device.queue.writeBuffer(
-    mockBuffers.drawnMeshletsSwBuffer,
-    0,
-    mockDrawParams
-  );
-  const mockDrawList = new Uint32Array([0, 0]);
-  device.queue.writeBuffer(
-    mockBuffers.drawnMeshletsSwBuffer,
-    WEBGPU_MINIMAL_BUFFER_SIZE,
-    mockDrawList
-  );
+  mockBuffers._mockMeshletSoftwareDraw(device, new Uint32Array([1, 1, 1, 1]));
+  mockBuffers._mockMeshletsDrawList(device, new Uint32Array([0, 0]));
 
   // nanite object
   const mockNaniteObject: NaniteObject = {
