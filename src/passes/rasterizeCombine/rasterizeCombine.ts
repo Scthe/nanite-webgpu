@@ -6,6 +6,8 @@ import {
   BindingsCache,
   useColorAttachment,
   getClearColorVec3,
+  PIPELINE_DEPTH_STENCIL_ON,
+  useDepthStencilAttachment,
 } from '../_shared.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './rasterizeCombine.wgsl.ts';
 import { PassCtx } from '../passCtx.ts';
@@ -53,6 +55,7 @@ export class RasterizeCombine {
         ],
       },
       primitive: { topology: 'triangle-list' },
+      depthStencil: PIPELINE_DEPTH_STENCIL_ON,
     });
   }
 
@@ -74,6 +77,7 @@ export class RasterizeCombine {
         // do not clear!
         useColorAttachment(hdrRenderTexture, getClearColorVec3(), 'load'),
       ],
+      depthStencilAttachment: useDepthStencilAttachment(depthTexture, 'load'),
       timestampWrites: profiler?.createScopeGpu(RasterizeCombine.NAME),
     });
 

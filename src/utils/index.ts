@@ -204,3 +204,6 @@ export function debounce<T extends unknown[]>(
     timer = setTimeout(() => callback(...args), wait);
   };
 }
+
+export const f32_to_u8 = (x: number) => Math.floor(x * 255);
+export const u8_to_f32 = (x: number) => (x & 0xff) / 255.0;

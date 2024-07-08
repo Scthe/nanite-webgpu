@@ -1,4 +1,4 @@
-import { Mat4 } from 'wgpu-matrix';
+import { Mat4, mat4 } from 'wgpu-matrix';
 import {
   BYTES_F32,
   BYTES_MAT4,
@@ -26,6 +26,7 @@ export class RenderUniformsBuffer {
 
     struct Uniforms {
       vpMatrix: mat4x4<f32>,
+      vpMatrixInv: mat4x4<f32>,
       viewMatrix: mat4x4<f32>,
       projMatrix: mat4x4<f32>,
       viewport: vec4f,
@@ -79,6 +80,7 @@ export class RenderUniformsBuffer {
 
   public static BUFFER_SIZE =
     BYTES_MAT4 + // vpMatrix
+    BYTES_MAT4 + // vpMatrixInv
     BYTES_MAT4 + // viewMatrix
     BYTES_MAT4 + // projMatrix
     BYTES_VEC4 + // viewport
@@ -125,6 +127,7 @@ export class RenderUniformsBuffer {
 
     let offsetBytes = 0;
     offsetBytes = this.writeMat4(offsetBytes, vpMatrix);
+    offsetBytes = this.writeMat4(offsetBytes, mat4.invert(vpMatrix));
     offsetBytes = this.writeMat4(offsetBytes, viewMatrix);
     offsetBytes = this.writeMat4(offsetBytes, projMatrix);
     // viewport

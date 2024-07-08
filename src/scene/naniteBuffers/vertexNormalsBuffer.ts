@@ -1,5 +1,6 @@
 import { vec3 } from 'wgpu-matrix';
 import { createGPUBuffer } from '../../utils/webgpu.ts';
+import { clamp } from '../../utils/index.ts';
 
 ///////////////////////////
 /// SHADER CODE
@@ -49,4 +50,16 @@ export function createOctahedronNormals(
     GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     data
   );
+}
+
+export function decodeOctahedronNormal(x: number, y: number) {
+  x = x * 2.0 - 1.0;
+  y = y * 2.0 - 1.0;
+
+  // https://twitter.com/Stubbesaurus/status/937994790553227264
+  const n = vec3.create(x, y, 1.0 - Math.abs(x) - Math.abs(y));
+  const t = clamp(-n[2], 0, 1);
+  n[0] += n[0] >= 0.0 ? -t : t;
+  n[1] += n[1] >= 0.0 ? -t : t;
+  return vec3.normalize(n);
 }

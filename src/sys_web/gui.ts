@@ -19,7 +19,6 @@ import { resetNaniteStats } from '../passes/_shared.ts';
 // https://github.com/Scthe/gaussian-splatting-webgpu/blob/master/src/web/gui.ts
 
 const MAX_DEPTH_PYRAMID_LEVEL = 14;
-const MAX_SCREEN_SPACE_AABB_THRESHOLD = 1000.0;
 
 export let setDisplayMode: undefined | ((e: DisplayMode) => unknown) =
   undefined;
@@ -144,7 +143,7 @@ export function initializeGUI(
 
     const cfgSr = CONFIG.softwareRasterizer;
     gpuSoftwareRasterizerThrsh = dir
-      .add(cfgSr, 'threshold', 0.0, MAX_SCREEN_SPACE_AABB_THRESHOLD)
+      .add(cfgSr, 'threshold', 0.0, 1000.0)
       .name('Softw. raster. threshold [px]');
   }
 
@@ -158,7 +157,7 @@ export function initializeGUI(
     dir.add(cfg, 'frustumCulling').name('Frustum culling');
     dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
     dir
-      .add(imp, 'billboardThreshold', 0.0, MAX_SCREEN_SPACE_AABB_THRESHOLD)
+      .add(imp, 'billboardThreshold', 0.0, 4000.0)
       .name('Billboard threshold [px]');
     dir.add(imp, 'forceOnlyBillboards').name('Force billboards');
     dir.add(imp, 'ditherStrength', 0.0, 1.0).name('Billboard dither');

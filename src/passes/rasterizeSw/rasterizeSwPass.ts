@@ -98,6 +98,7 @@ export class RasterizeSwPass {
         globalUniforms.createBindingDesc(b.renderUniforms),
         { binding: b.resultBuffer, resource: { buffer: resultBuffer } },
         buffers.bindVertexPositions(b.vertexPositions),
+        buffers.bindVertexNormals(b.vertexNormals),
         buffers.bindIndexBuffer(b.indexBuffer),
         buffers.bindMeshletData(b.meshletsData),
         buffers.bindDrawnMeshletsSwList(b.drawnMeshletIds),

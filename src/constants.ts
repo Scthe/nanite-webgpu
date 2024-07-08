@@ -111,7 +111,7 @@ export const CONFIG = {
      * Calculated as `screen space AABB width * height`.
      * This an AABB for an ENTIRE object, not a meshlet!
      */
-    billboardThreshold: 800,
+    billboardThreshold: 2000,
     /** Do not render mesh, ONLY billboards regardless of everything */
     forceOnlyBillboards: false,
     ditherStrength: 0.4,
@@ -136,7 +136,7 @@ export const CONFIG = {
   /// SOFTWARE RASTERIZER
   softwareRasterizer: {
     /** Every meshlet that is less pixels than this will be software rendered. Calculated as `screen space AABB width * height`. */
-    threshold: 600.0,
+    threshold: 360.0,
   },
 
   ///////////////

@@ -8,6 +8,8 @@ import { BUFFER_MESHLET_DATA } from '../../scene/naniteBuffers/meshletsDataBuffe
 import { BUFFER_VERTEX_POSITIONS } from '../../scene/naniteBuffers/vertexPositionsBuffer.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
+import { LINEAR_DEPTH } from '../_shaderSnippets/linearDepth.wgsl.ts';
+import { BUFFER_VERTEX_NORMALS } from '../../scene/naniteBuffers/vertexNormalsBuffer.ts';
 
 /*
 https://fgiesen.wordpress.com/2013/02/10/optimizing-the-basic-rasterizer/
@@ -35,6 +37,7 @@ export const SHADER_PARAMS = {
     drawnMeshletIds: 5,
     drawnMeshletParams: 6,
     instancesTransforms: 7,
+    vertexNormals: 8,
   },
 };
 
@@ -59,12 +62,15 @@ export const SHADER_CODE = () => /* wgsl */ `
 
 ${SHADER_SNIPPETS.GET_MVP_MAT}
 ${SHADER_SNIPPETS.UTILS}
+${SHADER_SNIPPETS.NORMALS_UTILS}
+${LINEAR_DEPTH}
 
 ${RenderUniformsBuffer.SHADER_SNIPPET(b.renderUniforms)}
 ${BUFFER_MESHLET_DATA(b.meshletsData)}
 ${BUFFER_DRAWN_MESHLETS_SW_PARAMS(b.drawnMeshletParams, 'read')}
 ${BUFFER_DRAWN_MESHLETS_SW_LIST(b.drawnMeshletIds, 'read')}
 ${BUFFER_VERTEX_POSITIONS(b.vertexPositions)}
+${BUFFER_VERTEX_NORMALS(b.vertexNormals)}
 ${BUFFER_INDEX_BUFFER(b.indexBuffer)}
 ${BUFFER_INSTANCES(b.instancesTransforms)}
 ${BUFFER_SOFTWARE_RASTERIZER_RESULT(b.resultBuffer, 'read_write')}
@@ -113,6 +119,7 @@ fn main(
     // draw
     let indexOffset = meshlet.firstIndexOffset;
     rasterize(
+      modelMat,
       mvpMat,
       viewportSize,
       indexOffset,
@@ -122,6 +129,7 @@ fn main(
 }
 
 fn rasterize(
+  modelMat: mat4x4f,
   mvpMat: mat4x4f,
   viewportSizeF32: vec2f,
   indexOffset: u32,
@@ -144,6 +152,12 @@ fn rasterize(
   // storeResult(viewportSize, vec2u(v0.xy), COLOR_RED); // dbg
   // storeResult(viewportSize, vec2u(v1.xy), COLOR_GREEN); // dbg
   // storeResult(viewportSize, vec2u(v2.xy), COLOR_BLUE); // dbg
+  let vertexN0 = _getVertexNormal(idx0);
+  let vertexN1 = _getVertexNormal(idx1);
+  let vertexN2 = _getVertexNormal(idx2);
+  let n0 = transformNormalToWorldSpace(modelMat, vertexN0);
+  let n1 = transformNormalToWorldSpace(modelMat, vertexN1);
+  let n2 = transformNormalToWorldSpace(modelMat, vertexN2);
   
   // backface culling - CCW is OK, CW fails
   let triangleArea = -edgeFunction(v0, v1, v2); // negative cause CCW is default in WebGPU
@@ -160,6 +174,8 @@ fn rasterize(
   boundRectMin = max(boundRectMin, vec2f(0.0, 0.0));
   // storeResult(viewportSize, vec2u(boundRectMax), COLOR_PINK); // dbg
   // storeResult(viewportSize, vec2u(boundRectMin), COLOR_PINK); // dbg
+
+  // TODO  check if triangle covers only 1 pixel
   
   // iterate row-by-row
   for (var y: f32 = boundRectMin.y; y < boundRectMax.y; y+=1.0) {
@@ -175,7 +191,29 @@ fn rasterize(
 
       if (C0 >= 0 && C1 >= 0 && C2 >= 0) {
         // let value = COLOR_TEAL;
-        let value = debugBarycentric(C0, C1, C2);
+        // let value = debugBarycentric(C0, C1, C2);
+        
+        // TODO [IGNORE] We could also ignore color data in 565 instead of normals.
+        //      But HDR would wreck us. So tonemap here (and also in hw rasterizer)?
+        //      Feels like crap.
+        
+        // encode depth in 16bits
+        let U16_MAX = 65535.0;
+        var depth: f32 = v0_NDC.z * C0 + v1_NDC.z * C1 + v2_NDC.z * C2;
+        // depth = linearizeDepth_0_1(depth); // debug, otherwise non-linear depth is not visible
+        depth = 1.0 - depth; // reverse so we can take max instead of min. The buffer clear set all values 0, so can't use min
+        let depthU16 = clamp(depth * U16_MAX, 0., U16_MAX - 1); // depth in range fit for u16
+
+        // encode normals. We could use pack4x8snorm(), but too lazy to debug
+        var n: vec3f = normalize(n0 * C0 + n1 * C1 + n2 * C2); // [-1, 1]
+        // let n_0_1 = n * 0.5 + 0.5; // [0-1] // VERSION 0: NO OCT. ENCODED, XY ONLY
+        let n_0_1 = encodeOctahedronNormal(n);
+        let nPacked: u32 = (
+          (u32(n_0_1.x * 255) << 8) |
+           u32(n_0_1.y * 255)
+        );
+
+        let value = (u32(depthU16) << 16) | nPacked;
         storeResult(viewportSize, vec2u(u32(x), u32(y)), value);
       }
     }
@@ -219,6 +257,8 @@ fn storeResult(viewportSize: vec2u, posPx: vec2u, value: u32) {
   }
   let y = viewportSize.y - posPx.y; // invert cause WebGPU coordinates
   let idx: u32 = y * viewportSize.x + posPx.x;
-  atomicStore(&_softwareRasterizerResult[idx], value);
+  // WebGPU clears to 0. So atomicMin is pointless..
+  atomicMax(&_softwareRasterizerResult[idx], value);
+  // atomicStore(&_softwareRasterizerResult[idx], value); // NO, data race
 }
 `;
