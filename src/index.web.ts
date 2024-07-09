@@ -117,8 +117,8 @@ const SCENE_FILE: SceneName = 'jinx';
     profiler.scheduleRaportIfNeededAsync(onGpuProfilerResult);
 
     // download GPU visibility buffer if needed
-    if (CONFIG.nanite.render.nextFrameDebugVisiblityBuffer) {
-      CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = false;
+    if (CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer) {
+      CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer = false;
       getGPUVisiblityStats(device, scene); // not awaited!
     }
 

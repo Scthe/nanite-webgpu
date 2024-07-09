@@ -1,5 +1,5 @@
 import { CONFIG } from '../constants.ts';
-import { CalcVisibilityDevice } from '../constants.ts';
+import { NaniteDevice } from '../constants.ts';
 import { getProfilerTimestamp } from '../gpuProfiler.ts';
 import { hideHtmlEl, isHtmlElVisible, showHtmlEl } from '../utils/index.ts';
 
@@ -8,7 +8,7 @@ type StatsValue = number | string;
 type StatOpts = {
   hideLabel?: boolean;
   el?: HTMLElement;
-  visibilityDevice?: CalcVisibilityDevice;
+  visibilityDevice?: NaniteDevice;
   categoryName?: string;
 };
 
@@ -164,7 +164,7 @@ class Stats {
     if (!opts.visibilityDevice) return true;
 
     const nextVisible =
-      opts.visibilityDevice === CONFIG.nanite.render.calcVisibilityDevice;
+      opts.visibilityDevice === CONFIG.nanite.render.naniteDevice;
     this.setElVisible(el, nextVisible);
     return nextVisible;
   }

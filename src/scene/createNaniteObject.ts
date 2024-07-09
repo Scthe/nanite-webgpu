@@ -98,7 +98,7 @@ export function createNaniteObject(
     m.id = rewriteIds[m.id];
   });
 
-  // upload meshlet data to the GPU for GPU visibility check/render
+  // upload meshlet data to the GPU
   naniteObject.finalizeNaniteObject(device);
 
   // finalize

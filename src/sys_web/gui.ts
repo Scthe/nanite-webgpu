@@ -50,7 +50,7 @@ export function initializeGUI(
       camera.resetPosition();
     },
     getGpuDrawStats: () => {
-      CONFIG.nanite.render.nextFrameDebugVisiblityBuffer = true;
+      CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer = true;
     },
   };
 
@@ -74,7 +74,7 @@ export function initializeGUI(
   onVisiblityDeviceSwap();
 
   function onVisiblityDeviceSwap() {
-    const nextDevice = CONFIG.nanite.render.calcVisibilityDevice;
+    const nextDevice = CONFIG.nanite.render.naniteDevice;
 
     resetNaniteStats();
 
@@ -95,15 +95,15 @@ export function initializeGUI(
     const dir = gui.addFolder('Nanite');
     dir.open();
 
-    // nanite visibility calc - GPU/CPU
+    // nanite device: GPU/CPU
     // prettier-ignore
-    const calcVisibilityDummy = createDummy(CONFIG.nanite.render, 'calcVisibilityDevice', [
+    const naniteDeviceDummy = createDummy(CONFIG.nanite.render, 'naniteDevice', [
       { label: 'GPU', value: 'gpu' },
       { label: 'CPU', value: 'cpu' },
     ]);
     // prettier-ignore
     dir
-      .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
+      .add(naniteDeviceDummy, 'naniteDevice', naniteDeviceDummy.values) // prettier-ignore
       .name('Nanite device')
       .onFinishChange(onVisiblityDeviceSwap);
 

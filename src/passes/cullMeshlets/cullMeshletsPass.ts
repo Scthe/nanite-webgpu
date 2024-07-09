@@ -74,7 +74,7 @@ export class CullMeshletsPass {
     this.bindingsCache_Indirect.clear();
   };
 
-  cmdCalculateVisibility(ctx: PassCtx, naniteObject: NaniteObject) {
+  cmdCullMeshlets(ctx: PassCtx, naniteObject: NaniteObject) {
     const { cmdBuf, profiler } = ctx;
 
     // forget draws from previous frame

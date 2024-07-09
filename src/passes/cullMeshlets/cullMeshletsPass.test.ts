@@ -128,7 +128,7 @@ Deno.test('CullMeshletsPass', async () => {
   passCtx.globalUniforms = uniforms;
   CONFIG.nanite.render.pixelThreshold = THRESHOLD;
   uniforms.update(passCtx);
-  pass.cmdCalculateVisibility(passCtx, naniteObject);
+  pass.cmdCullMeshlets(passCtx, naniteObject);
   cmdCopyToReadbackBuffer(cmdBuf, visiblityBuffer, readbackVisiblityBuffer);
   device.queue.submit([cmdBuf.finish()]);
 

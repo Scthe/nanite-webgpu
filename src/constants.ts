@@ -51,7 +51,7 @@ export type DisplayMode =
   | 'dbg-lod-meshlets'
   | 'dbg-nanite-meshlets'
   | 'dbg-depth-pyramid';
-export type CalcVisibilityDevice = 'cpu' | 'gpu';
+export type NaniteDevice = 'cpu' | 'gpu';
 
 export const SHADING_MODE_PBR = 0;
 export const SHADING_MODE_TRIANGLE = 1;
@@ -121,7 +121,8 @@ export const CONFIG = {
   /// BILLBOARD IMPOSTORS
   impostors: {
     views: 12,
-    textureSize: 512, // TODO [NOW] adjust
+    // TODO [RIGHT HERE RIGHT NOW] BRING BACK THE 512px BILLBOARDS CAUSE THEY ARE CUTE
+    textureSize: 36,
     /** Every object that is smaller than this on screen becomes impostor billboard.
      * Calculated as `screen space AABB width * height`.
      * This an AABB for an ENTIRE object, not a meshlet!
@@ -171,18 +172,18 @@ export const CONFIG = {
       enableProfiler: false,
     },
     render: {
-      calcVisibilityDevice: 'gpu' as CalcVisibilityDevice,
+      naniteDevice: 'gpu' as NaniteDevice,
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.
        */
       pixelThreshold: 0.4, // TODO change name, to 'errorThreshold'
-      /** See visiblity pass shader to compare 2 implementations */
+      /** See cull meshlets pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */
       freezeGPU_Visibilty: false,
-      /** Next frame will do an expensive GPU->CPU readback to check GPU visibility buffer */
-      nextFrameDebugVisiblityBuffer: false,
+      /** Next frame will do an expensive GPU->CPU readback to check content of the GPU 'drawn meshlets' buffer */
+      nextFrameDebugDrawnMeshletsBuffer: false,
       shadingMode: SHADING_MODE_PBR,
       isOverrideOcclusionCullMipmap: false,
       occlusionCullOverrideMipmapLevel: 0,

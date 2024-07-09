@@ -156,7 +156,7 @@ export class Renderer {
       this.dbgMeshoptimizerMeshletsPass.draw(ctx);
     } else {
       // draw nanite - calc visibility either CPU or GPU
-      if (CONFIG.nanite.render.calcVisibilityDevice === 'gpu') {
+      if (CONFIG.nanite.render.naniteDevice === 'gpu') {
         this.cmdDrawNanite_GPU(ctx);
       } else {
         this.cmdDrawNanite_CPU(ctx);
@@ -201,7 +201,7 @@ export class Renderer {
         if (CONFIG.cullingInstances.enabled) {
           this.cullInstancesPass.cmdCullInstances(ctx, naniteObject);
         }
-        this.cullMeshletsPass.cmdCalculateVisibility(ctx, naniteObject);
+        this.cullMeshletsPass.cmdCullMeshlets(ctx, naniteObject);
       }
 
       // draw: hardware
