@@ -133,9 +133,9 @@ export async function downloadDrawnMeshletsBuffer(
   device: GPUDevice,
   naniteObject: NaniteObject
 ) {
-  const visiblityBuffer = naniteObject.buffers.drawnMeshletsBuffer;
+  const gpuBuffer = naniteObject.buffers.drawnMeshletsBuffer;
 
-  const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
+  const data = await downloadBuffer(device, Uint32Array, gpuBuffer);
   const result = parseDrawnMeshletsBuffer(data);
 
   console.log(`[${naniteObject.name}] Drawn meshlets buffer`, result);

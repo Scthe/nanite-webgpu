@@ -5,16 +5,26 @@ import { STATS } from './sys_web/stats.ts';
 import { initializeGUI, onGpuProfilerResult } from './sys_web/gui.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { initCanvasResizeSystem } from './sys_web/cavasResize.ts';
-import { CONFIG, MILISECONDS_TO_SECONDS } from './constants.ts';
+import {
+  CONFIG,
+  MILISECONDS_TO_SECONDS,
+  isSoftwareRasterizerEnabled,
+} from './constants.ts';
 import { createErrorSystem } from './utils/errors.ts';
 import { downloadDrawnMeshletsBuffer } from './scene/naniteBuffers/drawnMeshletsBuffer.ts';
-import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
+import {
+  showHtmlEl,
+  hideHtmlEl,
+  ensureHtmlElIsVisible,
+} from './utils/index.ts';
 import { ObjectLoadingProgressCb, Scene, loadScene } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 import {
+  setNaniteDrawImpostorsStats,
   setNaniteDrawStats,
   setNaniteDrawStatsHw_Sw,
 } from './passes/_shared.ts';
+import { downloadDrawnImpostorsBuffer } from './scene/naniteBuffers/drawnImpostorsBuffer.ts';
 
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
@@ -119,7 +129,7 @@ const SCENE_FILE: SceneName = 'jinx';
     // download GPU visibility buffer if needed
     if (CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer) {
       CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer = false;
-      getGPUVisiblityStats(device, scene); // not awaited!
+      getGPUStats(device, scene); // not awaited!
     }
 
     // frame end
@@ -193,8 +203,27 @@ function showErrorMessage(msg?: string) {
 }
 
 /** WARNING: SLOW! */
-async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
-  // TODO [NOW] add impostor count?
+function getGPUStats(device: GPUDevice, scene: Scene) {
+  getGPUStats_meshlets(device, scene);
+  getGPUStats_impostors(device, scene);
+}
+
+async function getGPUStats_impostors(device: GPUDevice, scene: Scene) {
+  let allInstances = 0;
+  let drawnImpostors = 0;
+
+  const resultsAsync = scene.naniteObjects.map(async (obj) => {
+    const result = await downloadDrawnImpostorsBuffer(device, obj);
+
+    allInstances += obj.instancesCount;
+    drawnImpostors += result.impostorCount;
+  });
+  await Promise.all(resultsAsync);
+
+  setNaniteDrawImpostorsStats(drawnImpostors, allInstances);
+}
+
+async function getGPUStats_meshlets(device: GPUDevice, scene: Scene) {
   let drawnMeshlets = 0;
   let drawnTriangles = 0;
   let drawnMeshletsHW = 0;
@@ -230,6 +259,7 @@ async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
     }
   });
   await Promise.all(resultsAsync);
+
   setNaniteDrawStats(scene, drawnMeshlets, drawnTriangles);
   setNaniteDrawStatsHw_Sw(
     drawnMeshletsHW,
@@ -237,4 +267,16 @@ async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
     drawnMeshletsSW,
     drawnTrianglesSW
   );
+}
+
+// special check for software rasterizer warning
+setInterval(checkSoftwareRasterizerState, 2000);
+const el = document.getElementById('software-rasterizer');
+function checkSoftwareRasterizerState() {
+  const shouldBeEnabled = CONFIG.softwareRasterizer.enabled;
+  const isEnabled = isSoftwareRasterizerEnabled();
+  // console.log({ shouldBeEnabled, isEnabled });
+
+  const showWarning = shouldBeEnabled && !isEnabled;
+  ensureHtmlElIsVisible(el, showWarning);
 }

@@ -59,11 +59,9 @@ fn main_fs(
   var depth = textureLoad(_depthPyramidTexture, vec2u(mipCoord.xy), mipLevel).x;
   
   var c = vec3f(0., 0., 0.);
-  if (depth == 1.0) { // far
-    c.r = 1.0;
-  } else {
+  if (depth < 1.0) {
     c.g = linearizeDepth_0_1(depth);
-    c.b = 0.2;
+    c.b = 0.2; // some color so it's not black regardless of depth
   }
 
   return vec4(c, 1.0);

@@ -4,7 +4,10 @@ import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { SNIPPET_SHADING_PBR } from '../_shaderSnippets/pbr.wgsl.ts';
 import { SNIPPET_SHADING } from '../_shaderSnippets/shading.wgsl.ts';
-import { SHADING_MODE_NORMALS } from '../../constants.ts';
+import {
+  SHADING_MODE_HW_SW_IMPOSTOR,
+  SHADING_MODE_NORMALS,
+} from '../../constants.ts';
 
 export const SHADER_PARAMS = {
   bindings: {
@@ -92,7 +95,10 @@ fn main_fs(
     result.color = vec4f(abs(nUnpacked.xyz), 1.0);
     // result.color = vec4f(nUnpacked.xyz, 1.0);
     // result.color = vec4f(-nUnpacked.xyz, 1.0);
-    
+   
+  } else if (shadingMode == ${SHADING_MODE_HW_SW_IMPOSTOR}u) {
+    result.color = vec4f(0., 1., 0., 1.);
+
   } else {
     // material
     var material: Material;

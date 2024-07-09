@@ -21,6 +21,7 @@ export interface PassCtx {
   prevFrameDepthPyramidTexture: GPUTextureView;
   hdrRenderTexture: GPUTextureView;
   rasterizerSwResult: GPUBuffer;
+  softwareRasterizerEnabled: boolean;
   globalUniforms: RenderUniformsBuffer;
   depthPyramidSampler: GPUSampler;
 }

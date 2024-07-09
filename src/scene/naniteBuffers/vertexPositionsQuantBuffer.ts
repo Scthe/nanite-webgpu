@@ -120,7 +120,7 @@ export function createNaniteVertexPositionsQuantBuffer(
   // PY: box_min + 0.5 * quantFactor;
   const dequantSummand = vec3.addScaled(bboxMin, dequantFactor, 0.5);
 
-  // TODO [QUANT] provide both values to the WGSL's _getVertexPosition()
+  // provide both values to the WGSL's _getVertexPosition()
   console.log({ dequantFactor, dequantSummand });
 
   return createGPUBuffer(

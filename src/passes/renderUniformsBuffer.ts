@@ -118,6 +118,7 @@ export class RenderUniformsBuffer {
       viewport,
       cameraFrustum,
       cameraPositionWorldSpace,
+      softwareRasterizerEnabled,
     } = ctx;
     const c = CONFIG;
     const nanite = c.nanite.render;
@@ -133,7 +134,7 @@ export class RenderUniformsBuffer {
     // viewport
     offsetBytes = this.writeF32(offsetBytes, viewport.width);
     offsetBytes = this.writeF32(offsetBytes, viewport.height);
-    offsetBytes = this.writeF32(offsetBytes, nanite.pixelThreshold); // prettier-ignore
+    offsetBytes = this.writeF32(offsetBytes, nanite.errorThreshold); // prettier-ignore
     offsetBytes = this.writeF32(offsetBytes, calcCotHalfFov());
     // camera position
     const camPos = cameraPositionWorldSpace;
@@ -148,7 +149,8 @@ export class RenderUniformsBuffer {
     // misc
     offsetBytes = this.writeU32(offsetBytes, this.encodeFlags());
     offsetBytes = this.writeF32(offsetBytes, imp.billboardThreshold);
-    offsetBytes = this.writeF32(offsetBytes, swr.threshold);
+    const swrThreshold = softwareRasterizerEnabled ? swr.threshold : 0.0;
+    offsetBytes = this.writeF32(offsetBytes, swrThreshold);
     // padding
     offsetBytes += 1 * BYTES_U32;
     // color mgmt

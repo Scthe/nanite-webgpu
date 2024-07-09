@@ -1,5 +1,9 @@
 import { BYTES_U32 } from '../../constants.ts';
-import { WEBGPU_MINIMAL_BUFFER_SIZE } from '../../utils/webgpu.ts';
+import {
+  WEBGPU_MINIMAL_BUFFER_SIZE,
+  downloadBuffer,
+} from '../../utils/webgpu.ts';
+import { NaniteObject } from '../naniteObject.ts';
 
 ///////////////////////////
 /// SHADER CODE
@@ -56,4 +60,34 @@ export function createDrawnImpostorsBuffer(
   });
 
   return bufferGpu;
+}
+
+/**
+ * WARNING: SLOW. DO NOT USE UNLESS FOR DEBUG/TEST PURPOSES.
+ *
+ * Kinda sucks it's async as weird things happen.
+ */
+export async function downloadDrawnImpostorsBuffer(
+  device: GPUDevice,
+  naniteObject: NaniteObject
+) {
+  const gpuBuffer = naniteObject.buffers.drawnImpostorsBuffer;
+
+  // TBH. we don't need whole buffer, just a single u32. But.. ehhhh..
+  const data = await downloadBuffer(device, Uint32Array, gpuBuffer);
+  const impostorCount = data[1];
+
+  const listOffset = BYTES_DRAWN_IMPOSTORS_PARAMS / BYTES_U32;
+  const idsList = data.slice(listOffset, listOffset + impostorCount);
+
+  const result = {
+    vertexCount: data[0],
+    impostorCount,
+    firstVertex: data[2],
+    firstInstance: data[3],
+    idsList,
+  };
+
+  console.log(`[${naniteObject.name}] Drawn impostors buffer`, result);
+  return result;
 }

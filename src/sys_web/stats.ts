@@ -31,13 +31,13 @@ const AvailableStats = {
   'Preprocessing': {} as StatOpts,
   'Scene meshlets': {} as StatOpts,
   'Scene triangles': {} as StatOpts,
+  'Rendered impostors': { visibilityDevice: 'gpu' } as StatOpts,
   'Rendered meshlets': {} as StatOpts,
   'Rendered triangles': {} as StatOpts, // in GPU mode this does not count impostors
   'HW: Rendered meshlets': { visibilityDevice: 'gpu' } as StatOpts,
   'HW: Rendered triangles': { visibilityDevice: 'gpu' } as StatOpts,
   'SW: Rendered meshlets': { visibilityDevice: 'gpu' } as StatOpts,
   'SW: Rendered triangles': { visibilityDevice: 'gpu' } as StatOpts,
-  'Mshlt cull wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
 
@@ -65,8 +65,6 @@ class Stats {
     } else {
       this.parentEl = undefined!;
     }
-
-    this.values['Rendered meshlets'] = '-';
   }
 
   update(name: StatName, value: StatsValue) {

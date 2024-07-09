@@ -150,7 +150,7 @@ export function getVisibilityStatus(
   // prettier-ignore
   const parentError = getProjectedError(meshlet.parentBounds, meshlet.parentError);
 
-  const threshold = CONFIG.nanite.render.pixelThreshold; // in pixels
+  const threshold = CONFIG.nanite.render.errorThreshold;
   // TBH we already checked parentError whn traversing the tree, so not needed. Leaving for readability
   const shouldRenderThisExactMeshlet =
     parentError > threshold && clusterError <= threshold;
@@ -206,7 +206,7 @@ export function createErrorMetric(
       r,
       projectedR,
       result: (projectedR * screenHeight) / 2.0,
-      THRESHOLD: CONFIG.nanite.render.pixelThreshold,
+      THRESHOLD: CONFIG.nanite.render.errorThreshold,
     });*/
     return (projectedR * screenHeight) / 2.0;
   };

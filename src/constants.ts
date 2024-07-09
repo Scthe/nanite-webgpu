@@ -58,6 +58,7 @@ export const SHADING_MODE_TRIANGLE = 1;
 export const SHADING_MODE_MESHLET = 2;
 export const SHADING_MODE_LOD_LEVEL = 3;
 export const SHADING_MODE_NORMALS = 4;
+export const SHADING_MODE_HW_SW_IMPOSTOR = 5;
 
 export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
@@ -151,6 +152,7 @@ export const CONFIG = {
   ///////////////
   /// SOFTWARE RASTERIZER
   softwareRasterizer: {
+    enabled: true,
     /** Every meshlet that is less pixels than this will be software rendered. Calculated as `screen space AABB width * height`. */
     threshold: 360.0,
   },
@@ -177,7 +179,7 @@ export const CONFIG = {
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.
        */
-      pixelThreshold: 0.4, // TODO change name, to 'errorThreshold'
+      errorThreshold: 0.4,
       /** See cull meshlets pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */
@@ -197,3 +199,27 @@ export const CONFIG = {
     },
   },
 };
+
+export function isSoftwareRasterizerEnabled() {
+  const swr = CONFIG.softwareRasterizer;
+  const enabled = swr.enabled;
+  const wouldReturnAnything = swr.threshold > 0;
+
+  // Triangle was 1x1 px and now you move camera to make it fullscreen?
+  // And by triangle I mean 10+ million triangles.
+  const potentiallyDangerous = CONFIG.nanite.render.freezeGPU_Visibilty;
+
+  // require any culling just for stability
+  // hardware rasterizing millions of (tiny) triangles is a TERRIBLE idea,
+  // but software rasterizing drives Chrome into an.. overdrive.
+  const ci = CONFIG.cullingInstances;
+  const hasInstanceCull =
+    ci.enabled && (ci.frustumCulling || ci.occlusionCulling);
+  const cm = CONFIG.cullingMeshlets;
+  const hasMshlCull = cm.frustumCulling || cm.occlusionCulling;
+  const hasAnyCulling = hasInstanceCull || hasMshlCull;
+
+  return (
+    enabled && wouldReturnAnything && !potentiallyDangerous && hasAnyCulling
+  );
+}

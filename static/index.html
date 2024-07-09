@@ -79,6 +79,20 @@
         font-size: 1.2em;
       }
 
+      #software-rasterizer {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      #software-rasterizer-msg {
+        margin: 0;
+        padding: 10px;
+        padding-bottom: 0;
+        background: #b81e1e;
+        color: white;
+      }
+
       /* Spinning loader */
       #loader-wrapper {
         position: absolute;
@@ -137,6 +151,13 @@
     <!-- No webgpu -->
     <div id="no-webgpu">
       <pre id="error-msg">No WebGPU available. Please use Chrome.</pre>
+    </div>
+
+    <!-- Software rasterizer banner -->
+    <div id="software-rasterizer" style="display: none">
+      <pre id="software-rasterizer-msg">
+Software rasterizer disabled due to other settings.
+      </pre>
     </div>
 
     <div id="loader-wrapper">

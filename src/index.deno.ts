@@ -31,7 +31,7 @@ const PREFERRED_CANVAS_FORMAT = 'rgba8unorm-srgb';
 injectMeshoptimizerWASM();
 injectMetisWASM();
 
-CONFIG.softwareRasterizer.threshold = 0;
+CONFIG.softwareRasterizer.enabled = false;
 CONFIG.loaders.textFileReader = textFileReader_Deno;
 CONFIG.loaders.createTextureFromFile = createTextureFromFile_Deno;
 CONFIG.colors.gamma = 1.0; // I assume the png library does it for us?

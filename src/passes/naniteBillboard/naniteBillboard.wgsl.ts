@@ -1,4 +1,8 @@
-import { CONFIG, SHADING_MODE_NORMALS } from '../../constants.ts';
+import {
+  CONFIG,
+  SHADING_MODE_HW_SW_IMPOSTOR,
+  SHADING_MODE_NORMALS,
+} from '../../constants.ts';
 import { SNIPPET_DITHER } from '../_shaderSnippets/dither.wgsl.ts';
 import { SNIPPET_PACKING } from '../_shaderSnippets/pack.wgsl.ts';
 import { BUFFER_DRAWN_INSTANCES_PARAMS } from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
@@ -147,8 +151,8 @@ fn main_fs(
 
   // mix factor between both images
   let ditherStr = getBillboardDitheringStrength(_uniforms.flags);
-  let dither = getDitherForPixel(vec2u(fragIn.position.xy)); // range: 0-1
-  let modStr = mix(fract(shownImageF32), dither, ditherStr);
+  let dither = getDitherForPixel(vec2u(fragIn.position.xy)) - 0.5; // range: [-0.5 .. 0.5]
+  let modStr = saturate(mix(fract(shownImageF32), dither, ditherStr));
 
   let shadingMode = getShadingMode(_uniforms.flags);
   var color: vec4f;
@@ -157,6 +161,9 @@ fn main_fs(
     // ignores impostor1, but it's just a debug mode so..
     color = vec4f(abs(impostor0.normal), impostor0.diffuse.a);
     
+  } else if (shadingMode == ${SHADING_MODE_HW_SW_IMPOSTOR}u) {
+    color = vec4f(0., 0., 1., impostor0.diffuse.a);
+
   } else {
     // shading
     var material: Material;

@@ -155,7 +155,7 @@ export function formatNumber(num: number, decimals = 2) {
 
 /** Format 4 out of 100 into: '4 (4%)' */
 export function formatPercentageNumber(actual: number, total: number) {
-  const percent = (actual / total) * 100.0;
+  const percent = total > 0 ? (actual / total) * 100.0 : 0;
   return `${actual} (${percent.toFixed(1)}%)`;
 }
 
@@ -183,6 +183,21 @@ export const showHtmlEl = (
 
 export const hideHtmlEl = (el: HTMLElement | null) => {
   if (el) el.style.display = 'none';
+};
+
+export const ensureHtmlElIsVisible = (
+  el: HTMLElement | null,
+  nextVisible: boolean
+) => {
+  const isVisible = isHtmlElVisible(el);
+  if (isVisible === nextVisible) return;
+
+  // console.log('HTML change visible to', nextVisible);
+  if (nextVisible) {
+    showHtmlEl(el);
+  } else {
+    hideHtmlEl(el);
+  }
 };
 
 export const randomBetween = (start: number, end: number) => {

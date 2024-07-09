@@ -101,6 +101,7 @@ export const createMockPassCtx = (
     scene: undefined!,
     depthTexture: undefined!,
     hdrRenderTexture: undefined!,
+    softwareRasterizerEnabled: false,
     rasterizerSwResult: undefined!,
     globalUniforms: undefined!,
     prevFrameDepthPyramidTexture: dummyPyramidTexture.createView(),

@@ -7,7 +7,12 @@ import {
   getViewProjectionMatrix,
 } from './utils/index.ts';
 import Input from './sys_web/input.ts';
-import { CONFIG, DEPTH_FORMAT, HDR_RENDER_TEX_FORMAT } from './constants.ts';
+import {
+  CONFIG,
+  DEPTH_FORMAT,
+  HDR_RENDER_TEX_FORMAT,
+  isSoftwareRasterizerEnabled,
+} from './constants.ts';
 import { DrawNanitesPass } from './passes/naniteCpu/drawNanitesPass.ts';
 import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
@@ -132,6 +137,7 @@ export class Renderer {
       scene,
       hdrRenderTexture: this.hdrRenderTextureView,
       rasterizerSwResult: this.rasterizeSwPass.resultBuffer,
+      softwareRasterizerEnabled: isSoftwareRasterizerEnabled(),
       device: this.device,
       profiler: this.profiler,
       viewMatrix,
@@ -186,7 +192,7 @@ export class Renderer {
 
   private cmdDrawNanite_GPU(ctx: PassCtx) {
     const { naniteObjects } = ctx.scene;
-    const softwareRasterizeEnabled = CONFIG.softwareRasterizer.threshold > 0;
+    const softwareRasterizeEnabled = ctx.softwareRasterizerEnabled;
 
     if (softwareRasterizeEnabled) {
       this.rasterizeSwPass.clearFramebuffer(ctx);

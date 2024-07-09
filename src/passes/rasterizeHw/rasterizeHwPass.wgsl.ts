@@ -8,6 +8,7 @@ import {
   SHADING_MODE_MESHLET,
   SHADING_MODE_LOD_LEVEL,
   SHADING_MODE_NORMALS,
+  SHADING_MODE_HW_SW_IMPOSTOR,
 } from '../../constants.ts';
 import { BUFFER_DRAWN_MESHLETS_LIST } from '../../scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { BUFFER_VERTEX_POSITIONS } from '../../scene/naniteBuffers/vertexPositionsBuffer.ts';
@@ -133,6 +134,9 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4<f32> {
   
   } else if (shadingMode == ${SHADING_MODE_NORMALS}u) {
     color = abs(normalize(fragIn.normalWS));
+    
+  } else if (shadingMode == ${SHADING_MODE_HW_SW_IMPOSTOR}u) {
+    color = vec3f(1., 0., 0.);
     
   } else {
     var material: Material;

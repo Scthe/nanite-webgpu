@@ -10,7 +10,6 @@ import {
   labelShader,
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
-import { STATS } from '../../sys_web/stats.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './cullMeshletsPass.wgsl.ts';
 import { CONFIG } from '../../constants.ts';
 
@@ -132,7 +131,6 @@ export class CullMeshletsPass {
       workgroupsCntY,
       workgroupsCntZ
     );
-    STATS.update('Mshlt cull wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
   }
 
   /** See shader for explanation */
@@ -170,7 +168,6 @@ export class CullMeshletsPass {
       workgroupsCntY,
       workgroupsCntZ
     );
-    STATS.update('Mshlt cull wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
   }
 
   /** See shader for explanation */

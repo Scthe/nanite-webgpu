@@ -126,7 +126,7 @@ Deno.test('CullMeshletsPass', async () => {
   passCtx.viewMatrix = mat4.identity();
   passCtx.vpMatrix = mat4.identity();
   passCtx.globalUniforms = uniforms;
-  CONFIG.nanite.render.pixelThreshold = THRESHOLD;
+  CONFIG.nanite.render.errorThreshold = THRESHOLD;
   uniforms.update(passCtx);
   pass.cmdCullMeshlets(passCtx, naniteObject);
   cmdCopyToReadbackBuffer(cmdBuf, visiblityBuffer, readbackVisiblityBuffer);

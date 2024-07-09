@@ -108,6 +108,7 @@ export function resetNaniteStats() {
   STATS.update('HW: Rendered triangles', '-');
   STATS.update('SW: Rendered meshlets', '-');
   STATS.update('SW: Rendered triangles', '-');
+  STATS.update('Rendered impostors', '-');
 }
 
 export function setNaniteDrawStats(
@@ -151,5 +152,15 @@ export function setNaniteDrawStatsHw_Sw(
   STATS.update(
     'SW: Rendered triangles',
     formatPercentageNumber(drawnTrianglesSW, totalTris)
+  );
+}
+
+export function setNaniteDrawImpostorsStats(
+  drawnImpostors: number,
+  allInstances: number
+) {
+  STATS.update(
+    'Rendered impostors',
+    formatPercentageNumber(drawnImpostors, allInstances)
   );
 }

@@ -90,7 +90,6 @@ Deno.test('CullInstancesPass', async () => {
   // passCtx.viewMatrix = mat4.identity();
   // passCtx.vpMatrix = mat4.identity();
   passCtx.globalUniforms = uniforms;
-  // CONFIG.nanite.render.pixelThreshold = THRESHOLD;
   uniforms.update(passCtx);
   pass.cmdCullInstances(passCtx, mockNaniteObject);
   cmdCopyToReadbackBuffer(cmdBuf, bufferGpu, bufferReadback);

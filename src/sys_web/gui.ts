@@ -3,6 +3,7 @@ import * as dat from 'dat.gui';
 import {
   CONFIG,
   DisplayMode,
+  SHADING_MODE_HW_SW_IMPOSTOR,
   SHADING_MODE_LOD_LEVEL,
   SHADING_MODE_MESHLET,
   SHADING_MODE_NORMALS,
@@ -51,6 +52,11 @@ export function initializeGUI(
     },
     getGpuDrawStats: () => {
       CONFIG.nanite.render.nextFrameDebugDrawnMeshletsBuffer = true;
+    },
+    showSwRasterAlert: () => {
+      alert(
+        "WebGPU does not support atomic<u64> yet. I can't output both depth and color data with just 32 bits. Depth and normals are the best we get. And even that is a squeeze. What you see is the default white color affected by lights."
+      );
     },
   };
 
@@ -107,9 +113,9 @@ export function initializeGUI(
       .name('Nanite device')
       .onFinishChange(onVisiblityDeviceSwap);
 
-    // pixelThreshold
+    // errorThreshold
     dir
-      .add(CONFIG.nanite.render, 'pixelThreshold', 0, 10)
+      .add(CONFIG.nanite.render, 'errorThreshold', 0, 10)
       .name('Error threshold [px]');
 
     // Visib. algo
@@ -125,6 +131,7 @@ export function initializeGUI(
       { label: 'Triangles', value: SHADING_MODE_TRIANGLE },
       { label: 'Meshlets', value: SHADING_MODE_MESHLET },
       { label: 'LOD levels', value: SHADING_MODE_LOD_LEVEL },
+      { label: 'HW/SW/Impostor', value: SHADING_MODE_HW_SW_IMPOSTOR },
     ]);
     // prettier-ignore
     _gpuShadingMode = dir
@@ -141,7 +148,12 @@ export function initializeGUI(
       .add(dummyObject, 'getGpuDrawStats')
       .name('Get GPU stats');
 
+    dir
+      .add(dummyObject, 'showSwRasterAlert')
+      .name('Software rasterizer - README');
+
     const cfgSr = CONFIG.softwareRasterizer;
+    dir.add(cfgSr, 'enabled').name('Softw. raster. enable');
     gpuSoftwareRasterizerThrsh = dir
       .add(cfgSr, 'threshold', 0.0, 1000.0)
       .name('Softw. raster. threshold [px]');

@@ -176,13 +176,18 @@ fn rasterize(
   // storeResult(viewportSize, vec2u(boundRectMin), COLOR_PINK); // dbg
 
   // check if triangle covers only 1 pixel. It would do 0 iters.
-  // But most samples (incl. UE5) ignore this case?
+  // But most code (incl. UE5) ignore this case?
   /*if(boundRectMin.x == boundRectMax.x && boundRectMin.y == boundRectMax.y) {
     let depth: f32 = (v0_NDC.z + v1_NDC.z + v2_NDC.z) / 3.0; // ?
     let n: vec3f = normalize(n0 + n1 + n2); // [-1, 1] // ?
     let value = createPayload(depth, n);
     storeResult(viewportSize, vec2u(u32(boundRectMin.x), u32(boundRectMin.y)), value);
   }*/
+
+  // NOTE: You can easily optimize this to just 3 adds per fragment. I've copied
+  // the first snippet from the tutorials at the top of the file. Feel free
+  // to copy the second snippet yourself. edgeFunction() is the most intuitive
+  // implementation available and it's still much faster than the hardware.
   
   // iterate row-by-row
   for (var y: f32 = boundRectMin.y; y < boundRectMax.y; y+=1.0) {
@@ -228,7 +233,7 @@ fn createPayload(depth0: f32, n: vec3f) -> u32 {
 
   // encode normals. We could use pack4x8snorm(), but too lazy to debug
   // let n_0_1 = n * 0.5 + 0.5; // [0-1] // VERSION 0: NO OCT. ENCODED, XY ONLY
-  let n_0_1 = encodeOctahedronNormal(n);
+  let n_0_1 = encodeOctahedronNormal(n); // this has some edge cases, but as entire thing is a hack around lack of atomic<u64>, I do not care
   let nPacked: u32 = (
     (u32(n_0_1.x * 255) << 8) |
      u32(n_0_1.y * 255)
@@ -272,6 +277,5 @@ fn storeResult(viewportSize: vec2u, posPx: vec2u, value: u32) {
   let idx: u32 = y * viewportSize.x + posPx.x;
   // WebGPU clears to 0. So atomicMin is pointless..
   atomicMax(&_softwareRasterizerResult[idx], value);
-  // atomicStore(&_softwareRasterizerResult[idx], value); // NO, data race
 }
 `;

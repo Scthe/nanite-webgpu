@@ -44,7 +44,7 @@ export class NaniteBillboardPass {
         stripIndexFormat: undefined,
       },
       depthStencil: {
-        depthWriteEnabled: true, //  TODO?
+        depthWriteEnabled: true,
         depthCompare: 'less',
         format: DEPTH_FORMAT,
       },
