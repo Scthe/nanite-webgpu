@@ -13,8 +13,8 @@ import { Camera } from './camera.ts';
 import { PassCtx } from './passes/passCtx.ts';
 import { DbgMeshoptimizerPass } from './passes/debug/dbgMeshoptimizerPass.ts';
 import { DbgMeshoptimizerMeshletsPass } from './passes/debug/dbgMeshoptimizerMeshletsPass.ts';
-import { DrawNaniteGPUPass } from './passes/naniteGpu/drawNaniteGPUPass.ts';
-import { NaniteVisibilityPass } from './passes/naniteGpu/naniteVisibilityPass.ts';
+import { RasterizeHwPass } from './passes/rasterizeHw/rasterizeHwPass.ts';
+import { CullMeshletsPass } from './passes/cullMeshlets/cullMeshletsPass.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { Scene } from './scene/scene.ts';
 import { Frustum } from './utils/frustum.ts';
@@ -44,9 +44,9 @@ export class Renderer {
 
   // passes
   private readonly drawMeshPass: DrawNanitesPass;
-  private readonly drawNaniteGPUPass: DrawNaniteGPUPass;
+  private readonly rasterizeHwPass: RasterizeHwPass;
   private readonly rasterizeSwPass: RasterizeSwPass;
-  private readonly naniteVisibilityPass: NaniteVisibilityPass;
+  private readonly cullMeshletsPass: CullMeshletsPass;
   private readonly cullInstancesPass: CullInstancesPass;
   private readonly naniteBillboardPass: NaniteBillboardPass;
   private readonly rasterizeCombine: RasterizeCombine;
@@ -67,12 +67,9 @@ export class Renderer {
     this.renderUniformBuffer = new RenderUniformsBuffer(device);
 
     this.drawMeshPass = new DrawNanitesPass(device, HDR_RENDER_TEX_FORMAT);
-    this.drawNaniteGPUPass = new DrawNaniteGPUPass(
-      device,
-      HDR_RENDER_TEX_FORMAT
-    );
+    this.rasterizeHwPass = new RasterizeHwPass(device, HDR_RENDER_TEX_FORMAT);
     this.rasterizeSwPass = new RasterizeSwPass(device);
-    this.naniteVisibilityPass = new NaniteVisibilityPass(device);
+    this.cullMeshletsPass = new CullMeshletsPass(device);
     this.cullInstancesPass = new CullInstancesPass(device);
     this.naniteBillboardPass = new NaniteBillboardPass(
       device,
@@ -204,11 +201,11 @@ export class Renderer {
         if (CONFIG.cullingInstances.enabled) {
           this.cullInstancesPass.cmdCullInstances(ctx, naniteObject);
         }
-        this.naniteVisibilityPass.cmdCalculateVisibility(ctx, naniteObject);
+        this.cullMeshletsPass.cmdCalculateVisibility(ctx, naniteObject);
       }
 
       // draw: hardware
-      this.drawNaniteGPUPass.cmdHardwareRasterize(ctx, naniteObject, loadOp);
+      this.rasterizeHwPass.cmdHardwareRasterize(ctx, naniteObject, loadOp);
       // draw: software
       if (softwareRasterizeEnabled) {
         this.rasterizeSwPass.cmdSoftwareRasterize(ctx, naniteObject);
@@ -275,7 +272,7 @@ export class Renderer {
 
     // reset bindings that used texture
     this.depthPyramidDebugDrawPass.onViewportResize();
-    this.naniteVisibilityPass.onViewportResize();
+    this.cullMeshletsPass.onViewportResize();
     this.cullInstancesPass.onViewportResize();
     this.rasterizeSwPass.onViewportResize(this.device, viewportSize);
     this.depthPyramidPass.verifyResultTexture(

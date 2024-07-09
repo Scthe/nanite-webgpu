@@ -35,7 +35,7 @@ fn getProjectedError(
   cotHalfFov: f32,
   boundsMidPointAndError: vec4f
 ) -> f32 {
-  // return 1000.0 * boundsMidPointAndError.w; // used to debug tests, see calcs at the top of 'naniteVisibilityPass.test.ts'
+  // return 1000.0 * boundsMidPointAndError.w; // used to debug tests, see calcs at the top of 'cullMeshletsPass.test.ts'
   
   let r = boundsMidPointAndError.w; // error
   

@@ -3,7 +3,7 @@ import {
   createMockPassCtx,
   createMeshlets_TESTS,
 } from '../../sys_deno/testUtils.ts';
-import { NaniteVisibilityPass } from './naniteVisibilityPass.ts';
+import { CullMeshletsPass } from './cullMeshletsPass.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { mat4 } from 'wgpu-matrix';
 import { BYTES_VEC3, CONFIG, VERTS_IN_TRIANGLE } from '../../constants.ts';
@@ -38,7 +38,7 @@ const EXPECTED_DRAWN_MESHLETS_COUNT = 2;
 // projErr = 1000 * r, where 'r' is the simplification error we provide for each meshlet
 // RENDER: parentError > threshold && clusterError <= threshold
 
-Deno.test('NaniteVisibilityPass', async () => {
+Deno.test('CullMeshletsPass', async () => {
   const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();
   // disabled as would require precise mock data
   CONFIG.cullingMeshlets.frustumCulling = false;
@@ -117,7 +117,7 @@ Deno.test('NaniteVisibilityPass', async () => {
   const readbackVisiblityBuffer = createReadbackBuffer(device, visiblityBuffer);
 
   // pass
-  const pass = new NaniteVisibilityPass(device);
+  const pass = new CullMeshletsPass(device);
 
   // submit
   const cmdBuf = device.createCommandEncoder();

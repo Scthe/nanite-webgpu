@@ -11,12 +11,12 @@ import {
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { STATS } from '../../sys_web/stats.ts';
-import { SHADER_PARAMS, SHADER_CODE } from './naniteVisibilityPass.wgsl.ts';
+import { SHADER_PARAMS, SHADER_CODE } from './cullMeshletsPass.wgsl.ts';
 import { CONFIG } from '../../constants.ts';
 
 /** Pass to cull on meshlet level */
-export class NaniteVisibilityPass {
-  public static NAME: string = NaniteVisibilityPass.name;
+export class CullMeshletsPass {
+  public static NAME: string = CullMeshletsPass.name;
 
   // shader variant 1
   private readonly pipeline_SpreadYZ: GPUComputePipeline;
@@ -32,21 +32,21 @@ export class NaniteVisibilityPass {
 
   constructor(device: GPUDevice) {
     const shaderModule = device.createShaderModule({
-      label: labelShader(NaniteVisibilityPass),
+      label: labelShader(CullMeshletsPass),
       code: SHADER_CODE(),
     });
 
-    this.pipeline_SpreadYZ = NaniteVisibilityPass.createPipeline(
+    this.pipeline_SpreadYZ = CullMeshletsPass.createPipeline(
       device,
       shaderModule,
       'main_SpreadYZ'
     );
-    this.pipeline_Iter = NaniteVisibilityPass.createPipeline(
+    this.pipeline_Iter = CullMeshletsPass.createPipeline(
       device,
       shaderModule,
       'main_Iter'
     );
-    this.pipeline_Indirect = NaniteVisibilityPass.createPipeline(
+    this.pipeline_Indirect = CullMeshletsPass.createPipeline(
       device,
       shaderModule,
       'main_Indirect'
@@ -59,7 +59,7 @@ export class NaniteVisibilityPass {
     mainFn: string
   ) {
     return device.createComputePipeline({
-      label: labelPipeline(NaniteVisibilityPass, mainFn),
+      label: labelPipeline(CullMeshletsPass, mainFn),
       layout: 'auto',
       compute: {
         module: shaderModule,
@@ -81,8 +81,8 @@ export class NaniteVisibilityPass {
     naniteObject.buffers.cmdClearDrawnMeshletsParams(cmdBuf);
 
     const computePass = cmdBuf.beginComputePass({
-      label: NaniteVisibilityPass.NAME,
-      timestampWrites: profiler?.createScopeGpu(NaniteVisibilityPass.NAME),
+      label: CullMeshletsPass.NAME,
+      timestampWrites: profiler?.createScopeGpu(CullMeshletsPass.NAME),
     });
 
     if (CONFIG.cullingInstances.enabled) {
@@ -232,7 +232,7 @@ export class NaniteVisibilityPass {
     const bindGroups = this.getTheUsuallBindGroups(ctx, naniteObject);
 
     return assignResourcesToBindings2(
-      NaniteVisibilityPass,
+      CullMeshletsPass,
       naniteObject.name,
       device,
       pipeline,
@@ -252,7 +252,7 @@ export class NaniteVisibilityPass {
     const buffers = naniteObject.buffers;
 
     return assignResourcesToBindings2(
-      NaniteVisibilityPass,
+      CullMeshletsPass,
       naniteObject.name,
       device,
       pipeline,

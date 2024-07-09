@@ -18,7 +18,7 @@ import {
   createDrawnInstanceIdsBuffer,
   parseDrawnInstancesBuffer,
 } from '../../scene/naniteBuffers/drawnInstancesBuffer.ts';
-import { SHADER_PARAMS as SHADER_PARAMS_VISIBILITY } from '../naniteGpu/naniteVisibilityPass.wgsl.ts';
+import { SHADER_PARAMS as SHADER_PARAMS_CULL_MESHLETS } from '../cullMeshlets/cullMeshletsPass.wgsl.ts';
 import { assert, assertAlmostEquals, assertEquals } from 'assert';
 import { createDrawnImpostorsBuffer } from '../../scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import { CONFIG } from '../../constants.ts';
@@ -107,7 +107,7 @@ Deno.test('CullInstancesPass', async () => {
 
   const expWorkgroupsX = getItemsPerThread(
     ALL_MESHLETS_COUNT,
-    SHADER_PARAMS_VISIBILITY.workgroupSizeX
+    SHADER_PARAMS_CULL_MESHLETS.workgroupSizeX
   );
   assertEquals(result.workgroupsX, expWorkgroupsX);
   assertEquals(result.workgroupsZ, 1);
@@ -121,7 +121,7 @@ Deno.test('CullInstancesPass', async () => {
   // Following case only happens when we have more instances than max dispatch size.
   // May fail if you set instances too low. But half the value of testing is in
   // that particular edge case, so...
-  assertEquals(result.workgroupsY, SHADER_PARAMS_VISIBILITY.maxWorkgroupsY); // cannot be more
+  assertEquals(result.workgroupsY, SHADER_PARAMS_CULL_MESHLETS.maxWorkgroupsY); // cannot be more
   assertEquals(result.actuallyDrawnInstances, mockInstances.count); // the actual count
 
   for (let i = 0; i < mockInstances.count; i++) {

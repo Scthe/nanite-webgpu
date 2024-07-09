@@ -11,18 +11,18 @@ import {
 } from '../_shared.ts';
 import { PassCtx } from '../passCtx.ts';
 import { NaniteObject } from '../../scene/naniteObject.ts';
-import { SHADER_CODE, SHADER_PARAMS } from './drawNaniteGPUPass.wgsl.ts';
+import { SHADER_CODE, SHADER_PARAMS } from './rasterizeHwPass.wgsl.ts';
 import { getDiffuseTexture } from '../../scene/scene.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 
-export class DrawNaniteGPUPass {
-  public static NAME: string = DrawNaniteGPUPass.name;
+export class RasterizeHwPass {
+  public static NAME: string = RasterizeHwPass.name;
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();
 
   constructor(device: GPUDevice, outTextureFormat: GPUTextureFormat) {
-    this.renderPipeline = DrawNaniteGPUPass.createRenderPipeline(
+    this.renderPipeline = RasterizeHwPass.createRenderPipeline(
       device,
       outTextureFormat
     );
@@ -33,12 +33,12 @@ export class DrawNaniteGPUPass {
     outTextureFormat: GPUTextureFormat
   ) {
     const shaderModule = device.createShaderModule({
-      label: labelShader(DrawNaniteGPUPass),
+      label: labelShader(RasterizeHwPass),
       code: SHADER_CODE(),
     });
 
     return device.createRenderPipeline({
-      label: labelPipeline(DrawNaniteGPUPass),
+      label: labelPipeline(RasterizeHwPass),
       layout: 'auto',
       vertex: {
         module: shaderModule,
@@ -64,12 +64,12 @@ export class DrawNaniteGPUPass {
 
     // https://developer.mozilla.org/en-US/docs/Web/API/GPUCommandEncoder/beginRenderPass
     const renderPass = cmdBuf.beginRenderPass({
-      label: DrawNaniteGPUPass.NAME,
+      label: RasterizeHwPass.NAME,
       colorAttachments: [
         useColorAttachment(hdrRenderTexture, getClearColorVec3(), loadOp),
       ],
       depthStencilAttachment: useDepthStencilAttachment(depthTexture, loadOp),
-      timestampWrites: profiler?.createScopeGpu(DrawNaniteGPUPass.NAME),
+      timestampWrites: profiler?.createScopeGpu(RasterizeHwPass.NAME),
     });
     const bindings = this.bindingsCache.getBindings(naniteObject.name, () =>
       this.createBindings(ctx, naniteObject)
@@ -96,7 +96,7 @@ export class DrawNaniteGPUPass {
     assertIsGPUTextureView(diffuseTextureView);
 
     return assignResourcesToBindings2(
-      DrawNaniteGPUPass,
+      RasterizeHwPass,
       naniteObject.name,
       device,
       this.renderPipeline,

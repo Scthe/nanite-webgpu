@@ -3,7 +3,7 @@ import * as SHADER_SNIPPETS from '../_shaderSnippets/shaderSnippets.wgls.ts';
 import { CONFIG } from '../../constants.ts';
 import { SNIPPET_OCCLUSION_CULLING } from '../_shaderSnippets/cullOcclusion.wgsl.ts';
 import { SNIPPET_FRUSTUM_CULLING } from '../_shaderSnippets/cullFrustum.wgsl.ts';
-import { SHADER_PARAMS as SHADER_PARAMS_VISIBILITY } from '../naniteGpu/naniteVisibilityPass.wgsl.ts';
+import { SHADER_PARAMS as SHADER_PARAMS_CULL_MESHLETS } from '../cullMeshlets/cullMeshletsPass.wgsl.ts';
 import {
   BUFFER_DRAWN_INSTANCES_LIST,
   BUFFER_DRAWN_INSTANCES_PARAMS,
@@ -75,7 +75,7 @@ fn main(
 
   let settingsFlags = _uniforms.flags;
   let boundingSphere = _drawnInstancesParams.objectBoundingSphere;
-  let MAX_WORKGROUPS_Y: u32 = ${SHADER_PARAMS_VISIBILITY.maxWorkgroupsY}u;
+  let MAX_WORKGROUPS_Y: u32 = ${SHADER_PARAMS_CULL_MESHLETS.maxWorkgroupsY}u;
 
   
   // prepare iters
@@ -158,7 +158,7 @@ fn resetOtherDrawParams(global_id: vec3<u32>){
   if (global_id.x == 0u) {
     _drawnInstancesParams.workgroupsX = ceilDivideU32(
       _drawnInstancesParams.allMeshletsCount,
-      ${SHADER_PARAMS_VISIBILITY.workgroupSizeX}u
+      ${SHADER_PARAMS_CULL_MESHLETS.workgroupSizeX}u
     );
     _drawnInstancesParams.workgroupsZ = 1u;
 
