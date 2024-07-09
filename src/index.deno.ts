@@ -1,73 +1,120 @@
 import { getRowPadding, createCapture } from 'std/webgpu';
-import * as png from 'png';
 
-import { Dimensions, createGpuDevice } from './utils/index.ts';
-import { Renderer, ShadersTexts, injectShaderTexts } from './renderer.ts';
-import { loadObjFile } from './scene/objLoader.ts';
+import { Dimensions } from './utils/index.ts';
+import { Renderer } from './renderer.ts';
+import { SceneName } from './scene/sceneFiles.ts';
+import { createGpuDevice } from './utils/webgpu.ts';
+import { ObjectLoadingProgressCb, loadScene } from './scene/scene.ts';
+import { createErrorSystem } from './utils/errors.ts';
+import {
+  injectMeshoptimizerWASM,
+  injectMetisWASM,
+} from './sys_deno/testUtils.ts';
+import { writePngFromGPUBuffer } from './sys_deno/fakeCanvas.ts';
+import { CONFIG } from './constants.ts';
+import {
+  textFileReader_Deno,
+  createTextureFromFile_Deno,
+} from './sys_deno/loadersDeno.ts';
 
 // https://deno.land/std@0.209.0/webgpu/mod.ts
-// createTextureWithData: https://deno.land/std@0.209.0/webgpu/texture_with_data.ts?s=createTextureWithData
 
-const SCENE_FILE = 'static/bunny.obj';
+const SCENE_FILE: SceneName = 'jinx';
+// const SCENE_FILE: SceneName = 'singleBunny';
+
 const VIEWPORT_SIZE: Dimensions = {
   width: 1270,
   height: 720,
 };
 const PREFERRED_CANVAS_FORMAT = 'rgba8unorm-srgb';
 
+injectMeshoptimizerWASM();
+injectMetisWASM();
+
+CONFIG.softwareRasterizer.threshold = 0;
+CONFIG.loaders.textFileReader = textFileReader_Deno;
+CONFIG.loaders.createTextureFromFile = createTextureFromFile_Deno;
+CONFIG.colors.gamma = 1.0; // I assume the png library does it for us?
+
 // GPUDevice
-const device = await createGpuDevice();
+const device = (await createGpuDevice())!;
 if (!device) Deno.exit(1);
+const errorSystem = createErrorSystem(device);
+errorSystem.startErrorScope('init');
+
+// file load
+console.log('Loading scene..');
+const scene = await loadSceneFile(device, SCENE_FILE);
 
 // create canvas
+console.log('Creating output canvas..');
 const { texture: windowTexture, outputBuffer } = createCapture(
   device,
   VIEWPORT_SIZE.width,
   VIEWPORT_SIZE.height
 );
-
-// file load
-const mesh = await loadScene(device, SCENE_FILE);
+const windowTextureView = windowTexture.createView();
 
 // renderer setup
-injectShaderTexts(getShaderTexts());
-const renderer = new Renderer(device, VIEWPORT_SIZE, PREFERRED_CANVAS_FORMAT);
-
-// record commands
-const cmdBuf = device.createCommandEncoder({
-  label: 'main-frame-cmd-buffer',
-});
-renderer.cmdRender(
-  {
-    cmdBuf,
-    device,
-    profiler: undefined,
-    viewport: VIEWPORT_SIZE,
-    mesh,
-  },
-  windowTexture
+// const profiler = new GpuProfiler(device);
+console.log('Creating renderer..');
+const renderer = new Renderer(
+  device,
+  VIEWPORT_SIZE,
+  PREFERRED_CANVAS_FORMAT,
+  undefined //profiler
 );
-cmdCopyTextureToBuffer(cmdBuf, windowTexture, outputBuffer, VIEWPORT_SIZE);
-// submit commands
-device.queue.submit([cmdBuf.finish()]);
 
-// write output
-await writePng('./output.png', outputBuffer, VIEWPORT_SIZE);
+// init ended, report errors
+console.log('Checking async WebGPU errors after init()..');
+const lastError = await errorSystem.reportErrorScopeAsync();
+if (lastError) {
+  console.error(lastError);
+  Deno.exit(1);
+}
+console.log('Init OK!');
+
+const mainCmdBufDesc: GPUCommandEncoderDescriptor = {
+  label: 'main-frame-cmd-buffer',
+};
+
+async function frame() {
+  console.log('Frame start!');
+  errorSystem.startErrorScope('frame');
+
+  // profiler.beginFrame();
+  // const deltaTime = STATS.deltaTimeMS * MILISECONDS_TO_SECONDS;
+
+  // const inputState = getInputState();
+  // renderer.updateCamera(deltaTime, inputState);
+
+  // record commands
+  const cmdBuf = device.createCommandEncoder(mainCmdBufDesc);
+  renderer.cmdRender(cmdBuf, scene, windowTextureView);
+
+  // result to buffer
+  cmdCopyTextureToBuffer(cmdBuf, windowTexture, outputBuffer, VIEWPORT_SIZE);
+
+  // submit commands
+  // profiler.endFrame(cmdBuf);
+  device.queue.submit([cmdBuf.finish()]);
+  console.log('Frame submitted, checking errors..');
+
+  // frame end
+  await errorSystem.reportErrorScopeAsync((lastError) => {
+    console.error(lastError);
+    throw new Error(lastError);
+  });
+
+  // write output
+  await writePngFromGPUBuffer(outputBuffer, VIEWPORT_SIZE, './output.png');
+}
+
+// start rendering
+frame();
 
 /////////////////////
 /// UTILS
-
-function getShaderTexts(): ShadersTexts {
-  return {
-    drawMeshShader: Deno.readTextFileSync('src/passes/drawMeshPass.wgsl'),
-  };
-}
-
-async function loadScene(device: GPUDevice, path: string) {
-  const rawtext = await Deno.readTextFileSync(path);
-  const mesh = loadObjFile(device, rawtext);
-  return mesh;
-}
 
 function cmdCopyTextureToBuffer(
   cmdBuf: GPUCommandEncoder,
@@ -87,37 +134,24 @@ function cmdCopyTextureToBuffer(
   );
 }
 
-async function writePng(
-  filepath: string,
-  buffer: GPUBuffer,
-  dimensions: Dimensions
-): Promise<void> {
-  console.log(`Writing result PNG to: ${filepath}`);
-  try {
-    await buffer.mapAsync(1);
-    const inputBuffer = new Uint8Array(buffer.getMappedRange());
-    const { padded, unpadded } = getRowPadding(dimensions.width);
-    const outputBuffer = new Uint8Array(unpadded * dimensions.height);
+function loadSceneFile(device: GPUDevice, sceneName: SceneName) {
+  const setReportText = (msg: string) => {
+    console.log(msg);
+  };
+  let lastReportedPercent = -1;
 
-    for (let i = 0; i < dimensions.height; i++) {
-      const slice = inputBuffer
-        .slice(i * padded, (i + 1) * padded)
-        .slice(0, unpadded);
-
-      outputBuffer.set(slice, i * unpadded);
-    }
-
-    const image = png.encode(
-      outputBuffer,
-      dimensions.width,
-      dimensions.height,
-      {
-        stripAlpha: true,
-        color: 2,
+  // deno-lint-ignore require-await
+  const progCb: ObjectLoadingProgressCb = async (objName, p): Promise<void> => {
+    if (typeof p === 'string') {
+      setReportText(p);
+    } else {
+      const percent = Math.floor(p * 100);
+      if (percent !== lastReportedPercent && percent % 10 === 0) {
+        lastReportedPercent = percent;
+        setReportText(`Loading '${objName}': ${percent}%`);
       }
-    );
-    Deno.writeFileSync(filepath, image);
-  } finally {
-    buffer.unmap();
-  }
+    }
+  };
+
+  return loadScene(device, sceneName, progCb);
 }

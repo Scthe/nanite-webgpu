@@ -28,16 +28,18 @@ import {
   OBJECTS,
   MODELS_DIR,
 } from './sceneFiles.ts';
-import {
-  createFallbackTexture,
-  createSampler,
-  createTextureFromFile,
-} from '../utils/textures.ts';
+import { createFallbackTexture, createSampler } from '../utils/textures.ts';
 import { DEFAULT_COLOR } from '../passes/_shaderSnippets/shading.wgsl.ts';
 import { NaniteInstancesData, createInstancesData } from './instancesData.ts';
 import { ImpostorRenderer } from './renderImpostors/renderImpostors.ts';
 
-export type FileTextReader = (filename: string) => Promise<string>;
+export type TextFileReader = (filename: string) => Promise<string>;
+export type TextureReader = (
+  device: GPUDevice,
+  path: string,
+  format: GPUTextureFormat,
+  usage: GPUTextureUsageFlags
+) => Promise<GPUTexture>;
 
 /** Progress [0..1] or status */
 export type ObjectLoadingProgressCb = (
@@ -72,7 +74,6 @@ export const getDiffuseTexture = (scene: Scene, naniteObject: NaniteObject) =>
 
 export async function loadScene(
   device: GPUDevice,
-  objTextReaderFn: FileTextReader,
   sceneName: SceneName,
   progressCb?: ObjectLoadingProgressCb
 ): Promise<Scene> {
@@ -96,7 +97,6 @@ export async function loadScene(
     const objDef = sceneObjectDefs[i];
     const obj = await loadObject(
       device,
-      objTextReaderFn,
       objDef.model,
       objDef.instances,
       impostorRenderer,
@@ -135,7 +135,6 @@ export async function loadScene(
 /** Exported, cause Deno+WebGPU is brittle in tests */
 export async function loadObject(
   device: GPUDevice,
-  objTextReaderFn: FileTextReader,
   name: SceneObjectName,
   instances: NaniteInstancesData,
   impostorRenderer: ImpostorRenderer,
@@ -156,6 +155,7 @@ export async function loadObject(
 
   // get OBJ file text
   const modelDesc = OBJECTS[name];
+  const objTextReaderFn = CONFIG.loaders.textFileReader;
   const objFileText = await objTextReaderFn(`${MODELS_DIR}/${modelDesc.file}`);
   addTimer('OBJ fetch', start);
 
@@ -174,10 +174,16 @@ export async function loadObject(
   if ('texture' in modelDesc) {
     timerStart = getProfilerTimestamp();
     const texturePath = `${MODELS_DIR}/${modelDesc.texture}`;
-    diffuseTexture = await createTextureFromFile(
+    const usage: GPUTextureUsageFlags =
+      GPUTextureUsage.TEXTURE_BINDING |
+      GPUTextureUsage.COPY_DST |
+      GPUTextureUsage.RENDER_ATTACHMENT;
+
+    diffuseTexture = await CONFIG.loaders.createTextureFromFile(
       device,
       texturePath,
-      'rgba8unorm-srgb'
+      'rgba8unorm-srgb',
+      usage
     );
     console.log(`Texture: '${texturePath}'`);
     diffuseTextureView = diffuseTexture.createView();

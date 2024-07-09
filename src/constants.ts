@@ -1,4 +1,8 @@
 import type { CameraOpts } from './camera.ts';
+import {
+  createTextureFromFile_Web,
+  textFileReader_Web,
+} from './sys_web/loadersWeb.ts';
 
 export const CAMERA_CFG = {
   // pos + rot
@@ -27,8 +31,14 @@ export const BYTES_MAT4 = BYTES_F32 * 16;
 export const NANO_TO_MILISECONDS = 0.000001;
 export const MILISECONDS_TO_SECONDS = 0.001;
 
+// deno-lint-ignore no-window-prefix no-window
+export const IS_DENO = window.Deno !== undefined;
+export const IS_BROWSER = !IS_DENO;
+
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
-export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = 'rgba32float';
+export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = IS_DENO
+  ? 'rgba16float' // Cause: "Color state [0] is invalid: Format Rgba32Float is not blendable"
+  : 'rgba32float';
 
 /** 4 for Vec4, 3 for Vec3. ATM using Vec3  */
 export const CO_PER_VERTEX: number = 3;
@@ -53,6 +63,11 @@ export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
   isTest: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
+  /** This runtime injection prevents loading Deno's libraries like fs, png, etc. */
+  loaders: {
+    textFileReader: textFileReader_Web,
+    createTextureFromFile: createTextureFromFile_Web,
+  },
 
   ///////////////
   /// GENERIC/SCENE STUFF

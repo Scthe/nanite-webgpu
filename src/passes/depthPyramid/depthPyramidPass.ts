@@ -10,6 +10,7 @@ import {
 } from '../_shared.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './depthPyramidPass.wgsl.ts';
 import { PassCtx } from '../passCtx.ts';
+import { CONFIG, IS_DENO } from '../../constants.ts';
 
 interface PyramidLevel {
   level: number;
@@ -95,7 +96,7 @@ export class DepthPyramidPass {
       this.resultTexture.destroy();
     }
 
-    const mipLevelCount = Math.ceil(Math.log2(Math.min(dstW, dstH)));
+    let mipLevelCount = Math.ceil(Math.log2(Math.min(dstW, dstH)));
     console.log(`${DepthPyramidPass.NAME}: Create depth pyramid: ${dstW}x${dstH} with ${mipLevelCount} mip levels`); // prettier-ignore
 
     this.resultTexture = device.createTexture({
@@ -118,6 +119,12 @@ export class DepthPyramidPass {
     let minWidth = dstW;
     let mipHeight = dstH;
     let prevLevelTexView = textureSrcView;
+
+    if (!this.runtimeEnvSupportsDepthPyramid()) {
+      // prevent creating bindings!
+      console.warn(`Current runtime environment does not support depth pyramid`); // prettier-ignore
+      mipLevelCount = 0;
+    }
 
     for (let baseMipLevel = 0; baseMipLevel < mipLevelCount; baseMipLevel++) {
       const textureView = this.resultTexture.createView({
@@ -150,11 +157,25 @@ export class DepthPyramidPass {
     return [this.resultTexture, this.resultTextureView];
   }
 
+  private runtimeEnvSupportsDepthPyramid() {
+    // wgpu/naga throws errors if we bind depth texture as normal texture.
+    // This could be fixed with more code. But it's only needed for Deno rendering,
+    // where we always render only first frame, so why bother?
+    // First frame (even on web) never uses depth pyramid, cause no previous frame data..
+    const isNotSupported = IS_DENO && !CONFIG.isTest; // blacklist
+    return !isNotSupported;
+  }
+
+  /** Returns if runtime env supports depth pyramid */
   cmdCreateDepthPyramid(
     ctx: PassCtx,
     textureSrc: GPUTexture,
     textureSrcView: GPUTextureView
   ) {
+    if (!this.runtimeEnvSupportsDepthPyramid()) {
+      return false;
+    }
+
     const { cmdBuf, profiler } = ctx;
     assertIsGPUTextureView(textureSrcView);
 
@@ -173,6 +194,7 @@ export class DepthPyramidPass {
     );
 
     computePass.end();
+    return true;
   }
 
   private dispatchPyramidLevel(

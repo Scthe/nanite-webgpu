@@ -1,4 +1,4 @@
-import { BYTES_U32, CONFIG } from '../constants.ts';
+import { BYTES_U32, CONFIG, IS_DENO } from '../constants.ts';
 import { NaniteMeshletTreeNode, NaniteObject } from '../scene/naniteObject.ts';
 import { createArray, getBytesForTriangles } from '../utils/index.ts';
 import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
@@ -106,8 +106,11 @@ export function createNaniteObject(
 
   // print stats
   if (!CONFIG.isTest) {
-    console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
-    console.log('[Nanite] Root meshlets:', naniteObject.roots);
+    if (!IS_DENO) {
+      // prevent spam. This is literally pages long
+      console.log('[Nanite] All meshlets:', naniteObject.allMeshlets);
+      console.log('[Nanite] Root meshlets:', naniteObject.roots);
+    }
     console.log(
       `[Nanite] Created LOD levels: ${naniteObject.lodLevelCount} (total ${naniteObject.meshletCount} meshlets from ${naniteObject.bottomMeshletCount} bottom level meshlets)`
     );

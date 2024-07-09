@@ -4,13 +4,14 @@ import {
   relativePath,
 } from '../sys_deno/testUtils.ts';
 import { SceneName } from './sceneFiles.ts';
-import { FileTextReader, loadObject } from './scene.ts';
+import { loadObject } from './scene.ts';
 import { assertEquals, assertExists } from 'assert';
 
 const FAILING_SCENE: SceneName = 'cube'; // does not matter, we override .obj anyway
 const TEST_FILE = relativePath(import.meta, '__test__/invalid-mesh.obj');
 
 import '../lib/meshoptimizer.d.ts';
+import { CONFIG } from '../constants.ts';
 injectMeshoptimizerWASM();
 
 Deno.test({
@@ -28,20 +29,14 @@ Deno.test({
       // deno-lint-ignore no-explicit-any
     } as any;
 
-    const objTextReaderFn: FileTextReader = (_filename) => {
+    CONFIG.loaders.textFileReader = (_filename) => {
       return Deno.readTextFile(TEST_FILE);
     };
 
     let error: Error | undefined = undefined;
     try {
       // await loadScene(device, objTextReaderFn, FAILING_SCENE);
-      await loadObject(
-        mockDevice,
-        objTextReaderFn,
-        FAILING_SCENE,
-        undefined!,
-        undefined!
-      );
+      await loadObject(mockDevice, FAILING_SCENE, undefined!, undefined!);
     } catch (e) {
       error = e;
       // if (TEST_FILE) throw e; // uncomment if error happens somewhere else to get real stacktrace

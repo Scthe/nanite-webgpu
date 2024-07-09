@@ -42,35 +42,6 @@ export function createFallbackTexture(
   return texture;
 }
 
-/** https://webgpu.github.io/webgpu-samples/?sample=texturedCube#main.ts */
-export async function createTextureFromFile(
-  device: GPUDevice,
-  path: string,
-  format: GPUTextureFormat
-) {
-  const response = await fetch(path);
-  const imageBitmap = await createImageBitmap(await response.blob());
-
-  const texture = device.createTexture({
-    label: path,
-    dimension: '2d',
-    size: [imageBitmap.width, imageBitmap.height, 1],
-    format,
-    usage:
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST |
-      GPUTextureUsage.RENDER_ATTACHMENT,
-  });
-  // deno-lint-ignore no-explicit-any
-  (device.queue as any).copyExternalImageToTexture(
-    { source: imageBitmap },
-    { texture: texture },
-    [imageBitmap.width, imageBitmap.height]
-  );
-
-  return texture;
-}
-
 export function createSampler(device: GPUDevice, mode: GPUFilterMode) {
   return device.createSampler({
     label: 'default-sampler',

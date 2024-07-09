@@ -29,9 +29,9 @@ struct Light {
 };
 
 fn unpackLight(pos: vec3f, color: vec4f, light: ptr<function, Light>) {
-  light.position = pos;
-  light.color = color.rgb;
-  light.intensity = color.a;
+  (*light).position = pos;
+  (*light).color = color.rgb;
+  (*light).intensity = color.a;
 }
 
 
@@ -47,11 +47,11 @@ fn doShading(
   let ambient = ambientLight.rgb * ambientLight.a; // * material.ao;
   var radianceSum = vec3(0.0);
 
-  for (var i = 0u; i < ${LIGHT_COUNT}u; i++) {
-    let light = lights[i];
-    let contrib = disneyPBR(material, light);
-    radianceSum += contrib;
-  }
+  // this used to be a for-loop, but wgpu's Naga complains:
+  // let light = lights[i];
+  //                    ^ The expression may only be indexed by a constant
+  radianceSum += disneyPBR(material, lights[0]);
+  radianceSum += disneyPBR(material, lights[1]);
 
   return ambient + radianceSum;
 }
@@ -66,13 +66,13 @@ const LIGHT_FAR = 99999.0;
 fn fillLightsData(
   lights: ptr<function, array<Light, LIGHT_COUNT>>
 ){
-  lights[0].position = vec3f(LIGHT_FAR, LIGHT_FAR, 0); // world space
-  lights[0].color = vec3f(1., 0.95, 0.8);
-  lights[0].intensity = 1.5;
+  (*lights)[0].position = vec3f(LIGHT_FAR, LIGHT_FAR, 0); // world space
+  (*lights)[0].color = vec3f(1., 0.95, 0.8);
+  (*lights)[0].intensity = 1.5;
 
-  lights[1].position = vec3f(-LIGHT_FAR, -LIGHT_FAR / 3.0, LIGHT_FAR / 3.0); // world space
-  lights[1].color = vec3f(0.8, 0.8, 1.);
-  lights[1].intensity = 0.7;
+  (*lights)[1].position = vec3f(-LIGHT_FAR, -LIGHT_FAR / 3.0, LIGHT_FAR / 3.0); // world space
+  (*lights)[1].color = vec3f(0.8, 0.8, 1.);
+  (*lights)[1].intensity = 0.7;
 }
 
 fn createDefaultMaterial(
@@ -81,13 +81,13 @@ fn createDefaultMaterial(
 ){
   let cameraPos = _uniforms.cameraPosition.xyz;
   
-  material.positionWS = positionWS.xyz;
-  material.normal = normalFromDerivatives(positionWS);
-  material.toEye = normalize(cameraPos - positionWS.xyz);
+  (*material).positionWS = positionWS.xyz;
+  (*material).normal = normalFromDerivatives(positionWS);
+  (*material).toEye = normalize(cameraPos - positionWS.xyz);
   // brdf params:
-  material.albedo = vec3f(${DEFAULT_COLOR[0]}, ${DEFAULT_COLOR[1]}, ${DEFAULT_COLOR[2]});
-  material.roughness = 0.8;
-  material.isMetallic = 0.0; // oops!
+  (*material).albedo = vec3f(${DEFAULT_COLOR[0]}, ${DEFAULT_COLOR[1]}, ${DEFAULT_COLOR[2]});
+  (*material).roughness = 0.8;
+  (*material).isMetallic = 0.0; // oops!
   // material.ao = 1.0;
 }
 

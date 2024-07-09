@@ -50,15 +50,6 @@ var _diffuseTexture: texture_2d<f32>;
 @group(0) @binding(${b.sampler})
 var _sampler: sampler;
 
-const BILLBOARD_VERTICES = array<vec2<f32>, 6>(
-  vec2<f32>(-1.0, -1.0),
-  vec2<f32>(-1.0, 1.0),
-  vec2<f32>(1.0, -1.0),
-  vec2<f32>(1.0, 1.0),
-  vec2<f32>(-1.0, 1.0),
-  vec2<f32>(1.0, -1.0),
-);
-
 struct VertexOutput {
   @builtin(position) position: vec4<f32>,
   @location(0) positionWS: vec4f,
@@ -71,7 +62,19 @@ fn main_vs(
   @builtin(vertex_index) inVertexIndex: u32,
   @builtin(instance_index) inInstanceIndex: u32,
 ) -> VertexOutput {
+  // I would love to have this outside main_vs() as const,
+  // but wgpu's Naga does not like it.
+  var BILLBOARD_VERTICES = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, -1.0),
+    vec2<f32>(-1.0, 1.0),
+    vec2<f32>(1.0, -1.0),
+    vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, 1.0),
+    vec2<f32>(1.0, -1.0),
+  );
+
   var result: VertexOutput;
+  
   let quadOffset = BILLBOARD_VERTICES[inVertexIndex];
   let tfxIdx = _drawnImpostorsList[inInstanceIndex];
   let modelMat = _getInstanceTransform(tfxIdx);

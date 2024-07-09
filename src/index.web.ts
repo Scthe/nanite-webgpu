@@ -9,12 +9,7 @@ import { CONFIG, MILISECONDS_TO_SECONDS } from './constants.ts';
 import { createErrorSystem } from './utils/errors.ts';
 import { downloadDrawnMeshletsBuffer } from './scene/naniteBuffers/drawnMeshletsBuffer.ts';
 import { showHtmlEl, hideHtmlEl } from './utils/index.ts';
-import {
-  FileTextReader,
-  ObjectLoadingProgressCb,
-  Scene,
-  loadScene,
-} from './scene/scene.ts';
+import { ObjectLoadingProgressCb, Scene, loadScene } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 import {
   setNaniteDrawStats,
@@ -167,14 +162,6 @@ function getCanvasContext(
 }
 
 function loadSceneFile(device: GPUDevice, sceneName: SceneName) {
-  const fileTextReader: FileTextReader = async (filename: string) => {
-    const objFileResp = await fetch(filename);
-    if (!objFileResp.ok) {
-      throw `Could not download mesh file '${filename}'`;
-    }
-    return objFileResp.text();
-  };
-
   const reportEl = document.getElementById('loader-text');
   const setReportText = (msg: string) => {
     // console.log(msg);
@@ -194,7 +181,7 @@ function loadSceneFile(device: GPUDevice, sceneName: SceneName) {
     }
   };
 
-  return loadScene(device, fileTextReader, sceneName, progCb);
+  return loadScene(device, sceneName, progCb);
 }
 
 function showErrorMessage(msg?: string) {

@@ -1,3 +1,5 @@
+import { assignValueFromConstArray } from './nagaFixes.ts';
+
 const MAT4 = 'mat4x4<f32>';
 
 /** I always forget the order. */
@@ -49,17 +51,15 @@ const COLORS = array<vec3f, COLOR_COUNT>(
     vec3f(0., .5, .5),
     vec3f(.5, 0., .5),
 );
-fn getRandomColor(idx: u32) -> vec3f {
-  /*let start = 2u; // color only subset, rest is default purple
-  let end = start + 1u;
-  if(
-    idx < COLOR_COUNT * start ||
-    idx > COLOR_COUNT * end
-  ){
-    return vec3f(.5, .2, 1.);
-  }*/
 
-  return COLORS[idx % COLOR_COUNT];
+fn getRandomColor(idx: u32) -> vec3f {
+  ${assignValueFromConstArray(
+    'color: vec3f',
+    'COLORS',
+    14,
+    'idx % COLOR_COUNT'
+  )}
+  return color;
 }
 `;
 

@@ -225,12 +225,12 @@ export class Renderer {
     }
 
     // depth pyramid
-    this.depthPyramidPass.cmdCreateDepthPyramid(
+    const pyramidOk = this.depthPyramidPass.cmdCreateDepthPyramid(
       ctx,
       this.depthTexture,
       this.depthTextureView
     );
-    CONFIG.nanite.render.hasValidDepthPyramid = true;
+    CONFIG.nanite.render.hasValidDepthPyramid = pyramidOk;
 
     if (CONFIG.displayMode === 'dbg-depth-pyramid') {
       this.depthPyramidDebugDrawPass.cmdDraw(ctx);
