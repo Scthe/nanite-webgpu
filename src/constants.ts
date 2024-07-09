@@ -160,10 +160,8 @@ export const CONFIG = {
       /**
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.
-       *
-       * In pixels.
        */
-      pixelThreshold: 1.0,
+      pixelThreshold: 0.4, // TODO change name, to 'errorThreshold'
       /** See visiblity pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */

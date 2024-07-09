@@ -53,7 +53,7 @@ export const SCENES = {
       'jinxHair',
       'jinxBackpack',
     ] as SceneObjectName[],
-    instances: createGrid(10, 10, 1.0),
+    instances: createGrid(100, 100, 1.0),
   },
 };
 

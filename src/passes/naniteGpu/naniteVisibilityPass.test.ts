@@ -2,7 +2,6 @@ import {
   createGpuDevice_TESTS,
   createMockPassCtx,
   createMeshlets_TESTS,
-  assertSameArray,
 } from '../../sys_deno/testUtils.ts';
 import { NaniteVisibilityPass } from './naniteVisibilityPass.ts';
 import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
@@ -142,16 +141,19 @@ Deno.test('NaniteVisibilityPass', async () => {
   );
   // printTypedArray('resultData', resultData);
 
+  // cleanup
+  device.destroy();
+
   // check draw params
-  const parsedResult = parseDrawnMeshletsBuffer(naniteObject, resultData);
-  const drawParamsResult = parsedResult.indirectDraw;
+  const parsedResult = parseDrawnMeshletsBuffer(resultData).hardwareRaster;
   // printTypedArray('drawParamsResult ', drawParamsResult);
-  assertSameArray(drawParamsResult, [
-    CONFIG.nanite.preprocess.meshletMaxTriangles * VERTS_IN_TRIANGLE, // vertexCount
-    EXPECTED_DRAWN_MESHLETS_COUNT, // instanceCount
-    0, // firstVertex
-    0, // firstInstance
-  ]);
+  assertEquals(
+    parsedResult.vertexCount,
+    CONFIG.nanite.preprocess.meshletMaxTriangles * VERTS_IN_TRIANGLE
+  );
+  assertEquals(parsedResult.meshletCount, EXPECTED_DRAWN_MESHLETS_COUNT);
+  assertEquals(parsedResult.firstVertex, 0);
+  assertEquals(parsedResult.firstInstance, 0);
 
   // check visibility buffer
   const visibilityResult = parsedResult.meshletIds;
@@ -186,7 +188,4 @@ Deno.test('NaniteVisibilityPass', async () => {
       assertEquals(resultMeshlet.transformId, 0);
     }
   });
-
-  // cleanup
-  device.destroy();
 });

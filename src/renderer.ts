@@ -189,9 +189,11 @@ export class Renderer {
 
   private cmdDrawNanite_GPU(ctx: PassCtx) {
     const { naniteObjects } = ctx.scene;
-    const softwareRastEnabled = CONFIG.softwareRasterizer.threshold > 0;
+    const softwareRasterizeEnabled = CONFIG.softwareRasterizer.threshold > 0;
 
-    this.rasterizeSwPass.clearFramebuffer(ctx);
+    if (softwareRasterizeEnabled) {
+      this.rasterizeSwPass.clearFramebuffer(ctx);
+    }
 
     // draw objects
     for (let i = 0; i < naniteObjects.length; i++) {
@@ -208,7 +210,7 @@ export class Renderer {
       // draw: hardware
       this.drawNaniteGPUPass.cmdHardwareRasterize(ctx, naniteObject, loadOp);
       // draw: software
-      if (softwareRastEnabled) {
+      if (softwareRasterizeEnabled) {
         this.rasterizeSwPass.cmdSoftwareRasterize(ctx, naniteObject);
       }
 
@@ -218,7 +220,7 @@ export class Renderer {
     }
 
     // combine hardware + software rasterizer results
-    if (softwareRastEnabled) {
+    if (softwareRasterizeEnabled) {
       this.rasterizeCombine.cmdCombineRasterResults(ctx);
     }
 

@@ -32,8 +32,12 @@ const AvailableStats = {
   'Scene meshlets': {} as StatOpts,
   'Scene triangles': {} as StatOpts,
   'Rendered meshlets': {} as StatOpts,
-  'Rendered triangles': {} as StatOpts, // in GPU mode does not count impostors
-  'Visibility wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
+  'Rendered triangles': {} as StatOpts, // in GPU mode this does not count impostors
+  'HW: Rendered meshlets': { visibilityDevice: 'gpu' } as StatOpts,
+  'HW: Rendered triangles': { visibilityDevice: 'gpu' } as StatOpts,
+  'SW: Rendered meshlets': { visibilityDevice: 'gpu' } as StatOpts,
+  'SW: Rendered triangles': { visibilityDevice: 'gpu' } as StatOpts,
+  'Mshlt cull wkgrp': { visibilityDevice: 'gpu' } as StatOpts,
 };
 type StatName = keyof typeof AvailableStats;
 

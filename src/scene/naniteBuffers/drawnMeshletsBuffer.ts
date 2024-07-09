@@ -15,8 +15,6 @@ import { BOTTOM_LEVEL_NODE, NaniteObject } from '../naniteObject.ts';
 ///       Same entry will NEVER exist on both lists at same time. We allocate
 ///       as if we had to drawn most detailed LOD for all instances.
 ///       At the start of the list are items hardware rasterized. At end - software.
-///
-/// TODO download SW buffer to add to stats. ATM rendered stats only consider hw rendering
 ///////////////////////////
 
 /** Drawn meshlets params - hardware */
@@ -138,33 +136,54 @@ export async function downloadDrawnMeshletsBuffer(
   const visiblityBuffer = naniteObject.buffers.drawnMeshletsBuffer;
 
   const data = await downloadBuffer(device, Uint32Array, visiblityBuffer);
-  const result = parseDrawnMeshletsBuffer(naniteObject, data);
+  const result = parseDrawnMeshletsBuffer(data);
 
   console.log(`[${naniteObject.name}] Drawn meshlets buffer`, result);
   return result;
 }
 
-export function parseDrawnMeshletsBuffer(
-  naniteObject: NaniteObject,
-  data: Uint32Array
-) {
-  const indirectDraw = data.slice(0, 4);
-  const meshletCount = indirectDraw[1];
+export function parseDrawnMeshletsBuffer(data: Uint32Array) {
+  // u32's used by params
+  const paramsOffset =
+    (BYTES_DRAWN_MESHLETS_PARAMS + BYTES_DRAWN_MESHLETS_SW_PARAMS) / BYTES_U32;
 
+  // parse uvec2 into something I won't forget next day
   // remember:
   // 1) it's uvec2,
   // 2) the buffer has a lot of space, we do not use it whole
-  const offset =
-    (BYTES_DRAWN_MESHLETS_PARAMS + BYTES_DRAWN_MESHLETS_SW_PARAMS) / BYTES_U32;
-  const lastWrittenIdx = 2 * meshletCount; // uvec2
-  const visibilityResultArr = data.slice(offset, offset + lastWrittenIdx);
-  // printTypedArray('visbilityResult', visibilityResultArr);
+  const getDrawByIdx = (idx: number) => ({
+    transformId: data[paramsOffset + 2 * idx],
+    meshletId: data[paramsOffset + 2 * idx + 1],
+  });
 
-  // parse uvec2 into something I won't forget next day
-  const meshletIds = createArray(meshletCount).map((_, i) => ({
-    transformId: visibilityResultArr[2 * i],
-    meshletId: visibilityResultArr[2 * i + 1],
-  }));
+  // hardware draw
+  const indirectDraw = data.slice(0, 4);
+  const meshletCount = indirectDraw[1];
+  const meshletIds = createArray(meshletCount).map((_, i) => getDrawByIdx(i));
 
-  return { naniteObject, meshletCount, indirectDraw, meshletIds };
+  // software draw
+  const swOffset = BYTES_DRAWN_MESHLETS_PARAMS / BYTES_U32;
+  const indirectDispatch = data.slice(swOffset, swOffset + 4);
+  const actuallyDrawnMeshlets = indirectDispatch[3];
+  const listLen = (data.length - paramsOffset) / 2; // in uvec2's
+  const swMeshletIds = createArray(actuallyDrawnMeshlets).map((_, i) =>
+    getDrawByIdx(listLen - 1 - i)
+  );
+
+  return {
+    hardwareRaster: {
+      vertexCount: indirectDraw[0],
+      meshletCount, // indirect draw's instanceCount
+      firstVertex: indirectDraw[2],
+      firstInstance: indirectDraw[3],
+      meshletIds,
+    },
+    softwareRaster: {
+      workgroupsX: indirectDispatch[0], // triangleIds / SHADER_PARAMS.workgroupSizeX
+      workgroupsY: indirectDispatch[1],
+      workgroupsZ: indirectDispatch[2],
+      meshletCount: actuallyDrawnMeshlets,
+      meshletIds: swMeshletIds,
+    },
+  };
 }

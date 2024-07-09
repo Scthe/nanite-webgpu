@@ -132,7 +132,7 @@ export class NaniteVisibilityPass {
       workgroupsCntY,
       workgroupsCntZ
     );
-    STATS.update('Visibility wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
+    STATS.update('Mshlt cull wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
   }
 
   /** See shader for explanation */
@@ -170,7 +170,7 @@ export class NaniteVisibilityPass {
       workgroupsCntY,
       workgroupsCntZ
     );
-    STATS.update('Visibility wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
+    STATS.update('Mshlt cull wkgrp',`[${workgroupsCntX}, ${workgroupsCntY}, ${workgroupsCntZ}]`); // prettier-ignore
   }
 
   /** See shader for explanation */

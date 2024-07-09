@@ -7,6 +7,8 @@ export async function writePngFromGPUBuffer(
   dimensions: Dimensions,
   outputPath: string
 ): Promise<Uint8Array> {
+  console.log(`Writing result image to: '${outputPath}'`);
+
   await buffer.mapAsync(1);
   const inputBuffer = new Uint8Array(buffer.getMappedRange());
   const { padded, unpadded } = getRowPadding(dimensions.width);
@@ -24,7 +26,6 @@ export async function writePngFromGPUBuffer(
     stripAlpha: true,
     color: 2,
   });
-  console.log(`Write: ${outputPath}`);
   Deno.writeFileSync(outputPath, image);
 
   buffer.unmap();

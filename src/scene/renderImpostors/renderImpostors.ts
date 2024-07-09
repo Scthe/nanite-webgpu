@@ -44,6 +44,7 @@ export interface ImpostorMesh {
 
 // const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rgba8unorm'; // 8bit per channel, will be read as float [0-1]
 const OUT_TEXTURE_FORMAT: GPUTextureFormat = 'rg32float';
+const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
 export const IMPOSTOR_BYTES_PER_PIXEL = BYTES_VEC2;
 
 export class ImpostorRenderer {
@@ -84,7 +85,7 @@ export class ImpostorRenderer {
         targets: [{ format: OUT_TEXTURE_FORMAT }],
       },
       primitive: PIPELINE_PRIMITIVE_TRIANGLE_LIST,
-      depthStencil: PIPELINE_DEPTH_STENCIL_ON,
+      depthStencil: { ...PIPELINE_DEPTH_STENCIL_ON, format: DEPTH_FORMAT },
     });
 
     this.matricesBuffer = device.createBuffer({
@@ -103,7 +104,7 @@ export class ImpostorRenderer {
     this.depthTexture = device.createTexture({
       label: createLabel(ImpostorRenderer, 'depth'),
       size: [this.textureSize * this.viewCount, this.textureSize],
-      format: 'depth24plus',
+      format: DEPTH_FORMAT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
     this.depthTextureView = this.depthTexture.createView();

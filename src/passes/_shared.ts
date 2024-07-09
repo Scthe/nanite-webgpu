@@ -104,6 +104,10 @@ export class BindingsCache {
 export function resetNaniteStats() {
   STATS.update('Rendered meshlets', '-');
   STATS.update('Rendered triangles', '-');
+  STATS.update('HW: Rendered meshlets', '-');
+  STATS.update('HW: Rendered triangles', '-');
+  STATS.update('SW: Rendered meshlets', '-');
+  STATS.update('SW: Rendered triangles', '-');
 }
 
 export function setNaniteDrawStats(
@@ -119,5 +123,33 @@ export function setNaniteDrawStats(
   STATS.update(
     'Rendered triangles',
     formatPercentageNumber(drawnTriangleCount, scene.naiveTriangleCount)
+  );
+}
+
+export function setNaniteDrawStatsHw_Sw(
+  drawnMeshletsHW: number,
+  drawnTrianglesHW: number,
+  drawnMeshletsSW: number,
+  drawnTrianglesSW: number
+) {
+  const totalMeshlets = drawnMeshletsHW + drawnMeshletsSW;
+  const totalTris = drawnTrianglesHW + drawnTrianglesSW;
+
+  STATS.update(
+    'HW: Rendered meshlets',
+    formatPercentageNumber(drawnMeshletsHW, totalMeshlets)
+  );
+  STATS.update(
+    'HW: Rendered triangles',
+    formatPercentageNumber(drawnTrianglesHW, totalTris)
+  );
+
+  STATS.update(
+    'SW: Rendered meshlets',
+    formatPercentageNumber(drawnMeshletsSW, totalMeshlets)
+  );
+  STATS.update(
+    'SW: Rendered triangles',
+    formatPercentageNumber(drawnTrianglesSW, totalTris)
   );
 }

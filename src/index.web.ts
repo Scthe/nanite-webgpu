@@ -16,7 +16,10 @@ import {
   loadScene,
 } from './scene/scene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
-import { setNaniteDrawStats } from './passes/_shared.ts';
+import {
+  setNaniteDrawStats,
+  setNaniteDrawStatsHw_Sw,
+} from './passes/_shared.ts';
 
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
@@ -82,6 +85,7 @@ const SCENE_FILE: SceneName = 'jinx';
   STATS.show();
   let done = false;
 
+  // init ended, report errors
   const lastError = await errorSystem.reportErrorScopeAsync();
   if (lastError) {
     showErrorMessage(lastError);
@@ -203,17 +207,47 @@ function showErrorMessage(msg?: string) {
 
 /** WARNING: SLOW! */
 async function getGPUVisiblityStats(device: GPUDevice, scene: Scene) {
+  // TODO [NOW] add impostor count?
   let drawnMeshlets = 0;
   let drawnTriangles = 0;
+  let drawnMeshletsHW = 0;
+  let drawnTrianglesHW = 0;
+  let drawnMeshletsSW = 0;
+  let drawnTrianglesSW = 0;
+
   const resultsAsync = scene.naniteObjects.map(async (obj) => {
-    const res = await downloadDrawnMeshletsBuffer(device, obj);
-    drawnMeshlets += res.meshletCount;
-    for (let i = 0; i < res.meshletCount; i++) {
-      const meshletId = res.meshletIds[i].meshletId;
+    const { hardwareRaster, softwareRaster } =
+      await downloadDrawnMeshletsBuffer(device, obj);
+
+    drawnMeshlets += hardwareRaster.meshletCount + softwareRaster.meshletCount;
+    drawnMeshletsHW += hardwareRaster.meshletCount;
+    drawnMeshletsSW += softwareRaster.meshletCount;
+
+    const getTriCnt = (meshletId: number) => {
       const meshlet = obj.find(meshletId);
-      drawnTriangles += meshlet ? meshlet.triangleCount : 0;
+      return meshlet ? meshlet.triangleCount : 0;
+    };
+
+    for (let i = 0; i < hardwareRaster.meshletCount; i++) {
+      const meshletId = hardwareRaster.meshletIds[i].meshletId;
+      const tris = getTriCnt(meshletId);
+      drawnTriangles += tris;
+      drawnTrianglesHW += tris;
+    }
+
+    for (let i = 0; i < softwareRaster.meshletCount; i++) {
+      const meshletId = softwareRaster.meshletIds[i].meshletId;
+      const tris = getTriCnt(meshletId);
+      drawnTriangles += tris;
+      drawnTrianglesSW += tris;
     }
   });
   await Promise.all(resultsAsync);
   setNaniteDrawStats(scene, drawnMeshlets, drawnTriangles);
+  setNaniteDrawStatsHw_Sw(
+    drawnMeshletsHW,
+    drawnTrianglesHW,
+    drawnMeshletsSW,
+    drawnTrianglesSW
+  );
 }

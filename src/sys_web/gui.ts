@@ -104,7 +104,7 @@ export function initializeGUI(
     // prettier-ignore
     dir
       .add(calcVisibilityDummy, 'calcVisibilityDevice', calcVisibilityDummy.values) // prettier-ignore
-      .name('Visibility test')
+      .name('Nanite device')
       .onFinishChange(onVisiblityDeviceSwap);
 
     // pixelThreshold
@@ -134,12 +134,12 @@ export function initializeGUI(
     // freeze visibilty
     gpuFreezeVisiblityCtrl = dir
       .add(CONFIG.nanite.render, 'freezeGPU_Visibilty')
-      .name('Freeze visibilty');
+      .name('Freeze culling');
 
     // GPU stats
     getGPUStatsCtrl = dir
       .add(dummyObject, 'getGpuDrawStats')
-      .name('Get GPU visibility stats');
+      .name('Get GPU stats');
 
     const cfgSr = CONFIG.softwareRasterizer;
     gpuSoftwareRasterizerThrsh = dir
