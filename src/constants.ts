@@ -1,4 +1,3 @@
-import type { CameraOpts } from './camera.ts';
 import {
   createTextureFromFile_Web,
   textFileReader_Web,
@@ -14,6 +13,11 @@ export const CAMERA_CFG = {
   fovDgr: 45,
   near: 0.01,
   far: 100.0,
+};
+
+export type CameraOpts = {
+  position?: [number, number, number];
+  rotation?: [number, number];
 };
 
 export const BYTES_U8 = 1;

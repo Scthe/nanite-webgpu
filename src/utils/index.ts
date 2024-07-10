@@ -6,6 +6,8 @@ import {
   VERTS_IN_TRIANGLE,
 } from '../constants.ts';
 
+import './wasm-types.d.ts';
+
 export interface Dimensions {
   width: number;
   height: number;

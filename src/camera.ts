@@ -1,13 +1,8 @@
 import { Mat4, mat4, vec3 } from 'wgpu-matrix';
 import Input from './sys_web/input.ts';
-import { CAMERA_CFG, CONFIG } from './constants.ts';
+import { CAMERA_CFG, CONFIG, CameraOpts } from './constants.ts';
 import { clamp, projectPoint } from './utils/index.ts';
 import { STATS } from './sys_web/stats.ts';
-
-export type CameraOpts = {
-  position?: [number, number, number];
-  rotation?: [number, number];
-};
 
 const ANGLE_90_DRG_IN_RAD = Math.PI / 2;
 const ANGLE_UP_DOWN = 0; // pitch

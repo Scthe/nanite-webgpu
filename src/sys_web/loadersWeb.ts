@@ -1,4 +1,4 @@
-import { TextFileReader, TextureReader } from '../scene/scene.ts';
+import { TextFileReader, TextureReader } from '../scene/load/types.ts';
 
 export const textFileReader_Web: TextFileReader = async (filename: string) => {
   const objFileResp = await fetch(filename);

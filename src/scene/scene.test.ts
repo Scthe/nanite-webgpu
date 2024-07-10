@@ -4,14 +4,14 @@ import {
   relativePath,
 } from '../sys_deno/testUtils.ts';
 import { SceneName } from './sceneFiles.ts';
-import { loadObject } from './scene.ts';
 import { assertEquals, assertExists } from 'assert';
+import { CONFIG } from '../constants.ts';
+import { loadObject } from './load/loadObject.ts';
 
 const FAILING_SCENE: SceneName = 'cube'; // does not matter, we override .obj anyway
 const TEST_FILE = relativePath(import.meta, '__test__/invalid-mesh.obj');
 
 import '../lib/meshoptimizer.d.ts';
-import { CONFIG } from '../constants.ts';
 injectMeshoptimizerWASM();
 
 Deno.test({

@@ -1,26 +1,11 @@
-import { VERTS_IN_TRIANGLE } from '../constants.ts';
-import {
-  createMeshlets,
-  meshopt_Meshlets,
-} from '../meshPreprocessing/createMeshlets.ts';
-import { simplifyMesh } from '../meshPreprocessing/simplifyMesh.ts';
-import { getTriangleCount, getVertexCount } from '../utils/index.ts';
-import { createGPU_IndexBuffer } from '../utils/webgpu.ts';
-import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
-import { ParsedMesh } from './objLoader.ts';
-
-export interface DebugMeshes {
-  mesh: GPUOriginalMesh;
-  meshlets: MeshletRenderPckg;
-  meshoptimizerLODs: GPUOriginalMesh[];
-  meshoptimizerMeshletLODs: MeshletRenderPckg[];
-}
-
-/** Used only in debug */
-export type MeshletRenderPckg = meshopt_Meshlets & {
-  vertexBuffer: GPUBuffer;
-  indexBuffer: GPUBuffer;
-};
+import { VERTS_IN_TRIANGLE } from '../../constants.ts';
+import { createMeshlets } from '../../meshPreprocessing/createMeshlets.ts';
+import { simplifyMesh } from '../../meshPreprocessing/simplifyMesh.ts';
+import { getTriangleCount, getVertexCount } from '../../utils/index.ts';
+import { createGPU_IndexBuffer } from '../../utils/webgpu.ts';
+import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
+import { ParsedMesh } from '../objLoader.ts';
+import { DebugMeshes } from '../scene.ts';
 
 export async function createDebugMeshes(
   device: GPUDevice,

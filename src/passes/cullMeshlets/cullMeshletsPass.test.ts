@@ -14,7 +14,7 @@ import {
   getVisibilityStatus,
 } from '../naniteCpu/calcNaniteMeshletsVisibility.ts';
 import { assertEquals } from 'assert';
-import { createNaniteObject } from '../../scene/createNaniteObject.ts';
+import { createNaniteObject } from '../../scene/load/createNaniteObject.ts';
 import {
   cmdCopyToReadbackBuffer,
   createReadbackBuffer,

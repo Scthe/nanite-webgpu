@@ -4,7 +4,7 @@ import { Dimensions } from './utils/index.ts';
 import { Renderer } from './renderer.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 import { createGpuDevice } from './utils/webgpu.ts';
-import { ObjectLoadingProgressCb, loadScene } from './scene/scene.ts';
+import { loadScene } from './scene/load/loadScene.ts';
 import { createErrorSystem } from './utils/errors.ts';
 import {
   injectMeshoptimizerWASM,
@@ -16,6 +16,7 @@ import {
   textFileReader_Deno,
   createTextureFromFile_Deno,
 } from './sys_deno/loadersDeno.ts';
+import { ObjectLoadingProgressCb } from './scene/load/types.ts';
 
 // https://deno.land/std@0.209.0/webgpu/mod.ts
 

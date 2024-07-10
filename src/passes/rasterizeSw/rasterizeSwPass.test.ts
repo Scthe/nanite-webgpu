@@ -36,9 +36,6 @@ import {
   decodeOctahedronNormal,
 } from '../../scene/naniteBuffers/vertexNormalsBuffer.ts';
 
-import '../../lib/meshoptimizer.d.ts'; // TODO ??? remove
-import '../../lib/metis.d.ts'; // TODO ??? remove
-
 const RESULT_SIZE: Dimensions = {
   width: 64,
   height: 64,

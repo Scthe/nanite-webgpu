@@ -14,13 +14,13 @@ import {
 import { DEFAULT_COLOR } from '../../passes/_shaderSnippets/shading.wgsl.ts';
 import { createFallbackTexture } from '../../utils/textures.ts';
 import { loadObjFile } from '../objLoader.ts';
-import { createOriginalMesh } from '../scene.ts';
 import { writePng } from '../../sys_deno/fakeCanvas.ts';
 import {
   createReadbackBufferFromTexture,
   cmdCopyTextureToBuffer,
   readBufferToCPU,
 } from '../../utils/webgpu.ts';
+import { createOriginalMesh } from '../load/createOriginalMesh.ts';
 
 // needed cause OBJ loader optimizes the mesh
 import '../../lib/meshoptimizer.d.ts';

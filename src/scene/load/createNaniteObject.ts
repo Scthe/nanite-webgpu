@@ -1,14 +1,14 @@
-import { BYTES_U32, CONFIG, IS_DENO } from '../constants.ts';
-import { NaniteMeshletTreeNode, NaniteObject } from '../scene/naniteObject.ts';
-import { createArray, getBytesForTriangles } from '../utils/index.ts';
-import { MeshletWIP, isWIP_Root } from '../meshPreprocessing/index.ts';
-import { calculateBounds } from '../utils/calcBounds.ts';
-import { GPUOriginalMesh } from './GPUOriginalMesh.ts';
-import { ParsedMesh } from './objLoader.ts';
-import { assertValidNaniteObject } from './utils/assertValidNaniteObject.ts';
-import { NaniteInstancesData } from './instancesData.ts';
-import { ImpostorBillboardTexture } from './renderImpostors/renderImpostors.ts';
-import { NaniteObjectBuffers } from './naniteBuffers/index.ts';
+import { BYTES_U32, CONFIG, IS_DENO } from '../../constants.ts';
+import { NaniteMeshletTreeNode, NaniteObject } from '../naniteObject.ts';
+import { createArray, getBytesForTriangles } from '../../utils/index.ts';
+import { MeshletWIP, isWIP_Root } from '../../meshPreprocessing/index.ts';
+import { calculateBounds } from '../../utils/calcBounds.ts';
+import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
+import { ParsedMesh } from '../objLoader.ts';
+import { assertValidNaniteObject } from '../utils/assertValidNaniteObject.ts';
+import { NaniteInstancesData } from '../instancesData.ts';
+import { ImpostorBillboardTexture } from '../renderImpostors/renderImpostors.ts';
+import { NaniteObjectBuffers } from '../naniteBuffers/index.ts';
 
 export function createNaniteObject(
   device: GPUDevice,

@@ -17,7 +17,8 @@ import {
   hideHtmlEl,
   ensureHtmlElIsVisible,
 } from './utils/index.ts';
-import { ObjectLoadingProgressCb, Scene, loadScene } from './scene/scene.ts';
+import { Scene } from './scene/scene.ts';
+import { loadScene } from './scene/load/loadScene.ts';
 import { SceneName } from './scene/sceneFiles.ts';
 import {
   setNaniteDrawImpostorsStats,
@@ -25,6 +26,7 @@ import {
   setNaniteDrawStatsHw_Sw,
 } from './passes/_shared.ts';
 import { downloadDrawnImpostorsBuffer } from './scene/naniteBuffers/drawnImpostorsBuffer.ts';
+import { ObjectLoadingProgressCb } from './scene/load/types.ts';
 
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';

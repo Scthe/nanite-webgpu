@@ -1,6 +1,6 @@
 import * as png from 'png';
 import { BYTES_U8 } from '../constants.ts';
-import { TextFileReader, TextureReader } from '../scene/scene.ts';
+import { TextFileReader, TextureReader } from '../scene/load/types.ts';
 
 // deno-lint-ignore require-await
 export const textFileReader_Deno: TextFileReader = async (filename: string) => {

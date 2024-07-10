@@ -1,4 +1,3 @@
-import '../lib/meshoptimizer.d.ts';
 import '../lib/metis.d.ts';
 import { assertSameArray, injectMetisWASM } from '../sys_deno/testUtils.ts';
 import {

@@ -1,5 +1,4 @@
-import { CONFIG } from '../constants.ts';
-import { NaniteDevice } from '../constants.ts';
+import { CONFIG, NaniteDevice } from '../constants.ts';
 import { getProfilerTimestamp } from '../gpuProfiler.ts';
 import { hideHtmlEl, isHtmlElVisible, showHtmlEl } from '../utils/index.ts';
 
