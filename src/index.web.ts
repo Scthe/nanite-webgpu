@@ -27,6 +27,7 @@ import {
 } from './passes/_shared.ts';
 import { downloadDrawnImpostorsBuffer } from './scene/naniteBuffers/drawnImpostorsBuffer.ts';
 import { ObjectLoadingProgressCb } from './scene/load/types.ts';
+import { applySearchParams } from './sys_web/searchParams.ts';
 
 // const SCENE_FILE: SceneName = 'singleBunny';
 // const SCENE_FILE: SceneName = 'bunnyRow';
@@ -43,6 +44,8 @@ const SCENE_FILE: SceneName = 'jinx';
 // const SCENE_FILE: SceneName = 'plane';
 
 (async function () {
+  const sceneFile = applySearchParams(CONFIG, SCENE_FILE);
+
   // GPUDevice
   const device = await createGpuDevice();
   if (!device) {
@@ -70,7 +73,7 @@ const SCENE_FILE: SceneName = 'jinx';
   try {
     loaderEl = document.getElementById('loader-wrapper');
     showHtmlEl(loaderEl);
-    scene = await loadSceneFile(device, SCENE_FILE);
+    scene = await loadSceneFile(device, sceneFile);
   } catch (e) {
     showErrorMessage(e.message);
     throw e;
