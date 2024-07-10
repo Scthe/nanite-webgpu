@@ -85,6 +85,8 @@ export const CONFIG = {
   // useAlternativeClearColor: true,
   /** DO NOT CHANGE BEFORE DEFINING THE LIGHT VALUES IN SHADER. WILL CAUSE RNG VALUES OTHERWISE */
   lightsCount: 2,
+  /** Feel free to switch on if you want */
+  useVertexQuantization: false,
 
   ///////////////
   /// CAMERA

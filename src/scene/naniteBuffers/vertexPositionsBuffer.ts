@@ -1,24 +1,35 @@
+import { CONFIG } from '../../constants.ts';
 import { createGPUBuffer } from '../../utils/webgpu.ts';
+import {
+  BUFFER_VERTEX_POSITIONS_QUANT,
+  createNaniteVertexPositionsBuffer_Quant,
+} from './vertexPositionsQuantBuffer.ts';
+
+const USE_QUANTIZATION = CONFIG.useVertexQuantization;
 
 ///////////////////////////
 /// SHADER CODE
 ///////////////////////////
 
-export const BUFFER_VERTEX_POSITIONS = (bindingIdx: number) => /* wgsl */ `
+const BUFFER_VERTEX_POSITIONS_NATIVE = (bindingIdx: number) => /* wgsl */ `
 
 // WARNING: SSBO with 'array<vec3f>' does not work. Forces 'array<vec4f>'.
 // DO NOT ASK HOW I HAVE DEBUGGED THIS.
 @group(0) @binding(${bindingIdx})
-var<storage, read> _vertexPositions: array<vec4f>;
+var<storage, read> _vertexPositionsNative: array<vec4f>;
 
-fn _getVertexPosition(idx: u32) -> vec4f { return _vertexPositions[idx]; }
+fn _getVertexPosition(idx: u32) -> vec4f { return _vertexPositionsNative[idx]; }
 `;
+
+export const BUFFER_VERTEX_POSITIONS = USE_QUANTIZATION
+  ? BUFFER_VERTEX_POSITIONS_QUANT
+  : BUFFER_VERTEX_POSITIONS_NATIVE;
 
 ///////////////////////////
 /// GPU BUFFER
 ///////////////////////////
 
-export function createNaniteVertexPositionsBuffer(
+function createNaniteVertexPositionsBuffer_Native(
   device: GPUDevice,
   name: string,
   vertices: Float32Array
@@ -38,3 +49,7 @@ export function createNaniteVertexPositionsBuffer(
     data
   );
 }
+
+export const createNaniteVertexPositionsBuffer = USE_QUANTIZATION
+  ? createNaniteVertexPositionsBuffer_Quant
+  : createNaniteVertexPositionsBuffer_Native;

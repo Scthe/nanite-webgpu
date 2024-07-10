@@ -3,54 +3,43 @@ import { calcBoundingBox } from '../../utils/calcBounds.ts';
 import { createGPUBuffer } from '../../utils/webgpu.ts';
 
 /*
-THE ALGORITHM WORKS, BUT IS CURRENTLY UNUSED.
-
-You need to provide 2 dequantization constants (6 floats per object)
-into the shader, which means storing them somewhere in some GPU buffer.
-Too much hassle for me.
-
-To prove that this works, you can render a single object
-and hardcode the constants for this one object into the WGSL.
-Don't forget to actaully call this code (just replace
-all usages of `vertexPositionsBuffer.ts`), it's used 2 times in entire codebase.
-One when writing to the GPU buffer (`createNaniteVertexPositionsBuffer()`)
-and then replace WGSL snippet (`BUFFER_VERTEX_POSITIONS`).
-
-
-# TO FINISH:
-
-Provide into the shader 2 values that are generated during quantization:
-- let dequantFactor = _somePerObjectData.dequantFactor;
-- let dequantSummand = _somePerObjectData.dequantSummand;
-
-The values are printed into the console at the end of 
-`createNaniteVertexPositionsQuantBuffer()`.
-
-# BASED ON:
-
+Based on:
 - https://momentsingraphics.de/ToyRenderer2SceneManagement.html#Quantization
 - https://github.com/MomentsInGraphics/vulkan_renderer/blob/38b1dc04ec3e67a311dad2f8e863eb070d076135/tools/io_export_vulkan_blender28.py#L481
 - https://github.com/MomentsInGraphics/vulkan_renderer/blob/38b1dc04ec3e67a311dad2f8e863eb070d076135/src/scene.h#L56
-
 */
 
 ///////////////////////////
 /// SHADER CODE
-/// TODO [CRITICAL] Decide if release this or add optional GUI switch etc.
 ///////////////////////////
 
 export const BUFFER_VERTEX_POSITIONS_QUANT = (
   bindingIdx: number
 ) => /* wgsl */ `
 
+struct VertexPositionsQuant{
+  dqFac: vec4f,
+  dqSummand: vec4f,
+  data: array<vec2u>,
+}
+
 @group(0) @binding(${bindingIdx})
-var<storage, read> _vertexPositions: array<vec2u>;
+// var<storage, read> _vertexPositions: array<vec2u>;
+var<storage, read> _vertexPositionsQuant: VertexPositionsQuant;
 
 /** get vertex position. Has .w=1 */
 fn _getVertexPosition(idx: u32) -> vec4f {
-  let dequantFactor = _objectData.dequantFactor;
-  let dequantSummand = _objectData.dequantSummand;
-  let positionQuant = _vertexPositions[idx];
+  // let dequantFactor = _objectData.dequantFactor;
+  // let dequantSummand = _objectData.dequantSummand;
+  /*let dequantFactor = vec3f(
+    5.918854526498762e-7, 5.862659691047156e-7, 4.5926591951683804e-7
+  );
+  let dequantSummand = vec3f(
+    -0.755043089389801, 0.2664794921875, -0.4934331178665161
+  );*/
+  let dequantFactor = _vertexPositionsQuant.dqFac.xyz;
+  let dequantSummand = _vertexPositionsQuant.dqSummand.xyz;
+  let positionQuant = _vertexPositionsQuant.data[idx];
 
   let positionU32 = vec3u(
     positionQuant[0] & 0x1FFFFF,
@@ -66,7 +55,7 @@ fn _getVertexPosition(idx: u32) -> vec4f {
 /// GPU BUFFER
 ///////////////////////////
 
-export function createNaniteVertexPositionsQuantBuffer(
+export function createNaniteVertexPositionsBuffer_Quant(
   device: GPUDevice,
   name: string,
   vertices: Float32Array
@@ -92,7 +81,8 @@ export function createNaniteVertexPositionsQuantBuffer(
   const vertexPos = vec3.create();
   const quantVertPos = (x: number) => Math.floor(Math.min(x, QUANT_PLACES - 1));
 
-  const data = new Uint32Array(vertexCount * 2);
+  const dequantF32Count = 8; // 2 * vec4f
+  const data = new Uint32Array(dequantF32Count + vertexCount * 2);
 
   for (let i = 0; i < vertexCount; i++) {
     vec3.set(
@@ -109,19 +99,26 @@ export function createNaniteVertexPositionsQuantBuffer(
     const vertexPosQuantY = quantVertPos(vertexPos[1]); // 21 bits
     const vertexPosQuantZ = quantVertPos(vertexPos[2]); // 21 bits
 
-    data[i * 2 + 0] = vertexPosQuantX;
-    data[i * 2 + 0] += (vertexPosQuantY & 0x7ff) << 21; // write 11 bits of axis Y
-    data[i * 2 + 1] = (vertexPosQuantY & 0x1ff800) >> 11; // write remaining 10 bits of axis Y to other u32
-    data[i * 2 + 1] += vertexPosQuantZ << 10;
+    data[dequantF32Count + i * 2 + 0] = vertexPosQuantX;
+    data[dequantF32Count + i * 2 + 0] += (vertexPosQuantY & 0x7ff) << 21; // write 11 bits of axis Y
+    data[dequantF32Count + i * 2 + 1] = (vertexPosQuantY & 0x1ff800) >> 11; // write remaining 10 bits of axis Y to other u32
+    data[dequantF32Count + i * 2 + 1] += vertexPosQuantZ << 10;
   }
 
   // PY: dequantization_factor = 1.0 / quantization_factor
   const dequantFactor = vec3.inverse(quantFactor); // we will revert the scaling
   // PY: box_min + 0.5 * quantFactor;
   const dequantSummand = vec3.addScaled(bboxMin, dequantFactor, 0.5);
+  const dataAsF32 = new Float32Array(data.buffer, 0, 8);
+  dataAsF32[0] = dequantFactor[0];
+  dataAsF32[1] = dequantFactor[1];
+  dataAsF32[2] = dequantFactor[2];
+  dataAsF32[4] = dequantSummand[0];
+  dataAsF32[5] = dequantSummand[1];
+  dataAsF32[6] = dequantSummand[2];
 
   // provide both values to the WGSL's _getVertexPosition()
-  console.log({ dequantFactor, dequantSummand });
+  // console.log({ dequantFactor, dequantSummand });
 
   return createGPUBuffer(
     device,
