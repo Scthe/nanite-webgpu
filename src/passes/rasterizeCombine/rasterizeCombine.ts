@@ -40,6 +40,8 @@ export class RasterizeCombine {
           {
             format: outTextureFormat,
             blend: {
+              // color is based on the alpha from the shader's output.
+              // So we can decide in code. But it also has a discard() there.
               color: {
                 srcFactor: 'src-alpha',
                 dstFactor: 'one-minus-src-alpha',

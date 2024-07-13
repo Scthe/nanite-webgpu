@@ -8,6 +8,8 @@ const OBJECTS = {
   lucyJson: { file: 'lucy.json', scale: 1 },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 0.01 },
   dragonJson: { file: 'xyzrgb_dragon.json', scale: 0.01 },
+  robot: { file: 'robot.obj', scale: 1 },
+  robotJson: { file: 'robot.json', scale: 1 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1, texture: 'test-texture.png' },
   planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },
@@ -23,6 +25,7 @@ const OBJECTS = {
   jinxBody: { file: 'jinx/jinx_body.obj', scale: 1, texture: 'jinx/jinx_body.png' },
   jinxFace: { file: 'jinx/jinx_face.obj', scale: 1, texture: 'jinx/jinx_face.png' },
   jinxHair: { file: 'jinx/jinx_hair.obj', scale: 1, texture: 'jinx/jinx_hair.png' },
+  jinxCombined: { file: 'jinx-combined/jinx-combined.obj', scale: 1, texture: 'jinx-combined/jinx-combined.png' },
 };
 export type SceneObjectName = keyof typeof OBJECTS;
 
@@ -41,17 +44,19 @@ export function getSceneObjectDef(name: SceneObjectName) {
 }
 
 export const SCENES = {
-  singleBunny: [sceneModel('bunny', 1, 1)],
+  bunnySingle: [sceneModel('bunny', 1, 1)],
   bunny: [sceneModel('bunny')],
-  // bunnyRow: [sceneModel('bunny', 1 << 17, 1)],
   bunnyRow: [sceneModel('bunny', 32768, 1)],
-  bunny1b: [sceneModel('bunny', 500, 500)],
+  bunny1b: [sceneModel('bunny', 500, 500, 0.8)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
-  singleLucy: [sceneModel('lucy', 1, 1)],
-  singleLucyJson: [sceneModel('lucyJson', 1, 1)],
+  lucySingle: [sceneModel('lucy', 1, 1)],
+  lucySingleJson: [sceneModel('lucyJson', 1, 1)],
   lucy: [sceneModel('lucy', 10, 10, 0)],
+  lucy1b: [sceneModel('lucyJson', 110, 110, 0.7)],
   dragon: [sceneModel('dragon', 1, 1)],
-  dragonJson: [sceneModel('dragonJson', 1, 1)],
+  dragonJson: [sceneModel('dragonJson', 70, 70)],
+  robot: [sceneModel('robot', 1, 1)],
+  robotJson: [sceneModel('robotJson', 1, 1)],
   cube: [sceneModel('cube', 1, 1)],
   plane: [sceneModel('plane', 1, 1)],
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
@@ -60,6 +65,14 @@ export const SCENES = {
   manyObjects: [
     sceneModelUniformGrid('displacedPlane', 10, 2, 0),
     sceneModelUniformGrid('bunny', 10, 2, 1),
+  ],
+  manyObjects2: [
+    sceneModelUniformGrid('lucyJson', 70, 1.2, 0),
+    sceneModelUniformGrid('dragonJson', 70, 1.2, 0.6),
+  ],
+  jinxCombined: [
+    // sceneModel('jinxCombined', 100, 100)
+    sceneModelUniformGrid('jinxCombined', 120, 0.7),
   ],
   jinx: {
     models: [

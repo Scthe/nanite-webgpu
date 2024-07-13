@@ -68,10 +68,12 @@ fn fillLightsData(
 ){
   (*lights)[0].position = vec3f(LIGHT_FAR, LIGHT_FAR, 0); // world space
   (*lights)[0].color = vec3f(1., 0.95, 0.8);
+  // (*lights)[0].color = vec3f(1., 0.0, 0.0); // RED for testing
   (*lights)[0].intensity = 1.5;
 
   (*lights)[1].position = vec3f(-LIGHT_FAR, -LIGHT_FAR / 3.0, LIGHT_FAR / 3.0); // world space
   (*lights)[1].color = vec3f(0.8, 0.8, 1.);
+  // (*lights)[1].color = vec3f(0.0, 0.0, 1.); // BLUE for testing
   (*lights)[1].intensity = 0.7;
 }
 

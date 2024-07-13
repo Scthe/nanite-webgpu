@@ -7,6 +7,8 @@ const PARAMS = {
   softwareRasterizerThreshold: 'softwarerasterizer_threshold',
   impostorsThreshold: 'impostors_threshold',
   impostorsTextureSize: 'impostors_texturesize',
+  impostorsForceOnlyBillboards: 'impostors_forceonlybillboards',
+  naniteErrorThreshold: 'nanite_errorthreshold',
 };
 
 export const INVALID_SEARCH_PARAMS: string[] = [];
@@ -46,6 +48,13 @@ export function applySearchParams(
       if (isOk) {
         target.impostors.textureSize = Math.abs(value);
       }
+    } else if (key === PARAMS.naniteErrorThreshold) {
+      const [isOk, value] = parseNumber(val);
+      if (isOk) {
+        target.nanite.render.errorThreshold = Math.abs(value);
+      }
+    } else if (key === PARAMS.impostorsForceOnlyBillboards) {
+      target.impostors.forceOnlyBillboards = true;
     } else {
       INVALID_SEARCH_PARAMS.push(key);
     }

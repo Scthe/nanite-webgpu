@@ -29,15 +29,18 @@ import { downloadDrawnImpostorsBuffer } from './scene/naniteBuffers/drawnImposto
 import { ObjectLoadingProgressCb } from './scene/load/types.ts';
 import { applySearchParams } from './sys_web/searchParams.ts';
 
-// const SCENE_FILE: SceneName = 'singleBunny';
+// const SCENE_FILE: SceneName = 'bunnySingle';
 // const SCENE_FILE: SceneName = 'bunnyRow';
 // const SCENE_FILE: SceneName = 'bunny1b';
 // const SCENE_FILE: SceneName = 'bunny';
-// const SCENE_FILE: SceneName = 'manyObjects';
-const SCENE_FILE: SceneName = 'jinx';
-// const SCENE_FILE: SceneName = 'planeSubdiv';
-// const SCENE_FILE: SceneName = 'singleLucy';
+const SCENE_FILE: SceneName = 'jinxCombined'; // jinx
+// const SCENE_FILE: SceneName = 'lucySingleJson';
+// const SCENE_FILE: SceneName = 'lucy1b';
 // const SCENE_FILE: SceneName = 'dragon';
+// const SCENE_FILE: SceneName = 'dragonJson';
+// const SCENE_FILE: SceneName = 'manyObjects';
+// const SCENE_FILE: SceneName = 'manyObjects2';
+// const SCENE_FILE: SceneName = 'planeSubdiv';
 // const SCENE_FILE: SceneName = 'displacedPlane';
 // const SCENE_FILE: SceneName = 'displacedPlaneFlat'; // fails
 // const SCENE_FILE: SceneName = 'cube';
@@ -275,7 +278,7 @@ async function getGPUStats_meshlets(device: GPUDevice, scene: Scene) {
 }
 
 // special check for software rasterizer warning
-setInterval(checkSoftwareRasterizerState, 2000);
+setInterval(checkSoftwareRasterizerState, 1000);
 const el = document.getElementById('software-rasterizer');
 function checkSoftwareRasterizerState() {
   const shouldBeEnabled = CONFIG.softwareRasterizer.enabled;

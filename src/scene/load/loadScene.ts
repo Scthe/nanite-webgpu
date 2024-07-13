@@ -95,7 +95,6 @@ export async function loadScene(
 
   return {
     naniteObjects,
-    // TODO verify debugMeshes also works
     debugMeshes: debugMeshes!, // was created from first nanite object
     fallbackDiffuseTexture,
     fallbackDiffuseTextureView,
@@ -156,7 +155,7 @@ function updateSceneStats(
   STATS.update('Scene triangles', formatNumber(naiveTriangleCount, 1));
 
   const avgSimpl = (100.0 * maxSimplifiedTriangles) / naiveTriangleCount;
-  console.log(`Avg scene simplification is ${avgSimpl.toFixed(1)}% (${formatNumber(naiveTriangleCount)} -> ${formatNumber(maxSimplifiedTriangles)} triangles)`); // prettier-ignore
+  console.log(`Scene simplification is ${avgSimpl.toFixed(1)}% (${formatNumber(naiveTriangleCount)} -> ${formatNumber(maxSimplifiedTriangles)} triangles)`); // prettier-ignore
 
   return {
     naiveTriangleCount,

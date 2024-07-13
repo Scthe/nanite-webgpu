@@ -98,6 +98,29 @@ Deno.test('searchParams()', async (t) => {
     '?impostors_texturesize=whatever',
     '?impostors_texturesize=???',
   ]);
+
+  // naniteErrorThreshold
+  await testSearchParams('?nanite_errorthreshold=0.1', undefined, {
+    nanite: { render: { errorThreshold: 0.1 } },
+  });
+  await testSearchParams('?nanite_errorthreshold=-0.1', undefined, {
+    nanite: { render: { errorThreshold: 0.1 } },
+  });
+  await testNoopSearchParams([
+    '?nanite_errorthreshold=INFINITY',
+    '?nanite_errorthreshold=-INFINITY',
+    '?nanite_errorthreshold=NaN',
+    '?nanite_errorthreshold=whatever',
+    '?nanite_errorthreshold=???',
+  ]);
+
+  // impostorsForceOnlyBillboards
+  await testSearchParams('?impostors_forceOnlyBillboards', undefined, {
+    impostors: { forceOnlyBillboards: true },
+  });
+  await testSearchParams('?IMPOSTORS_FORCEONLYBILLBOARDS', undefined, {
+    impostors: { forceOnlyBillboards: true },
+  });
 });
 
 function createMockConfig(): typeof CONFIG {
@@ -107,6 +130,9 @@ function createMockConfig(): typeof CONFIG {
     },
     impostors: {
       ...CONFIG.impostors,
+    },
+    nanite: {
+      render: {},
     },
   } as any;
 }

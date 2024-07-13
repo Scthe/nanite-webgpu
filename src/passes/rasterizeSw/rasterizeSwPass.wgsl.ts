@@ -184,26 +184,36 @@ fn rasterize(
     storeResult(viewportSize, vec2u(u32(boundRectMin.x), u32(boundRectMin.y)), value);
   }*/
 
-  // NOTE: You can easily optimize this to just 3 adds per fragment. I've copied
-  // the first snippet from the tutorials at the top of the file. Feel free
-  // to copy the second snippet yourself. edgeFunction() is the most intuitive
-  // implementation available and it's still much faster than the hardware.
-  
+
+
+  let CC0 = edgeC(v2, v1);
+  let CC1 = edgeC(v0, v2);
+  let CC2 = edgeC(v1, v0);
+  var CY0 = boundRectMin.x * CC0.A + boundRectMin.y * CC0.B + CC0.C;
+	var CY1 = boundRectMin.x * CC1.A + boundRectMin.y * CC1.B + CC1.C;
+	var CY2 = boundRectMin.x * CC2.A + boundRectMin.y * CC2.B + CC2.C;
+  let triangleArea2 = CY0 + CY1 + CY2; // I wish I had debugger to preview the difference between both..
+
   // iterate row-by-row
   for (var y: f32 = boundRectMin.y; y < boundRectMax.y; y+=1.0) {
+    var CX0 = CY0;
+		var CX1 = CY1;
+		var CX2 = CY2;
 
     // iterate columns
     for (var x: f32 = boundRectMin.x; x < boundRectMax.x; x+=1.0) {
-      let p = vec2f(x, y);
+      // barycentric coordinates (using simplest possible impl.)
+      // let p = vec2f(x, y);
+      // let C0 = edgeFunction(v2, v1, p) / triangleArea; // for vertex 0
+      // let C1 = edgeFunction(v0, v2, p) / triangleArea; // for vertex 1
+      // let C2 = edgeFunction(v1, v0, p) / triangleArea; // for vertex 2
 
-      // barycentric coordinates
-      let C0 = edgeFunction(v2, v1, p) / triangleArea; // for vertex 0
-      let C1 = edgeFunction(v0, v2, p) / triangleArea; // for vertex 1
-      let C2 = edgeFunction(v1, v0, p) / triangleArea; // for vertex 2
-
-      if (C0 >= 0 && C1 >= 0 && C2 >= 0) {
-        // let value = COLOR_TEAL;
-        // let value = debugBarycentric(C0, C1, C2);
+      // if (C0 >= 0 && C1 >= 0 && C2 >= 0) {
+      if (CX0 >= 0 && CX1 >= 0 && CX2 >= 0) {
+        // barycentric coordinates
+        let C0 = CX0 / triangleArea2; // for vertex 0
+        let C1 = CX1 / triangleArea2; // for vertex 1
+        let C2 = CX2 / triangleArea2; // for vertex 2
         
         let depth: f32 = v0_NDC.z * C0 + v1_NDC.z * C1 + v2_NDC.z * C2;
         let n: vec3f = normalize(n0 * C0 + n1 * C1 + n2 * C2); // [-1, 1]
@@ -211,8 +221,28 @@ fn rasterize(
         let value = createPayload(depth, n);
         storeResult(viewportSize, vec2u(u32(x), u32(y)), value);
       }
+
+      CX0 += CC0.A;
+			CX1 += CC1.A;
+			CX2 += CC2.A;
     }
+
+    CY0 += CC0.B;
+    CY1 += CC1.B;
+    CY2 += CC2.B;
   }
+}
+
+struct EdgeC{ A: f32, B: f32, C: f32 }
+fn edgeC(v0: vec2f, v1: vec2f) -> EdgeC{
+  // from edgeFunction() formula we extract: A * p.x + B * p.y + C.
+  // This way, when we iterate over x-axis, we can just add A for
+  // next pixel, as the "B * p.y + C" part does not change
+  var result: EdgeC;
+  result.A = v1.y - v0.y; // for p.x
+  result.B = -v1.x + v0.x; // for p.y
+  result.C = -v0.x * v1.y + v0.y * v1.x; // rest
+  return result;
 }
 
 fn edgeFunction(v0: vec2f, v1: vec2f, p: vec2f) -> f32 {

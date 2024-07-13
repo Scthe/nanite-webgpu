@@ -54,7 +54,7 @@ function yieldVerticesIndex(
   }
 }
 
-function boundsCalc(): [BoundingBox, VertexCb] {
+export function boundsCalculator(): [BoundingBox, VertexCb] {
   const maxCo: BoundingBoxPoint = [undefined!, undefined!, undefined!];
   const minCo: BoundingBoxPoint = [undefined!, undefined!, undefined!];
   const cb: VertexCb = (v) => {
@@ -70,7 +70,7 @@ export function calcBoundingBox(
   vertices: Float32Array,
   stride = CO_PER_VERTEX
 ): BoundingBox {
-  const [results, addVert] = boundsCalc();
+  const [results, addVert] = boundsCalculator();
   yieldVertices(vertices, stride, addVert);
   return results;
 }
@@ -79,7 +79,7 @@ export function calcBoundingBoxIndex(
   vertices: Float32Array,
   indices: Uint32Array
 ): BoundingBox {
-  const [results, addVert] = boundsCalc();
+  const [results, addVert] = boundsCalculator();
   yieldVerticesIndex(vertices, indices, addVert);
   return results;
 }

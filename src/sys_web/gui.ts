@@ -31,7 +31,6 @@ export function initializeGUI(
   scene: Scene,
   camera: Camera
 ) {
-  let getGPUStatsCtrl: GuiCtrl;
   // let softwareBackfaceCullCtrl: GuiCtrl;
   let gpuFreezeVisiblityCtrl: GuiCtrl;
   // let gpuVisiblityImplCtrl: GuiCtrl;
@@ -63,12 +62,13 @@ export function initializeGUI(
   // github
   gui.add(dummyObject, 'openGithub').name('GITHUB');
 
-  // bg
-  addColorController(CONFIG, 'clearColor', 'Bg color');
-  gui.add(CONFIG, 'useAlternativeClearColor').name('Alt. bg');
-
   // profiler
   gui.add(dummyObject, 'profile').name('Profile');
+
+  // GPU stats
+  const getGPUStatsCtrl = gui
+    .add(dummyObject, 'getGpuDrawStats')
+    .name('Get GPU stats');
 
   addNaniteFolder();
   addInstanceCullingFolder();
@@ -116,7 +116,7 @@ export function initializeGUI(
     // errorThreshold
     dir
       .add(CONFIG.nanite.render, 'errorThreshold', 0, 10)
-      .name('Error threshold [px]');
+      .name('Error threshold');
 
     // Visib. algo
     // gpuVisiblityImplCtrl = dir
@@ -143,11 +143,6 @@ export function initializeGUI(
       .add(CONFIG.nanite.render, 'freezeGPU_Visibilty')
       .name('Freeze culling');
 
-    // GPU stats
-    getGPUStatsCtrl = dir
-      .add(dummyObject, 'getGpuDrawStats')
-      .name('Get GPU stats');
-
     dir
       .add(dummyObject, 'showSwRasterAlert')
       .name('Software rasterizer - README');
@@ -155,7 +150,7 @@ export function initializeGUI(
     const cfgSr = CONFIG.softwareRasterizer;
     dir.add(cfgSr, 'enabled').name('Softw. raster. enable');
     gpuSoftwareRasterizerThrsh = dir
-      .add(cfgSr, 'threshold', 0.0, 1000.0)
+      .add(cfgSr, 'threshold', 0.0, 2500.0)
       .name('Softw. raster. threshold [px]');
   }
 
@@ -169,7 +164,7 @@ export function initializeGUI(
     dir.add(cfg, 'frustumCulling').name('Frustum culling');
     dir.add(cfg, 'occlusionCulling').name('Occlusion culling');
     dir
-      .add(imp, 'billboardThreshold', 0.0, 4000.0)
+      .add(imp, 'billboardThreshold', 0.0, 8000.0)
       .name('Billboard threshold [px]');
     dir.add(imp, 'forceOnlyBillboards').name('Force billboards');
     dir.add(imp, 'ditherStrength', 0.0, 1.0).name('Billboard dither');
@@ -215,6 +210,11 @@ export function initializeGUI(
   function addDbgFolder() {
     const dir = gui.addFolder('DEBUG');
     dir.open();
+
+    // bg
+    addColorController(dir, CONFIG, 'clearColor', 'Bg color');
+    dir.add(CONFIG, 'useAlternativeClearColor').name('Alt. bg');
+    dir.add(CONFIG, 'drawGround').name('Draw ground');
 
     // display mode
     const modeDummy = createDummy(CONFIG, 'displayMode', [
@@ -276,6 +276,7 @@ export function initializeGUI(
   //////////////
   /// utils
   function addColorController<T extends object>(
+    dir: dat.GUI,
     obj: T,
     prop: keyof T,
     name: string
@@ -300,7 +301,7 @@ export function initializeGUI(
       },
     });
 
-    gui.addColor(dummy, 'value').name(name);
+    dir.addColor(dummy, 'value').name(name);
   }
 }
 

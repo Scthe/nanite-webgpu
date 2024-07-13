@@ -1,4 +1,4 @@
-import { VERTS_IN_TRIANGLE } from '../constants.ts';
+import { IS_DENO, VERTS_IN_TRIANGLE } from '../constants.ts';
 import { MeshletWIP } from '../meshPreprocessing/index.ts';
 import { getTriangleCount } from '../utils/index.ts';
 import { NaniteVisibilityBufferCPU } from '../passes/naniteCpu/types.ts';
@@ -130,5 +130,24 @@ export class NaniteObject {
     }
 
     return node;
+  }
+
+  printStats() {
+    if (!IS_DENO) {
+      // prevent spam. This is literally pages long
+      console.log('All meshlets:', this.allMeshlets);
+      console.log('Root meshlets:', this.roots);
+    }
+
+    const trianglesBefore = this.bottomTriangleCount;
+    const trianglesAfter = this.roots.reduce(
+      (acc, m) => acc + m.triangleCount,
+      0
+    );
+    const simplifPct = (trianglesAfter / trianglesBefore) * 100;
+
+    console.log(`Created ${this.lodLevelCount} LOD levels. Total ${this.meshletCount} meshlets.`); // prettier-ignore
+    console.log(`There are ${this.bottomMeshletCount} bottom level meshlets with ${trianglesBefore} triangles.`); // prettier-ignore
+    console.log(`There are ${this.roots.length} root meshlets with ${trianglesAfter} triangles. Simplification: ${simplifPct.toFixed(1)}%.`); // prettier-ignore
   }
 }

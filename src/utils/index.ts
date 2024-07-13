@@ -158,7 +158,7 @@ export function formatNumber(num: number, decimals = 2) {
 /** Format 4 out of 100 into: '4 (4%)' */
 export function formatPercentageNumber(actual: number, total: number) {
   const percent = total > 0 ? (actual / total) * 100.0 : 0;
-  return `${actual} (${percent.toFixed(1)}%)`;
+  return `${formatNumber(actual)} (${percent.toFixed(1)}%)`;
 }
 
 // deno-lint-ignore no-explicit-any

@@ -9,6 +9,8 @@ export const CAMERA_CFG = {
   position: {
     position: [1.5, 1.9, 2.3],
     rotation: [-0.6, 0.3], // [pitch, yaw]
+    // position: [1.6, 1.9, 1.7],
+    // rotation: [-0.8, 0.2], // [pitch, yaw]
   } satisfies CameraOpts,
   // projection
   fovDgr: 45,
@@ -39,6 +41,7 @@ export const MILISECONDS_TO_SECONDS = 0.001;
 // deno-lint-ignore no-window-prefix no-window
 export const IS_DENO = window.Deno !== undefined;
 export const IS_BROWSER = !IS_DENO;
+export const IS_WGPU = IS_DENO;
 
 export const MODELS_DIR = IS_DENO ? 'static/models' : 'models';
 
@@ -49,7 +52,7 @@ export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = IS_DENO
 
 /** 4 for Vec4, 3 for Vec3. ATM using Vec3  */
 export const CO_PER_VERTEX: number = 3;
-/** Give a name to a random magic value '3'  */
+/** Give a name to a random magic value '3'. Surely, number of points in a triangle can change someday!  */
 export const VERTS_IN_TRIANGLE: number = 3;
 
 export type DisplayMode =
@@ -83,9 +86,9 @@ export const CONFIG = {
   ///////////////
   /// GENERIC/SCENE STUFF
   /** Changeable from GUI */
-  clearColor: [0.2, 0.2, 0.2],
+  clearColor: [0.2, 0.2, 0.2, 0.0],
   /** Special color: if you need to check for holes */
-  clearColorAlt: [0.35, 0.35, 0.8],
+  clearColorAlt: [0.03, 0.25, 0.4, 0.0],
   /** if you need to check for holes */
   useAlternativeClearColor: false,
   // useAlternativeClearColor: true,
@@ -93,6 +96,7 @@ export const CONFIG = {
   lightsCount: 2,
   /** Feel free to switch on if you want */
   useVertexQuantization: false,
+  drawGround: true,
 
   ///////////////
   /// CAMERA
@@ -135,12 +139,12 @@ export const CONFIG = {
   impostors: {
     views: 12,
     // TODO [RIGHT HERE RIGHT NOW] BRING BACK THE 512px BILLBOARDS CAUSE THEY ARE CUTE
-    textureSize: 36,
+    textureSize: 64,
     /** Every object that is smaller than this on screen becomes impostor billboard.
      * Calculated as `screen space AABB width * height`.
      * This an AABB for an ENTIRE object, not a meshlet!
      */
-    billboardThreshold: 2000,
+    billboardThreshold: 4000,
     /** Do not render mesh, ONLY billboards regardless of everything */
     forceOnlyBillboards: false,
     ditherStrength: 0.4,
@@ -166,7 +170,7 @@ export const CONFIG = {
   softwareRasterizer: {
     enabled: true,
     /** Every meshlet that is less pixels than this will be software rendered. Calculated as `screen space AABB width * height`. */
-    threshold: 360.0,
+    threshold: 1360.0,
   },
 
   ///////////////
@@ -178,8 +182,29 @@ export const CONFIG = {
       meshletBackfaceCullingConeWeight: 1.0,
       /** Reduce triangle count per each level. */
       simplificationDecimateFactor: 2,
-      /** If you have 100 triangles you expect to simplify into 50. But if the simplification is not possible, you might end up with e.g. 90 triangles. At this point stop the process for this part of the mesh. */
-      simplificationFactorRequirement: 0.97,
+      /**
+       * If you have 100 triangles you expect to simplify into 50. But if the simplification is not possible, you might end up with e.g. 90 triangles (simplification factor 0.9). At this point stop the process for this part of the mesh.
+       * > THIS CHECK IS ON PER-MERGED-MESHLETS BASIS.
+       *
+       * Setting this to >1.0 disables this check.
+       */
+      simplificationFactorRequirement: 1.1, // 0.97?
+      /**
+       * If you have 100 triangles you expect to simplify into 50. But if the simplification is not possible, you might end up with e.g. 90 triangles (simplification factor 0.9). At this point stop the ENTIRE process.
+       * > THIS CHECK IS DONE BEFORE STARTING NEXT LOD-HIERARCHY-LEVEL.
+       *
+       * Setting this to >1.0 disables this check.
+       */
+      simplificationFactorRequirementBetweenLevels: 0.97,
+      /** target_error for meshoptimizer */
+      simplificationTargetError: 0.05,
+      /** Multiplier for 'simplificationTargetError' the higher you go up the LOD tree */
+      simplificationTargetErrorMultiplier: 1.1,
+      /** We half triangle count each time. Each meshlet is 124 triangles.
+       * $2^{MAX_LODS}*124$. E.g. MAX_LODS=15 gives 4M. Vertices above would
+       * lead to many top-level tree nodes. Suboptimal, but not incorrect.
+       */
+      maxLods: 20,
       /** Select algo. to use */
       useMapToFindAdjacentEdges: true,
       /** Go to Devtools->Performance to check Chrome's log */
@@ -191,7 +216,7 @@ export const CONFIG = {
        * If projected error of the LOD is lower then this, then the LOD is rendered.
        * High value -> high acceptable error -> coarse LOD.
        */
-      errorThreshold: 0.4,
+      errorThreshold: 0.5,
       /** See cull meshlets pass shader to compare 2 implementations */
       useVisibilityImpl_Iter: true,
       /** Stop updating visbilit buffer (for debug) */

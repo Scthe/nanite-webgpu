@@ -59,6 +59,7 @@ struct VertexOutput {
   @location(0) positionWS: vec4f,
   @location(1) uv: vec2f,
   @location(2) @interpolate(flat) facingAngleDgr: f32,
+  @location(3) @interpolate(flat) tfxIdx: u32,
 };
 
 @vertex
@@ -98,6 +99,7 @@ fn main_vs(
   result.positionWS = modelMat * vec4f(boundingSphere.xyz, 1.); // TODO [IGNORE] viewMatInv * cornerVS; would be better
   result.uv = (quadOffset.xy + 1.0) / 2.0;
   result.uv.y = 1.0 - result.uv.y;
+  result.tfxIdx = tfxIdx;
 
   // calculate 2d angle (ignore Y-axis) between camera-to-object and where model is facing
   // used to calculate which impostor image to use
@@ -141,13 +143,15 @@ struct ImpostorSample {
 fn main_fs(
   fragIn: VertexOutput
 ) -> @location(0) vec4<f32> {
+  let modelMat = _getInstanceTransform(fragIn.tfxIdx);
   let delta = 360.0 * IMPOSTOR_COUNT_INV; // 30dgr
   let shownImageF32 = fragIn.facingAngleDgr / delta;
+
   // do blend between 2 consecutive billboard images. Not amazing, but..
   let shownImage0 = u32(floor(shownImageF32));
   let shownImage1 = u32(ceil(shownImageF32)); // to hipster to +1
-  let impostor0 = impostorSample(shownImage0, fragIn.uv);
-  let impostor1 = impostorSample(shownImage1, fragIn.uv);
+  let impostor0 = impostorSample(modelMat, shownImage0, fragIn.uv);
+  let impostor1 = impostorSample(modelMat, shownImage1, fragIn.uv);
 
   // mix factor between both images
   let ditherStr = getBillboardDitheringStrength(_uniforms.flags);
@@ -190,14 +194,14 @@ fn main_fs(
 }
 
 
-fn impostorSample(idx: u32, uv: vec2f) -> ImpostorSample {
+fn impostorSample(modelMat: mat4x4f, idx: u32, uv: vec2f) -> ImpostorSample {
   // e.g. for idx=4 and uv.x=0.7 turn into 4.7 and then divide by IMPOSTOR_COUNT
   let uvX = (f32(idx % IMPOSTOR_COUNT) + uv.x) * IMPOSTOR_COUNT_INV;
   let texValues = textureSample(_diffuseTexture, _sampler, vec2f(uvX, uv.y));
 
   var result: ImpostorSample;
   result.diffuse = unpackColor8888(texValues.r);
-  result.normal = unpackNormal(texValues.g);
+  result.normal = transformNormalToWorldSpace(modelMat, unpackNormal(texValues.g));
   return result;
 }
 `;

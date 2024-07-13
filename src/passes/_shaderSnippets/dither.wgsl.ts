@@ -1,4 +1,4 @@
-import { IS_DENO } from '../../constants.ts';
+import { IS_WGPU } from '../../constants.ts';
 
 /** usual 8x8 Bayer matrix dithering */
 export const SNIPPET_DITHER = /* wgsl */ `
@@ -31,7 +31,7 @@ fn getDitherForPixel(gl_FragCoord: vec2u) -> f32 {
   let idx = pxPos.y * 8u + pxPos.x;
   // Disabled on Deno, as Naga does not allow indexing 'array<u32, 64>'
   // with nonconst values. See 'nagaFixes.ts'.
-  let matValue = DITHER_MATRIX[${IS_DENO ? '0' : 'idx'}]; // [1-64]
+  let matValue = DITHER_MATRIX[${IS_WGPU ? '0' : 'idx'}]; // [1-64]
   return f32(matValue) / DITHER_ELEMENT_RANGE;
 }
 

@@ -1,4 +1,4 @@
-import { IS_DENO } from '../../constants.ts';
+import { IS_WGPU } from '../../constants.ts';
 import { createArray } from '../../utils/index.ts';
 
 /** If you create a const array e.g. `const COLORS = array<vec3f, COLOR_COUNT>(...);`,
@@ -41,7 +41,7 @@ export const assignValueFromConstArray = (
     throw new Error(`assignValueFromConstArray expected newVarDecl param to include variable name and type e.g. 'normal: vec3f'. Got '${newVarDecl}', where name='${varName}', type=${varType}`); // prettier-ignore
   }
 
-  if (!IS_DENO) {
+  if (!IS_WGPU) {
     return `let ${newVarDecl} = ${arrayVarName}[${idxExpr}];`;
   }
 

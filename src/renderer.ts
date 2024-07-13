@@ -31,6 +31,7 @@ import { NaniteBillboardPass } from './passes/naniteBillboard/naniteBillboardPas
 import { PresentPass } from './passes/presentPass/presentPass.ts';
 import { RasterizeSwPass } from './passes/rasterizeSw/rasterizeSwPass.ts';
 import { RasterizeCombine } from './passes/rasterizeCombine/rasterizeCombine.ts';
+import { DrawGroundPass } from './passes/drawGroundPass.ts';
 
 export class Renderer {
   private readonly renderUniformBuffer: RenderUniformsBuffer;
@@ -55,6 +56,7 @@ export class Renderer {
   private readonly cullInstancesPass: CullInstancesPass;
   private readonly naniteBillboardPass: NaniteBillboardPass;
   private readonly rasterizeCombine: RasterizeCombine;
+  private readonly drawGroundPass: DrawGroundPass;
   private readonly presentPass: PresentPass;
   // depth pyramid
   private readonly depthPyramidPass: DepthPyramidPass;
@@ -86,6 +88,7 @@ export class Renderer {
       device,
       HDR_RENDER_TEX_FORMAT
     );
+    this.drawGroundPass = new DrawGroundPass(HDR_RENDER_TEX_FORMAT);
     this.presentPass = new PresentPass(device, preferredCanvasFormat);
 
     // geometry debug passes
@@ -187,6 +190,11 @@ export class Renderer {
       this.drawMeshPass.draw(ctx, naniteObject, loadOp);
     }
 
+    // draw ground
+    if (CONFIG.drawGround) {
+      this.drawGroundPass.cmdDrawGround(ctx, 'load');
+    }
+
     this.drawMeshPass.uploadFrameStats(ctx);
   }
 
@@ -212,11 +220,13 @@ export class Renderer {
 
       // draw: hardware
       this.rasterizeHwPass.cmdHardwareRasterize(ctx, naniteObject, loadOp);
+
       // draw: software
       if (softwareRasterizeEnabled) {
         this.rasterizeSwPass.cmdSoftwareRasterize(ctx, naniteObject);
       }
 
+      // draw: impostors
       if (CONFIG.cullingInstances.enabled) {
         this.naniteBillboardPass.cmdRenderBillboards(ctx, naniteObject, 'load');
       }
@@ -225,6 +235,11 @@ export class Renderer {
     // combine hardware + software rasterizer results
     if (softwareRasterizeEnabled) {
       this.rasterizeCombine.cmdCombineRasterResults(ctx);
+    }
+
+    // draw ground
+    if (CONFIG.drawGround) {
+      this.drawGroundPass.cmdDrawGround(ctx, 'load');
     }
 
     // depth pyramid

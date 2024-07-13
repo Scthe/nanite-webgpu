@@ -20,6 +20,8 @@ Deno.test({
     injectMeshoptimizerWASM();
     injectMetisWASM();
 
+    CONFIG.nanite.preprocess.simplificationFactorRequirement = 0.97;
+
     // This tests passes asserts, but hangs in `device.destroy();`, because wgpu is <redacted>.
     // So we use stub for GPUDevice.
     // const [device, reportWebGPUErrAsync] = await createGpuDevice_TESTS();

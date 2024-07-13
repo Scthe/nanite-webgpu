@@ -179,12 +179,20 @@ export async function importFromFile(
     }
     naniteObject.roots.push(n);
   });
+  naniteObject.lodLevelCount =
+    allMeshlets.reduce((acc, m) => Math.max(acc, m.lodLevel), 0) + 1;
 
   // upload meshlet data to the GPU
   naniteObject.finalizeNaniteObject(device);
   addTimer('Finalize nanite object', timerStart);
 
   assertValidNaniteObject(naniteObject);
+
+  // print stats
+  if (!CONFIG.isTest) {
+    naniteObject.printStats();
+  }
+
   return {
     originalMesh,
     parsedMesh,

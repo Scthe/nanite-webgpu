@@ -22,22 +22,13 @@ const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
   ? findAdjacentMeshlets_Map
   : findAdjacentMeshlets_Iter;
 
-/** We half triangle count each time. Each meshlet is 124 triangles.
- * $2^{MAX_LODS}*124$. E.g. MAX_LODS=15 gives 4M. Vertices above would
- * lead to many top-level tree nodes. Suboptimal, but not incorrect.
- */
-const MAX_LODS = 20;
-
-/** Reduce triangle count per each level. */
-const DECIMATE_FACTOR = CONFIG.nanite.preprocess.simplificationDecimateFactor;
-const SIMPLIFICATION_FACTOR_REQ =
-  CONFIG.nanite.preprocess.simplificationFactorRequirement;
-const TARGET_SIMPLIFY_ERROR = 0.05;
-
 const DEBUG = false;
 
 /** Progress [0..1]. Promise, so you can yield thread (for DOM updates) if you want */
 export type MeshPreprocessProgressCb = (progress: number) => Promise<void>;
+
+/** Sometimes you get simplification error 0 and then error for children and parent are same. Would render both at same time. */
+const MINIMAL_SIMPLICATION_ERROR = 0.000000001;
 
 let NEXT_MESHLET_ID = 0;
 
@@ -79,6 +70,15 @@ export async function createNaniteMeshlets(
   indices: Uint32Array,
   progressCb?: MeshPreprocessProgressCb
 ): Promise<MeshletWIP[]> {
+  const np = CONFIG.nanite.preprocess;
+  const DECIMATE_FACTOR = np.simplificationDecimateFactor;
+  const SIMPLIFICATION_FACTOR_REQ = np.simplificationFactorRequirement;
+  const SIMPLIFICATION_FACTOR_REQ_BETWEEN_LEVELS =
+    1.0 - np.simplificationFactorRequirementBetweenLevels;
+  const SIMPLIFICATION_TARGET_ERROR_MULTIPLIER =
+    np.simplificationTargetErrorMultiplier;
+  const MAX_LODS = np.maxLods;
+
   NEXT_MESHLET_ID = 0;
   const estimatedMeshletCount = estimateFinalMeshletCount(indices); // guess for progress stats
 
@@ -92,13 +92,38 @@ export async function createNaniteMeshlets(
 
   let currentMeshlets = bottomMeshlets;
   lodLevel += 1;
+  let simplificationTargetError =
+    CONFIG.nanite.preprocess.simplificationTargetError;
+  let lastLevelTriangeCount = -1;
 
   for (; lodLevel < MAX_LODS + 1; lodLevel++) {
+    // break condition: nothing left to minimize
     // prettier-ignore
-    if (currentMeshlets.length < 2) {
+    if (currentMeshlets.length <= 1) {
       // console.log(`Did not fill all ${MAX_LODS} LOD levels, mesh is too small`);
       break;
     }
+
+    // break condition: no change in triangle count between 2 last LOD levels
+    const startTriangeCount = getMeshletsTriangleCount(currentMeshlets);
+    if (startTriangeCount === lastLevelTriangeCount) {
+      console.warn(`LOD iteration failed to simplify even a single triangle at level ${lodLevel}. Stopping at ${currentMeshlets.length} meshlets.`); // prettier-ignore
+      break;
+    }
+
+    // break condition: we started removing too few triangles for us to bother continuing
+    const removedTrisStr = lodLevel == 1 ? '' : `Previous level removed ${formatPercentageNumber(lastLevelTriangeCount - startTriangeCount, lastLevelTriangeCount)} of the remaining triangles.`; // prettier-ignore
+    const simplificationBetweenLevels = 1.0 - (startTriangeCount / lastLevelTriangeCount); // prettier-ignore
+    const removedEnough =
+      simplificationBetweenLevels >= SIMPLIFICATION_FACTOR_REQ_BETWEEN_LEVELS;
+    if (lodLevel > 1 && !removedEnough) {
+      console.warn(`LOD iteration became too ineffective at level ${lodLevel}. ${removedTrisStr} Stopping at ${currentMeshlets.length} meshlets.`); // prettier-ignore
+      break;
+    }
+
+    // log
+    console.log(`Creating LOD level ${lodLevel}. Starting with ${startTriangeCount} triangles (${currentMeshlets.length} meshlets). ${removedTrisStr}`); // prettier-ignore
+    lastLevelTriangeCount = startTriangeCount;
 
     // 1. group meshlets into groups of 4
     // e.g. 33 meshlets is 9 groups (last one is 1 meshlet)
@@ -136,7 +161,7 @@ export async function createNaniteMeshlets(
       );
       const simplifiedMesh = await simplifyMesh(parsedMesh, megaMeshlet, {
         targetIndexCount,
-        targetError: TARGET_SIMPLIFY_ERROR,
+        targetError: simplificationTargetError,
         lockBorders: true, // important!
       });
 
@@ -154,7 +179,10 @@ export async function createNaniteMeshlets(
       }
 
       // simplification went OK, calculate meshlet data
-      const errorNow = simplifiedMesh.error * simplifiedMesh.errorScale;
+      const errorNow = Math.max(
+        simplifiedMesh.error * simplifiedMesh.errorScale,
+        MINIMAL_SIMPLICATION_ERROR
+      );
       const childrenError = Math.max(
         ...childMeshletGroup.map((m) => m.maxSiblingsError)
       );
@@ -197,6 +225,7 @@ export async function createNaniteMeshlets(
     }
 
     currentMeshlets = newlyCreatedMeshlets;
+    simplificationTargetError *= SIMPLIFICATION_TARGET_ERROR_MULTIPLIER;
   }
 
   // We have filled all LOD tree levels (or reached MAX_LODS iters).
@@ -204,13 +233,6 @@ export async function createNaniteMeshlets(
 
   // mass free the memory, see the JSDocs of the fn.
   metisFreeAllocations();
-
-  const trianglesBefore = getTriangleCount(indices);
-  const trianglesAfter = allMeshlets.reduce(
-    (acc, m) => acc + (isWIP_Root(m) ? getTriangleCount(m.indices) : 0),
-    0
-  );
-  console.log(`Simplification triangle count: before ${trianglesBefore}, after ${formatPercentageNumber(trianglesAfter, trianglesBefore)}`); // prettier-ignore
 
   return allMeshlets;
 
@@ -333,4 +355,9 @@ export class SimplificationError extends Error {
       `Failed to simplify the mesh. Was not able to simplify beyond LOD level ${lodLevel}. This usually happens if you have duplicated vertices (${vertexCount}, should roughly match Blender's). One cause could be a flat shading or tons of UV islands.`
     );
   }
+}
+
+function getMeshletsTriangleCount(mx: MeshletWIP[]) {
+  const idxCnt = mx.reduce((acc, m) => acc + m.indices.length, 0);
+  return getTriangleCount(idxCnt);
 }
