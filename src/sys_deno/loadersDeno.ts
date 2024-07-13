@@ -1,11 +1,21 @@
 import * as png from 'png';
 import { BYTES_U8 } from '../constants.ts';
-import { TextFileReader, TextureReader } from '../scene/load/types.ts';
+import {
+  BinaryFileReader,
+  TextFileReader,
+  TextureReader,
+} from '../scene/load/types.ts';
 
 // deno-lint-ignore require-await
 export const textFileReader_Deno: TextFileReader = async (filename: string) => {
-  const objFileResp = Deno.readTextFileSync(`static/${filename}`);
-  return objFileResp;
+  return Deno.readTextFileSync(filename);
+};
+
+export const binaryFileReader_Deno: BinaryFileReader = async (
+  filename: string
+) => {
+  const rawFileData = await Deno.readFile(filename);
+  return rawFileData.buffer;
 };
 
 // deno-lint-ignore require-await
@@ -15,7 +25,7 @@ export const createTextureFromFile_Deno: TextureReader = async (
   format: GPUTextureFormat,
   usage: GPUTextureUsageFlags
 ) => {
-  const rawFileData = Deno.readFileSync(`static/${path}`);
+  const rawFileData = Deno.readFileSync(path);
   const pngFile = png.decode(rawFileData);
 
   if (pngFile.colorType !== png.ColorType.RGB) {

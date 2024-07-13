@@ -224,3 +224,12 @@ export function debounce<T extends unknown[]>(
 
 export const f32_to_u8 = (x: number) => Math.floor(x * 255);
 export const u8_to_f32 = (x: number) => (x & 0xff) / 255.0;
+
+export function replaceFileExt(filePath: string, nextExt: string) {
+  const pos = filePath.includes('.')
+    ? filePath.lastIndexOf('.')
+    : filePath.length;
+  const fileRoot = filePath.substring(0, pos);
+  nextExt = nextExt.startsWith('.') ? nextExt : `.${nextExt}`;
+  return `${fileRoot}${nextExt}`;
+}

@@ -1,7 +1,7 @@
 import { getRowPadding, createCapture } from 'std/webgpu';
 import { parseArgs } from 'jsr:@std/cli/parse-args';
 
-import { Dimensions } from './utils/index.ts';
+import { Dimensions, replaceFileExt } from './utils/index.ts';
 import { Renderer } from './renderer.ts';
 import { SCENES, SceneName, isValidSceneName } from './scene/sceneFiles.ts';
 import { createGpuDevice } from './utils/webgpu.ts';
@@ -12,10 +12,11 @@ import {
   injectMetisWASM,
 } from './sys_deno/testUtils.ts';
 import { writePngFromGPUBuffer } from './sys_deno/fakeCanvas.ts';
-import { CONFIG } from './constants.ts';
+import { CONFIG, MODELS_DIR } from './constants.ts';
 import {
   textFileReader_Deno,
   createTextureFromFile_Deno,
+  binaryFileReader_Deno,
 } from './sys_deno/loadersDeno.ts';
 import { ObjectLoadingProgressCb } from './scene/load/types.ts';
 import { Scene } from './scene/scene.ts';
@@ -29,6 +30,7 @@ injectMetisWASM();
 
 CONFIG.softwareRasterizer.enabled = false;
 CONFIG.loaders.textFileReader = textFileReader_Deno;
+CONFIG.loaders.binaryFileReader = binaryFileReader_Deno;
 CONFIG.loaders.createTextureFromFile = createTextureFromFile_Deno;
 CONFIG.colors.gamma = 1.0; // I assume the png library does it for us?
 
@@ -46,25 +48,7 @@ const errorSystem = createErrorSystem(device);
 errorSystem.startErrorScope('init');
 
 if (cliArgs.export) {
-  CONFIG.isExporting = true;
-  const exportedFilePath = `static/models/${actSceneName}.json`;
-  let alreadyExportedSmth = false;
-
-  await loadSceneFile(device, actSceneName, (obj) => {
-    if (alreadyExportedSmth) {
-      throw new Error(`Expected 1 nanite object in the scene. Cannot export more`); // prettier-ignore
-    }
-    alreadyExportedSmth = true;
-
-    return exportToFile(device, obj, exportedFilePath);
-  });
-
-  await errorSystem.reportErrorScopeAsync((lastError) => {
-    console.error(lastError);
-    throw new Error(lastError);
-  });
-
-  console.log(`Export success. Result file: '${exportedFilePath}'`);
+  await exportScene(device);
 } else {
   const scene = await loadSceneFile(device, actSceneName);
   renderSceneToFile(device, scene, './output.png');
@@ -145,6 +129,36 @@ async function renderSceneToFile(
   await writePngFromGPUBuffer(outputBuffer, VIEWPORT_SIZE, outputPath);
 }
 
+async function exportScene(device: GPUDevice) {
+  CONFIG.isExporting = true;
+  const exportedFiles: string[] = [];
+
+  await loadSceneFile(device, actSceneName, async (obj) => {
+    const fileNameLC = obj.fileName.toLowerCase();
+    if (!fileNameLC.endsWith('.obj')) {
+      console.log(`Skipping export for '${obj.fileName}', it is not an .obj file`); // prettier-ignore
+      return;
+    }
+
+    console.log(`Exporting: '${obj.fileName}'`);
+    const fileNameNew = replaceFileExt(obj.fileName, '.json');
+    const exportedFilePath = `${MODELS_DIR}/${fileNameNew}`;
+    const exportedFilePathBin = replaceFileExt(exportedFilePath, '.bin');
+
+    await exportToFile(device, obj, exportedFilePath, exportedFilePathBin);
+
+    console.log(`Export success. Result file: '${exportedFilePath}'`);
+    exportedFiles.push(exportedFilePath, exportedFilePathBin);
+  });
+
+  await errorSystem.reportErrorScopeAsync((lastError) => {
+    console.error(lastError);
+    throw new Error(lastError);
+  });
+
+  console.log(`Success! Exported files:`, exportedFiles);
+}
+
 /////////////////////
 /// UTILS
 
@@ -173,7 +187,8 @@ function parseSceneName(cliArgs_: typeof cliArgs): SceneName {
   if (isValidSceneName(cliSceneName)) {
     result = cliSceneName;
   } else if (cliSceneName != undefined) {
-    console.warn(`Invalid scene name '${cliSceneName}', try one of: `, Object.keys(SCENES)); // prettier-ignore
+    const okNames = Object.keys(SCENES).join(',');
+    throw new Error(`Invalid scene name '${cliSceneName}', try one of: ${okNames}`); // prettier-ignore
   }
   return result;
 }

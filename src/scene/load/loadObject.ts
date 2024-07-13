@@ -1,4 +1,4 @@
-import { CONFIG } from '../../constants.ts';
+import { CONFIG, MODELS_DIR } from '../../constants.ts';
 import {
   getProfilerTimestamp,
   getDeltaFromTimestampMS,
@@ -8,7 +8,11 @@ import { getVertexCount, getTriangleCount } from '../../utils/index.ts';
 import { printBoundingBox } from '../../utils/calcBounds.ts';
 import { createNaniteObject } from './createNaniteObject.ts';
 import { ParsedMesh, loadObjFile } from '../objLoader.ts';
-import { SceneObjectName, OBJECTS, MODELS_DIR } from '../sceneFiles.ts';
+import {
+  SceneObjectName,
+  getSceneObjectDef,
+  SceneObjectDef,
+} from '../sceneFiles.ts';
 import { NaniteInstancesData } from '../instancesData.ts';
 import { ImpostorRenderer } from '../renderImpostors/renderImpostors.ts';
 import { createOriginalMesh } from './createOriginalMesh.ts';
@@ -18,6 +22,7 @@ import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
 
 export interface ObjectLoaderParams {
   name: SceneObjectName;
+  objectDef: SceneObjectDef;
   device: GPUDevice;
   instances: NaniteInstancesData;
   impostorRenderer: ImpostorRenderer;
@@ -44,9 +49,9 @@ export async function loadObject(
     timers.push(`${name}: ${getDeltaFromTimestampMS(start).toFixed(2)}ms`);
 
   // get file text
-  const modelDesc = OBJECTS[name];
+  const objectDef = getSceneObjectDef(name);
   const fileText = await CONFIG.loaders.textFileReader(
-    `${MODELS_DIR}/${modelDesc.file}`
+    `${MODELS_DIR}/${objectDef.file}`
   );
   addTimer('File content fetch', start);
 
@@ -56,11 +61,12 @@ export async function loadObject(
     device,
     addTimer,
     // deno-lint-ignore no-explicit-any
-    (modelDesc as any)['texture']
+    (objectDef as any)['texture']
   );
 
   const params: ObjectLoaderParams = {
     name,
+    objectDef,
     device,
     instances,
     impostorRenderer,
@@ -70,7 +76,7 @@ export async function loadObject(
     diffuseTextureView: tex.diffuseTextureView,
   };
 
-  const isJson = OBJECTS[name].file.endsWith('.json');
+  const isJson = objectDef.file.endsWith('.json');
   const result: Result = await (isJson
     ? importFromFile(params, fileText)
     : loadObjectObj(params, fileText));
@@ -88,12 +94,11 @@ export async function loadObject(
 }
 
 async function loadObjectObj(params: ObjectLoaderParams, objFileText: string) {
-  const { device, instances, name, progressCb, addTimer } = params;
-  const modelDesc = OBJECTS[name];
+  const { device, instances, name, objectDef, progressCb, addTimer } = params;
 
   // parse OBJ file
   let timerStart = getProfilerTimestamp();
-  const loadedObj = await loadObjFile(objFileText, modelDesc.scale);
+  const loadedObj = await loadObjFile(objFileText, objectDef.scale);
   addTimer('OBJ parsing', timerStart);
   // prettier-ignore
   console.log(`Object '${name}': ${getVertexCount(loadedObj.positions)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);

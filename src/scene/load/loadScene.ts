@@ -6,7 +6,12 @@ import { STATS } from '../../sys_web/stats.ts';
 import { formatBytes, formatNumber } from '../../utils/index.ts';
 import { createDebugMeshes } from './createDebugMeshes.ts';
 import { NaniteObject } from '../naniteObject.ts';
-import { SceneName, SceneObjectName, SCENES } from '../sceneFiles.ts';
+import {
+  getSceneObjectDef,
+  SceneName,
+  SceneObjectName,
+  SCENES,
+} from '../sceneFiles.ts';
 import { NaniteInstancesData, createInstancesData } from '../instancesData.ts';
 import { ImpostorRenderer } from '../renderImpostors/renderImpostors.ts';
 import { DebugMeshes, Scene } from '../scene.ts';
@@ -17,7 +22,11 @@ import { ObjectLoadingProgressCb } from './types.ts';
 import { CONFIG } from '../../constants.ts';
 
 export type LoadedObject = Awaited<ReturnType<typeof loadObject>>;
-export type OnObjectLoadedCb = (a: LoadedObject) => Promise<void>;
+export type OnObjectLoadedCb = (
+  a: LoadedObject & {
+    fileName: string;
+  }
+) => Promise<void | undefined>;
 
 export async function loadScene(
   device: GPUDevice,
@@ -57,7 +66,10 @@ export async function loadScene(
       progressCb
     );
     naniteObjects.push(obj.naniteObject);
-    await objectLoadedCb?.(obj);
+    await objectLoadedCb?.({
+      ...obj,
+      fileName: getSceneObjectDef(objDef.model).file,
+    });
 
     // create debug meshes if needed
     if (debugMeshes == undefined) {

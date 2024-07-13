@@ -5,7 +5,7 @@ import { getTriangleCount, getVertexCount } from '../../utils/index.ts';
 import { createGPU_IndexBuffer } from '../../utils/webgpu.ts';
 import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
 import { ParsedMesh } from '../objLoader.ts';
-import { DebugMeshes } from '../scene.ts';
+import { DebugMeshes, MeshletRenderPckg } from '../scene.ts';
 
 export async function createDebugMeshes(
   device: GPUDevice,

@@ -1,4 +1,8 @@
-import { TextFileReader, TextureReader } from '../scene/load/types.ts';
+import {
+  TextFileReader,
+  TextureReader,
+  BinaryFileReader,
+} from '../scene/load/types.ts';
 
 export const textFileReader_Web: TextFileReader = async (filename: string) => {
   const objFileResp = await fetch(filename);
@@ -6,6 +10,13 @@ export const textFileReader_Web: TextFileReader = async (filename: string) => {
     throw `Could not download mesh file '${filename}'`;
   }
   return objFileResp.text();
+};
+
+export const binaryFileReader_Web: BinaryFileReader = async (
+  filename: string
+) => {
+  const response = await fetch(filename);
+  return response.arrayBuffer();
 };
 
 /** https://webgpu.github.io/webgpu-samples/?sample=texturedCube#main.ts */

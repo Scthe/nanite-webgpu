@@ -9,7 +9,11 @@ import {
   deserializeNodes,
   ImportError,
 } from './types.ts';
-import { ensureTypedArray } from '../../utils/index.ts';
+import {
+  ensureTypedArray,
+  formatBytes,
+  replaceFileExt,
+} from '../../utils/index.ts';
 import {
   ParsedMesh,
   splitVerticesWithAttributesIntoSeparateLists,
@@ -17,11 +21,18 @@ import {
 import { assertValidNaniteObject } from '../utils/assertValidNaniteObject.ts';
 import { ObjectLoaderParams, createImpostors } from '../load/loadObject.ts';
 import { getProfilerTimestamp } from '../../gpuProfiler.ts';
+import {
+  BYTES_U32,
+  CONFIG,
+  MODELS_DIR,
+  VERTS_IN_TRIANGLE,
+} from '../../constants.ts';
 
 export async function exportToFile(
   device: GPUDevice,
   object: LoadedObject,
-  outputPath: string
+  outputPathJson: string,
+  outputPathBin: string
 ) {
   const { naniteObject, parsedMesh } = object;
 
@@ -35,6 +46,7 @@ export async function exportToFile(
   );
 
   const serializedNaniteObj: SerializedNaniteObject = {
+    exporterVersion: 0,
     name: naniteObject.name,
     bounds: naniteObject.bounds,
     allMeshlets,
@@ -43,13 +55,13 @@ export async function exportToFile(
     parsedMesh: {
       vertexCount: parsedMesh.vertexCount,
       positionsStride: parsedMesh.positionsStride,
-      verticesAndAttributes: parsedMesh.verticesAndAttributes,
+      // verticesAndAttributes: parsedMesh.verticesAndAttributes, // binary
       verticesAndAttributesStride: parsedMesh.verticesAndAttributesStride,
-      indices: parsedMesh.indices,
+      // indices: parsedMesh.indices, // binary
       indicesCount: parsedMesh.indicesCount,
       bounds: parsedMesh.bounds,
     },
-    meshletIndexBufferData,
+    // meshletIndexBufferData, // binary
   };
 
   const str = JSON.stringify(serializedNaniteObj, (_key, value) => {
@@ -61,33 +73,60 @@ export async function exportToFile(
     }
     return value;
   });
-  return Deno.writeTextFile(outputPath, str);
+  await Deno.writeTextFile(outputPathJson, str);
+
+  // write binary file
+  const fileBin = await Deno.create(outputPathBin);
+  const writerBin = fileBin.writable.getWriter();
+  console.log(`Writing vertex buffer: ${formatBytes(parsedMesh.verticesAndAttributes.byteLength)}`); // prettier-ignore
+  await writeTypedArray(writerBin, parsedMesh.verticesAndAttributes);
+  console.log(`Writing original index buffer: ${formatBytes(parsedMesh.indices.byteLength)}`); // prettier-ignore
+  await writeTypedArray(writerBin, parsedMesh.indices);
+  console.log(`Writing meshlets' index buffer: ${formatBytes(meshletIndexBufferData.byteLength)}`); // prettier-ignore
+  await writeTypedArray(writerBin, meshletIndexBufferData);
+  await writerBin.close();
+}
+
+function writeTypedArray(
+  writer: WritableStreamDefaultWriter<Uint8Array>,
+  data: Uint32Array | Float32Array
+) {
+  return writer.write(new Uint8Array(data.buffer));
 }
 
 export async function importFromFile(
   params: ObjectLoaderParams,
   jsonText: string
 ) {
-  const { device, instances, name, progressCb, addTimer } = params;
+  const { device, instances, name, objectDef, progressCb, addTimer } = params;
 
   let timerStart = getProfilerTimestamp();
   const jsonObj: SerializedNaniteObject = JSON.parse(jsonText);
   addTimer('JSON parsing', timerStart);
 
+  // read binary file
+  const binaryFilePath = replaceFileExt(
+    `${MODELS_DIR}/${objectDef.file}`,
+    '.bin'
+  );
+  const binaryFileContent = await readObjectBinaryFile(jsonObj, binaryFilePath);
+
   // split optimized vertex buffer into per-attribute copies
   const attributes = splitVerticesWithAttributesIntoSeparateLists(
-    jsonObj.parsedMesh.verticesAndAttributes
+    binaryFileContent.verticesAndAttributes
   );
 
   // create basic mesh representation
-  // prettier-ignore
   const parsedMesh: ParsedMesh = {
     ...jsonObj.parsedMesh,
-    positions: ensureTypedArray( Float32Array,attributes.positions), 
-    normals: ensureTypedArray( Float32Array,attributes.normals),
-    uv: ensureTypedArray( Float32Array,attributes.uv),
-    verticesAndAttributes: ensureTypedArray( Float32Array,jsonObj.parsedMesh.verticesAndAttributes),
-    indices: ensureTypedArray( Uint32Array,jsonObj.parsedMesh.indices),
+    positions: ensureTypedArray(Float32Array, attributes.positions),
+    normals: ensureTypedArray(Float32Array, attributes.normals),
+    uv: ensureTypedArray(Float32Array, attributes.uv),
+    verticesAndAttributes: ensureTypedArray(
+      Float32Array,
+      binaryFileContent.verticesAndAttributes
+    ),
+    indices: ensureTypedArray(Uint32Array, binaryFileContent.indices),
   };
   const originalMesh = createOriginalMesh(device, name, parsedMesh);
 
@@ -123,11 +162,12 @@ export async function importFromFile(
     impostors,
     instances
   );
-  const indicesU32 = ensureTypedArray(
-    Uint32Array,
-    jsonObj.meshletIndexBufferData
+  device.queue.writeBuffer(
+    naniteObject.buffers.indexBuffer,
+    0,
+    binaryFileContent.meshletIndices,
+    0
   );
-  device.queue.writeBuffer(naniteObject.buffers.indexBuffer, 0, indicesU32, 0);
 
   // set meshlet data
   const allMeshlets = deserializeNodes(jsonObj.allMeshlets);
@@ -150,4 +190,70 @@ export async function importFromFile(
     parsedMesh,
     naniteObject,
   };
+}
+
+async function readObjectBinaryFile(
+  jsonObj: SerializedNaniteObject,
+  path: string
+) {
+  const mesh = jsonObj.parsedMesh;
+  const verticesBytes = mesh.vertexCount * mesh.verticesAndAttributesStride;
+  const indicesBytes = mesh.indicesCount * BYTES_U32;
+  const meshletTriangles = jsonObj.allMeshlets.reduce(
+    (acc, m) => acc + m.triangleCount,
+    0
+  );
+  const meshletIndicesBytes = meshletTriangles * VERTS_IN_TRIANGLE * BYTES_U32;
+
+  const bytesBuffer = await CONFIG.loaders.binaryFileReader(path);
+  let offset = 0;
+
+  // mesh vertex buffer
+  const verticesAndAttributes = new Float32Array(
+    bytesBuffer.slice(offset, offset + verticesBytes)
+  );
+  offset += verticesBytes;
+  assertByteSize('vertex buffer', verticesAndAttributes, verticesBytes);
+  // assertSameBuffer(mesh.verticesAndAttributes, verticesAndAttributes);
+
+  // mesh index buffer
+  const indices = new Uint32Array(
+    bytesBuffer.slice(offset, offset + indicesBytes)
+  );
+  offset += indicesBytes;
+  assertByteSize('index buffer', indices, indicesBytes);
+  // assertSameBuffer(mesh.indices, indices);
+
+  // meshlet index buffer
+  const meshletIndices = new Uint32Array(bytesBuffer.slice(offset));
+  assertByteSize('meshlet indices buffer', meshletIndices, meshletIndicesBytes);
+  /*const jsonData = ensureTypedArray(
+    Uint32Array,
+    jsonObj.meshletIndexBufferData
+  );
+  assertSameBuffer(jsonData, meshletIndices);*/
+
+  return { verticesAndAttributes, indices, meshletIndices }; // TODO return rest too
+}
+
+function assertByteSize<T extends Uint32Array | Float32Array>(
+  type: string,
+  data: T,
+  expectedBytes: number
+) {
+  if (data.byteLength !== expectedBytes) {
+    throw new ImportError(`Invalid binary ${type}. Expected ${expectedBytes} bytes, got ${data.byteLength}`); // prettier-ignore
+  }
+}
+
+// deno-lint-ignore no-unused-vars
+function assertSameBuffer<T extends Uint32Array | Float32Array>(a: T, b: T) {
+  if (a.length !== b.length) {
+    throw new Error(`Different length: ${a.length} vs ${b.length}`);
+  }
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) {
+      throw new Error(`Different data at idx=${i}: ${a[i]} vs ${b[i]}`);
+    }
+  }
 }

@@ -1,5 +1,7 @@
 export type TextFileReader = (filename: string) => Promise<string>;
 
+export type BinaryFileReader = (filename: string) => Promise<ArrayBuffer>;
+
 export type TextureReader = (
   device: GPUDevice,
   path: string,

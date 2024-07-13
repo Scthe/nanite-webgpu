@@ -1,4 +1,5 @@
 import {
+  binaryFileReader_Web,
   createTextureFromFile_Web,
   textFileReader_Web,
 } from './sys_web/loadersWeb.ts';
@@ -39,6 +40,8 @@ export const MILISECONDS_TO_SECONDS = 0.001;
 export const IS_DENO = window.Deno !== undefined;
 export const IS_BROWSER = !IS_DENO;
 
+export const MODELS_DIR = IS_DENO ? 'static/models' : 'models';
+
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
 export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = IS_DENO
   ? 'rgba16float' // Cause: "Color state [0] is invalid: Format Rgba32Float is not blendable"
@@ -73,6 +76,7 @@ export const CONFIG = {
   /** This runtime injection prevents loading Deno's libraries like fs, png, etc. */
   loaders: {
     textFileReader: textFileReader_Web,
+    binaryFileReader: binaryFileReader_Web,
     createTextureFromFile: createTextureFromFile_Web,
   },
 

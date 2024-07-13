@@ -8,6 +8,7 @@ export type SerializedNode = Omit<NaniteMeshletTreeNode, 'createdFrom'> & {
 };
 
 export interface SerializedNaniteObject {
+  exporterVersion: number;
   name: string;
   bounds: Bounds3d;
   allMeshlets: SerializedNode[];
@@ -17,13 +18,13 @@ export interface SerializedNaniteObject {
     ParsedMesh,
     | 'vertexCount'
     | 'positionsStride'
-    | 'verticesAndAttributes'
+    // | 'verticesAndAttributes'
     | 'verticesAndAttributesStride'
-    | 'indices'
+    // | 'indices'
     | 'indicesCount'
     | 'bounds'
   >;
-  meshletIndexBufferData: number[] | Uint32Array;
+  // meshletIndexBufferData: number[] | Uint32Array;
 }
 
 export function serializeNode(node: NaniteMeshletTreeNode): SerializedNode {

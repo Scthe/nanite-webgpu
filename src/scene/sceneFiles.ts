@@ -1,15 +1,13 @@
 import { ValueOf } from '../utils/index.ts';
 import { InstancesGridDef, createGrid } from './instancesData.ts';
 
-export const MODELS_DIR = 'models';
-
 // prettier-ignore
-export const OBJECTS = {
+const OBJECTS = {
   bunny: { file: 'bunny.obj', scale: 8 },
   lucy: { file: 'lucy.obj', scale: 1 },
   lucyJson: { file: 'lucy.json', scale: 1 },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 0.01 },
-  dragonJson: { file: 'dragon.json', scale: 0.01 },
+  dragonJson: { file: 'xyzrgb_dragon.json', scale: 0.01 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1, texture: 'test-texture.png' },
   planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },
@@ -27,6 +25,20 @@ export const OBJECTS = {
   jinxHair: { file: 'jinx/jinx_hair.obj', scale: 1, texture: 'jinx/jinx_hair.png' },
 };
 export type SceneObjectName = keyof typeof OBJECTS;
+
+export type SceneObjectDef = ReturnType<typeof getSceneObjectDef>;
+
+export function getSceneObjectDef(name: SceneObjectName) {
+  const result = OBJECTS[name];
+  if (!result) {
+    throw new Error(`Nonexistent object '${name}'`);
+  }
+  return result as {
+    file: string;
+    scale: number;
+    texture: string | undefined;
+  };
+}
 
 export const SCENES = {
   singleBunny: [sceneModel('bunny', 1, 1)],
