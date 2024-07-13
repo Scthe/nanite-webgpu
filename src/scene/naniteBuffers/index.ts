@@ -26,6 +26,10 @@ export const BUFFER_INDEX_BUFFER = (bindingIdx: number) => /* wgsl */ `
 var<storage, read> _indexBuffer: array<u32>;
 `;
 
+type MeshletData = Pick<MeshletWIP, 'lodLevel'> & {
+  indices: Uint32Array | number;
+};
+
 export class NaniteObjectBuffers {
   /** Allocate single shared index buffer. Meshlets will use slices of it */
   public readonly indexBuffer: GPUBuffer = undefined!;
@@ -61,7 +65,7 @@ export class NaniteObjectBuffers {
     name: string,
     originalMesh: GPUOriginalMesh,
     loadedObj: ParsedMesh,
-    allWIPMeshlets: MeshletWIP[],
+    allWIPMeshlets: Array<MeshletData>,
     instanceCount: number
   ) {
     // convinence for testing
@@ -249,16 +253,23 @@ export class NaniteObjectBuffers {
 function createIndexBuffer(
   device: GPUDevice,
   name: string,
-  meshlets: MeshletWIP[]
+  meshlets: Array<MeshletData>
 ): GPUBuffer {
   const totalTriangleCount = meshlets.reduce(
     (acc, m) => acc + getTriangleCount(m.indices),
     0
   );
+  const extraUsage: GPUBufferUsageFlags = CONFIG.isExporting
+    ? GPUBufferUsage.COPY_SRC
+    : 0;
+
   return device.createBuffer({
     label: `${name}-nanite-index-buffer`,
     size: getBytesForTriangles(totalTriangleCount),
     usage:
-      GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
+      GPUBufferUsage.INDEX |
+      GPUBufferUsage.COPY_DST |
+      GPUBufferUsage.STORAGE |
+      extraUsage,
   });
 }

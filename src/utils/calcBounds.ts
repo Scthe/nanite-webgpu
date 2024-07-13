@@ -86,12 +86,15 @@ export function calcBoundingBoxIndex(
 
 export type BoundingSphere = { center: Vec3; radius: number };
 
-export function isSameBoundingSphere(a: BoundingSphere, b: BoundingSphere) {
+export function isSameBoundingSphere(
+  a: BoundingSphere | undefined,
+  b: BoundingSphere | undefined
+) {
   return (
-    a.center[0] === b.center[0] &&
-    a.center[1] === b.center[1] &&
-    a.center[2] === b.center[2] &&
-    a.radius === b.radius
+    a?.center[0] === b?.center[0] &&
+    a?.center[1] === b?.center[1] &&
+    a?.center[2] === b?.center[2] &&
+    a?.radius === b?.radius
   );
 }
 

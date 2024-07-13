@@ -1,4 +1,5 @@
 import { CONFIG } from '../../constants.ts';
+import { isSameBoundingSphere } from '../../utils/calcBounds.ts';
 import { NaniteMeshletTreeNode, NaniteObject } from '../naniteObject.ts';
 
 const throwErr = (msg: string) => {
@@ -48,7 +49,7 @@ function assertHaveSameParent(meshlets: NaniteMeshletTreeNode[]) {
 
   for (let i = 1; i < meshlets.length; i++) {
     const m = meshlets[i];
-    if (m.parentBounds !== refMeshlet.parentBounds) {
+    if (!isSameBoundingSphere(m.parentBounds, refMeshlet.parentBounds)) {
       throwErr(`Meshlets should have same 'parentBounds'`); // prettier-ignore
     }
 

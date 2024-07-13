@@ -7,7 +7,9 @@ export const MODELS_DIR = 'models';
 export const OBJECTS = {
   bunny: { file: 'bunny.obj', scale: 8 },
   lucy: { file: 'lucy.obj', scale: 1 },
+  lucyJson: { file: 'lucy.json', scale: 1 },
   dragon: { file: 'xyzrgb_dragon.obj', scale: 0.01 },
+  dragonJson: { file: 'dragon.json', scale: 0.01 },
   cube: { file: 'cube.obj', scale: 1 },
   plane: { file: 'plane.obj', scale: 1, texture: 'test-texture.png' },
   planeSubdiv: { file: 'plane-subdiv.obj', scale: 0.5 },
@@ -34,9 +36,10 @@ export const SCENES = {
   bunny1b: [sceneModel('bunny', 500, 500)],
   bunny1b_dense: [sceneModel('bunny', 500, 500, 0.5)],
   singleLucy: [sceneModel('lucy', 1, 1)],
-  // lucy: [sceneModel('lucy', 100, 10, 0)],
+  singleLucyJson: [sceneModel('lucyJson', 1, 1)],
   lucy: [sceneModel('lucy', 10, 10, 0)],
   dragon: [sceneModel('dragon', 1, 1)],
+  dragonJson: [sceneModel('dragonJson', 1, 1)],
   cube: [sceneModel('cube', 1, 1)],
   plane: [sceneModel('plane', 1, 1)],
   planeSubdiv: [sceneModel('planeSubdiv', 1, 1)],
@@ -80,4 +83,8 @@ function sceneModelUniformGrid(
 
 function obj(model: SceneObjectName, instances: InstancesGridDef) {
   return { model, instances };
+}
+
+export function isValidSceneName(scName: unknown): scName is SceneName {
+  return typeof scName === 'string' && Object.keys(SCENES).includes(scName);
 }

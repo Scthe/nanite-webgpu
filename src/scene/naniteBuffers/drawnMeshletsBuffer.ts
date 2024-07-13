@@ -1,5 +1,4 @@
 import { BYTES_U32, BYTES_UVEC2 } from '../../constants.ts';
-import { MeshletWIP } from '../../meshPreprocessing/index.ts';
 import { createArray } from '../../utils/index.ts';
 import {
   WEBGPU_MINIMAL_BUFFER_SIZE,
@@ -104,7 +103,7 @@ ${access == 'read' ? loadUtilFns : storeUtilFns}
 export function createDrawnMeshletsBuffer(
   device: GPUDevice,
   name: string,
-  allWIPMeshlets: MeshletWIP[],
+  allWIPMeshlets: Array<{ lodLevel: number }>,
   instanceCount: number
 ): GPUBuffer {
   const bottomMeshletCount = allWIPMeshlets.filter(

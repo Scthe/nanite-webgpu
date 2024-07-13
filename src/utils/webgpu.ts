@@ -100,6 +100,11 @@ export function createGPU_StorageBuffer(
   label: string,
   data: Uint32Array | Float32Array
 ) {
+  const clName = getClassName(data);
+  if (clName !== Uint32Array.name && clName !== Float32Array.name) {
+    throw new Error(`Invalid data provided to createGPU_StorageBuffer(). Expected TypedArray, got ${clName}`) // prettier-ignore
+  }
+
   return createGPUBuffer(
     device,
     label,
@@ -147,7 +152,7 @@ export async function readBufferToCPU<T>(
 ): Promise<T> {
   await buffer.mapAsync(GPUMapMode.READ);
   const arrayBufferData = buffer.getMappedRange();
-  // slice to copy. The 'arrayBufferData' might be deallocated after unmap (chrome)
+  // use slice() to copy. The 'arrayBufferData' might be deallocated after unmap (chrome)
   const resultData = new TypedArrayClass(arrayBufferData.slice(0));
   buffer.unmap();
   return resultData;
@@ -181,7 +186,7 @@ export async function downloadBuffer<T>(
     throw e;
   } finally {
     if (readbackBuffer) {
-      readbackBuffer.unmap();
+      // readbackBuffer.unmap(); // already unmapped by readBufferToCPU()
       readbackBuffer.destroy();
     }
   }

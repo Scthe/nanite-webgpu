@@ -41,7 +41,7 @@ export const SHADER_PARAMS = {
 /// There is limit of 65535 and instance count can go over.
 /// Variant 1: Split instance ID between YZ and have tons of empty workgroups.
 /// Variant 2: Z=1 and iterate in shader.
-/// Variant 3: Same as variant 2, but dispatch indirect based on cullInstancesPass.
+/// Variant 3: Same as variant 2, but dispatch indirect based on cullInstancesPass. This is the one you should read.
 ///////////////////////////
 const c = SHADER_PARAMS;
 const b = SHADER_PARAMS.bindings;
@@ -68,7 +68,7 @@ var _depthPyramidTexture: texture_2d<f32>;
 var _depthSampler: sampler;
 
 
-/** JS uses errorValue=Infnity when parent does not exist. I don't want to risk CPU->GPU transfer for inifinity, so I use ridiculous value */
+/** JS uses errorValue=Infnity when parent does not exist. I don't want to risk CPU->GPU transfer for infinity, so I use ridiculous value */
 const PARENT_ERROR_INFINITY: f32 = 99990.0f;
 
 
@@ -234,7 +234,7 @@ fn registerDraw(
   // "Optimizing the Graphics Pipeline with Compute"
   // 
   // TBH this *could* be optimized by the shader compiler. It can assume that
-  // some threads in warp add 1 to the atomic. It *COULD* then add
+  // some threads in a warp add 1 to the atomic. It *COULD* then add
   // to the global atomic the sum ONCE and re-distribute result among the threads.
   // See NV_shader_thread_group, functionality 4.
 

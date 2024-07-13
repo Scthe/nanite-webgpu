@@ -1,5 +1,5 @@
 import { CONFIG } from '../constants.ts';
-import { SCENES } from '../scene/sceneFiles.ts';
+import { SCENES, isValidSceneName } from '../scene/sceneFiles.ts';
 import { SceneName } from '../scene/sceneFiles.ts';
 
 const PARAMS = {
@@ -61,10 +61,6 @@ export function applySearchParams(
   }
 
   return defaultScene;
-}
-
-function isValidSceneName(scName: unknown): scName is SceneName {
-  return typeof scName === 'string' && Object.keys(SCENES).includes(scName);
 }
 
 function parseNumber(val: unknown): [boolean, number] {

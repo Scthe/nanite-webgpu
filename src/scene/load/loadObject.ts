@@ -7,12 +7,27 @@ import { createNaniteMeshlets } from '../../meshPreprocessing/index.ts';
 import { getVertexCount, getTriangleCount } from '../../utils/index.ts';
 import { printBoundingBox } from '../../utils/calcBounds.ts';
 import { createNaniteObject } from './createNaniteObject.ts';
-import { loadObjFile } from '../objLoader.ts';
+import { ParsedMesh, loadObjFile } from '../objLoader.ts';
 import { SceneObjectName, OBJECTS, MODELS_DIR } from '../sceneFiles.ts';
 import { NaniteInstancesData } from '../instancesData.ts';
 import { ImpostorRenderer } from '../renderImpostors/renderImpostors.ts';
 import { createOriginalMesh } from './createOriginalMesh.ts';
 import { ObjectLoadingProgressCb } from './types.ts';
+import { importFromFile } from '../import-export/import-export.ts';
+import { GPUOriginalMesh } from '../GPUOriginalMesh.ts';
+
+export interface ObjectLoaderParams {
+  name: SceneObjectName;
+  device: GPUDevice;
+  instances: NaniteInstancesData;
+  impostorRenderer: ImpostorRenderer;
+  diffuseTextureView: GPUTextureView | undefined;
+  progressCb?: ObjectLoadingProgressCb;
+  start: number;
+  addTimer: (name: string, start: number) => void;
+}
+
+type Result = Awaited<ReturnType<typeof loadObjectObj>>;
 
 export async function loadObject(
   device: GPUDevice,
@@ -20,7 +35,7 @@ export async function loadObject(
   instances: NaniteInstancesData,
   impostorRenderer: ImpostorRenderer,
   progressCb?: ObjectLoadingProgressCb
-) {
+): Promise<Result> {
   console.groupCollapsed(`Object '${name}'`);
   await progressCb?.(name, `Loading object: '${name}'`);
   const start = getProfilerTimestamp();
@@ -28,17 +43,53 @@ export async function loadObject(
   const addTimer = (name: string, start: number) =>
     timers.push(`${name}: ${getDeltaFromTimestampMS(start).toFixed(2)}ms`);
 
-  // enable dev tools
-  const { enableProfiler } = CONFIG.nanite.preprocess;
-  if (enableProfiler) {
-    console.profile('scene-loading');
-  }
-
-  // get OBJ file text
+  // get file text
   const modelDesc = OBJECTS[name];
-  const objTextReaderFn = CONFIG.loaders.textFileReader;
-  const objFileText = await objTextReaderFn(`${MODELS_DIR}/${modelDesc.file}`);
-  addTimer('OBJ fetch', start);
+  const fileText = await CONFIG.loaders.textFileReader(
+    `${MODELS_DIR}/${modelDesc.file}`
+  );
+  addTimer('File content fetch', start);
+
+  // load texture if needed
+  // Do it now so it fails early if you have typo in the path
+  const tex = await loadObjectTexture(
+    device,
+    addTimer,
+    // deno-lint-ignore no-explicit-any
+    (modelDesc as any)['texture']
+  );
+
+  const params: ObjectLoaderParams = {
+    name,
+    device,
+    instances,
+    impostorRenderer,
+    progressCb,
+    addTimer,
+    start,
+    diffuseTextureView: tex.diffuseTextureView,
+  };
+
+  const isJson = OBJECTS[name].file.endsWith('.json');
+  const result: Result = await (isJson
+    ? importFromFile(params, fileText)
+    : loadObjectObj(params, fileText));
+
+  // assign textures
+  result.naniteObject.diffuseTexture = tex.diffuseTexture;
+  result.naniteObject.diffuseTextureView = tex.diffuseTextureView;
+
+  // end
+  addTimer('---TOTAL---', start);
+  console.log(`Object '${name}' loaded. Timers:`, timers);
+  console.groupEnd();
+
+  return result;
+}
+
+async function loadObjectObj(params: ObjectLoaderParams, objFileText: string) {
+  const { device, instances, name, progressCb, addTimer } = params;
+  const modelDesc = OBJECTS[name];
 
   // parse OBJ file
   let timerStart = getProfilerTimestamp();
@@ -48,32 +99,10 @@ export async function loadObject(
   console.log(`Object '${name}': ${getVertexCount(loadedObj.positions)} vertices, ${getTriangleCount(loadedObj.indices)} triangles`);
   printBoundingBox(loadedObj.positions);
 
-  // load texture if needed
-  // Do it now so it fails early if you have typo in the path
-  let diffuseTexture: GPUTexture | undefined = undefined;
-  let diffuseTextureView: GPUTextureView | undefined = undefined;
-  if ('texture' in modelDesc) {
-    timerStart = getProfilerTimestamp();
-    const texturePath = `${MODELS_DIR}/${modelDesc.texture}`;
-    const usage: GPUTextureUsageFlags =
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST |
-      GPUTextureUsage.RENDER_ATTACHMENT;
-
-    diffuseTexture = await CONFIG.loaders.createTextureFromFile(
-      device,
-      texturePath,
-      'rgba8unorm-srgb',
-      usage
-    );
-    console.log(`Texture: '${texturePath}'`);
-    diffuseTextureView = diffuseTexture.createView();
-    addTimer('Load texture', timerStart);
-  }
-
   // create original mesh
   const originalMesh = createOriginalMesh(device, name, loadedObj);
 
+  // Nanite preprocess: create meshlet LOD hierarchy
   timerStart = getProfilerTimestamp();
   const naniteMeshlets = await createNaniteMeshlets(
     loadedObj,
@@ -82,21 +111,17 @@ export async function loadObject(
   );
   addTimer('Nanite LOD tree build', timerStart);
 
+  // create impostors
+  const impostors = await createImpostors(
+    params,
+    name,
+    originalMesh,
+    loadedObj
+  );
+
   // create nanite object
   await progressCb?.(name, `Uploading '${name}' data to the GPU`);
   timerStart = getProfilerTimestamp();
-  // Step 1: impostors
-  const impostor = impostorRenderer.createImpostorTexture(device, {
-    name,
-    vertexBuffer: originalMesh.vertexBuffer,
-    normalsBuffer: originalMesh.normalsBuffer,
-    uvBuffer: originalMesh.uvBuffer,
-    indexBuffer: originalMesh.indexBuffer,
-    triangleCount: originalMesh.triangleCount,
-    bounds: loadedObj.bounds.sphere,
-    texture: diffuseTextureView,
-  });
-  // Step 2: nanite object itself
   const naniteObject = createNaniteObject(
     device,
     name,
@@ -104,23 +129,69 @@ export async function loadObject(
     loadedObj,
     naniteMeshlets,
     instances,
-    impostor
+    impostors
   );
-  naniteObject.diffuseTexture = diffuseTexture;
-  naniteObject.diffuseTextureView = diffuseTextureView;
   addTimer('Finalize nanite object', timerStart);
-
-  // end
-  addTimer('---TOTAL---', start);
-  console.log(`Object '${name}' loaded. Timers:`, timers);
-  if (enableProfiler) {
-    console.profileEnd();
-  }
-  console.groupEnd();
 
   return {
     originalMesh,
     parsedMesh: loadedObj,
     naniteObject,
   };
+}
+
+export async function createImpostors(
+  params: ObjectLoaderParams,
+  name: SceneObjectName,
+  originalMesh: GPUOriginalMesh,
+  parsedMesh: ParsedMesh
+) {
+  const { device, impostorRenderer, progressCb, addTimer, diffuseTextureView } =
+    params;
+
+  await progressCb?.(name, `Creating impostors`);
+  const timerStart = getProfilerTimestamp();
+  const impostor = impostorRenderer.createImpostorTexture(device, {
+    name,
+    vertexBuffer: originalMesh.vertexBuffer,
+    normalsBuffer: originalMesh.normalsBuffer,
+    uvBuffer: originalMesh.uvBuffer,
+    indexBuffer: originalMesh.indexBuffer,
+    triangleCount: originalMesh.triangleCount,
+    bounds: parsedMesh.bounds.sphere,
+    texture: diffuseTextureView,
+  });
+  addTimer('Creating impostors', timerStart);
+
+  return impostor;
+}
+
+async function loadObjectTexture(
+  device: GPUDevice,
+  addTimer: ObjectLoaderParams['addTimer'],
+  fileName: string | undefined
+) {
+  if (!fileName) {
+    return { diffuseTexture: undefined, diffuseTextureView: undefined };
+  }
+
+  const timerStart = getProfilerTimestamp();
+
+  const texturePath = `${MODELS_DIR}/${fileName}`;
+  const usage: GPUTextureUsageFlags =
+    GPUTextureUsage.TEXTURE_BINDING |
+    GPUTextureUsage.COPY_DST |
+    GPUTextureUsage.RENDER_ATTACHMENT;
+
+  const diffuseTexture = await CONFIG.loaders.createTextureFromFile(
+    device,
+    texturePath,
+    'rgba8unorm-srgb',
+    usage
+  );
+  console.log(`Texture: '${texturePath}'`);
+  const diffuseTextureView = diffuseTexture.createView();
+  addTimer('Load texture', timerStart);
+
+  return { diffuseTexture, diffuseTextureView };
 }

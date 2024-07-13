@@ -4,6 +4,8 @@ import { meshoptCall, wasmPtr } from '../utils/wasm.ts';
 import { getMeshOptimizerModule } from './meshoptimizerUtils.ts';
 // import { MeshoptSimplifier } from 'meshoptimizer'; // Try meshoptimizer's original WASM, see simplify2() below
 
+// TODO [CRITICAL] what if we persist some data inside meshoptimizer WASM's heap? There is no need to copy data between calls for the same mesh. TBH. this would probably only apply to vertex buffer. Still, could be nice.
+
 /**
  * Do not move vertices that are located on the topological border
  * (vertices on triangle edges that don't have a paired triangle).

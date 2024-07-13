@@ -115,7 +115,7 @@ export const lerp = (a: number, b: number, fac: number) => {
   return a * (1 - fac) + b * fac;
 };
 
-export const getTriangleCount = (indices: Uint32Array | number) =>
+export const getTriangleCount = (indices: Uint32Array | number[] | number) =>
   typeof indices === 'number'
     ? indices / VERTS_IN_TRIANGLE
     : indices.length / VERTS_IN_TRIANGLE;

@@ -14,11 +14,16 @@ import { createFallbackTexture, createSampler } from '../../utils/textures.ts';
 import { DEFAULT_COLOR } from '../../passes/_shaderSnippets/shading.wgsl.ts';
 import { loadObject } from './loadObject.ts';
 import { ObjectLoadingProgressCb } from './types.ts';
+import { CONFIG } from '../../constants.ts';
+
+export type LoadedObject = Awaited<ReturnType<typeof loadObject>>;
+export type OnObjectLoadedCb = (a: LoadedObject) => Promise<void>;
 
 export async function loadScene(
   device: GPUDevice,
   sceneName: SceneName,
-  progressCb?: ObjectLoadingProgressCb
+  progressCb?: ObjectLoadingProgressCb,
+  objectLoadedCb?: OnObjectLoadedCb
 ): Promise<Scene> {
   const sceneObjectDefs = getSceneDef(device, sceneName);
 
@@ -36,6 +41,12 @@ export async function loadScene(
   const naniteObjects: NaniteObject[] = [];
   const start = getProfilerTimestamp();
 
+  // enable dev tools profiler
+  const { enableProfiler } = CONFIG.nanite.preprocess;
+  if (enableProfiler) {
+    console.profile('scene-loading');
+  }
+
   for (let i = 0; i < sceneObjectDefs.length; i++) {
     const objDef = sceneObjectDefs[i];
     const obj = await loadObject(
@@ -46,6 +57,7 @@ export async function loadScene(
       progressCb
     );
     naniteObjects.push(obj.naniteObject);
+    await objectLoadedCb?.(obj);
 
     // create debug meshes if needed
     if (debugMeshes == undefined) {
@@ -57,6 +69,11 @@ export async function loadScene(
     }
   }
 
+  // finish dev tools profiler
+  if (enableProfiler) {
+    console.profileEnd();
+  }
+
   ensureUniqueNames(naniteObjects);
 
   // update stats
@@ -66,6 +83,7 @@ export async function loadScene(
 
   return {
     naniteObjects,
+    // TODO verify debugMeshes also works
     debugMeshes: debugMeshes!, // was created from first nanite object
     fallbackDiffuseTexture,
     fallbackDiffuseTextureView,

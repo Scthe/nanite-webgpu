@@ -67,6 +67,8 @@ export const SHADING_MODE_HW_SW_IMPOSTOR = 5;
 export const CONFIG = {
   /** Test env may require GPUBuffers to have extra COPY_* flags to readback results. Or silence console spam. */
   isTest: false,
+  /** If we are not rendering the scene but only exporting the LOD hierarchy */
+  isExporting: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
   /** This runtime injection prevents loading Deno's libraries like fs, png, etc. */
   loaders: {
@@ -172,7 +174,7 @@ export const CONFIG = {
       meshletBackfaceCullingConeWeight: 1.0,
       /** Reduce triangle count per each level. */
       simplificationDecimateFactor: 2,
-      /** IF you have 100 triangles you expect to simplify into 50. But if simplification is not possible, you might end up with e.g. 90 triangles. At this point stop the process for this parth of the mesh. */
+      /** If you have 100 triangles you expect to simplify into 50. But if the simplification is not possible, you might end up with e.g. 90 triangles. At this point stop the process for this part of the mesh. */
       simplificationFactorRequirement: 0.97,
       /** Select algo. to use */
       useMapToFindAdjacentEdges: true,

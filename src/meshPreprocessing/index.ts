@@ -71,7 +71,8 @@ export interface MeshletWIP {
   parentBounds: BoundingSphere | undefined;
 }
 
-export const isWIP_Root = (m: MeshletWIP) => m.parentBounds === undefined;
+export const isWIP_Root = (m: Pick<MeshletWIP, 'parentBounds'>) =>
+  m.parentBounds === undefined;
 
 export async function createNaniteMeshlets(
   parsedMesh: ParsedMesh,
