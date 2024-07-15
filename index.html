@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Nanite WebGPU</title>
+    <meta
+      name="description"
+      content="UE5's Nanite implementation using WebGPU. Includes the meshlet LOD hierarchy, software rasterizer and billboard impostors. Culling on both per-instance and per-meshlet basis."
+    />
+
+    <!-- <link rel="stylesheet" type="text/css" href="index.css" /> -->
+    <style>
+      :root {
+        background-color: rgb(39, 39, 39);
+      }
+      :root,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        text-align: center;
+        color: rgb(216, 216, 216);
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      ul,
+      ul li,
+      ul ul li {
+        margin: 0;
+        padding: 0;
+        text-indent: 0;
+        list-style-type: none;
+      }
+      .panel {
+        display: none;
+        position: fixed;
+        background: #1a1a1a;
+        padding: 10px;
+        color: aliceblue;
+        font-family: monospace;
+      }
+
+      .profiler-window {
+        bottom: 0;
+        left: 0;
+
+        & h2 {
+          text-align: center;
+          margin: 0 0 10px;
+        }
+      }
+      #stats-window {
+        top: 0;
+        left: 0;
+
+        & p {
+          margin: 0;
+        }
+      }
+      .stats-category-name {
+        text-align: center;
+      }
+      #no-webgpu {
+        color: aliceblue;
+        display: none;
+        width: 100vw;
+        height: 100vh;
+        align-items: center;
+        justify-content: center;
+      }
+      #error-msg {
+        max-width: 50%;
+        white-space: pre-line;
+        line-height: 1.7em;
+        font-size: 1.2em;
+      }
+
+      #software-rasterizer {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      #software-rasterizer-msg {
+        margin: 0;
+        padding: 10px;
+        padding-bottom: 0;
+        background: #b81e1e;
+        color: white;
+      }
+
+      /* Spinning loader */
+      #loader-wrapper {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        display: none;
+      }
+      #loader-text {
+        text-align: center;
+        font-size: 2em;
+        color: white;
+        font-family: monospace;
+      }
+      .loader {
+        width: 80px;
+        aspect-ratio: 0.577;
+        clip-path: polygon(0 0, 100% 100%, 0 100%, 100% 0);
+        position: relative;
+        animation: rotate360 2s infinite linear;
+        overflow: hidden;
+        margin: 50px auto 0;
+      }
+      .loader:before {
+        content: '';
+        position: absolute;
+        inset: -150% -150%;
+        background: repeating-conic-gradient(
+          from 30deg,
+          #ffabab 0 60deg,
+          #abe4ff 0 120deg,
+          #ff7373 0 180deg
+        );
+        animation: inherit;
+        animation-direction: reverse;
+      }
+      @keyframes rotate360 {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gpuCanvas" width="1270" height="720"></canvas>
+
+    <!-- FPS display -->
+    <div id="stats-window" class="panel"></div>
+
+    <!-- Profiler -->
+    <div class="panel profiler-window">
+      <h2>Profiler</h2>
+      <ul id="profiler-results"></ul>
+    </div>
+
+    <!-- No webgpu -->
+    <div id="no-webgpu">
+      <pre id="error-msg">No WebGPU available. Please use Chrome.</pre>
+    </div>
+
+    <!-- Software rasterizer banner -->
+    <div id="software-rasterizer" style="display: none">
+      <pre id="software-rasterizer-msg">
+Software rasterizer disabled due to other settings.
+      </pre>
+    </div>
+
+    <div id="loader-wrapper">
+      <div class="loader"></div>
+      <p id="loader-text"></p>
+    </div>
+
+    <script src="index.web.js" defer></script>
+  </body>
+</html>
