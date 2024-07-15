@@ -26,7 +26,7 @@ Some stats and buttons are only available when Nanite culling is performed on CP
 
 ## GUI
 
-> IMAGE freeze-culling
+![freeze-culling](https://github.com/user-attachments/assets/a3327cd0-bd97-48fc-8b9a-de8f01d3abbe)
 
 *"Freeze culling" in action. The right side of the Jinx grid was frustum culled. The instances/meshlets in the middle were occlusion culled. You can see that even for the closest Jinx, only the torso was rendered. This is where the camera was located.*
 
@@ -70,7 +70,7 @@ Or `yarn build` for prod build.
 
 Node.js does not support WebGPU. Deno does (since [version 1.39](https://deno.com/blog/v1.39), December 14, 2023 - 7 months ago). Internally, it uses Firefox's [wgpu](https://github.com/gfx-rs/wgpu).
 
-1. Download the `.zip` file from [deno/releases](https://github.com/denoland/deno/releases/tag/v1.43.6).
+1. Download the `.zip` file from [deno/releases](https://github.com/denoland/deno/releases).
 2. Run unit tests:
     1. `"<path-to-unzipped-deno>/deno.exe" task test`.
 3. Render to `./output.png`:
