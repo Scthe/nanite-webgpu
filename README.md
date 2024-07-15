@@ -6,12 +6,12 @@ This project contains a [Nanite](https://youtu.be/qC5KtatMcUw?si=IOWaVk0sQNra_R6
 
 First, we will see some screenshots, then there is (not even complete) list of features. Afterward, I will link you to a couple of **demo scenes** you can play with. In the FAQ section, you can read **my thoughts about Nanite**. Since this file got a bit long, I've moved usability-oriented stuff (stats/GUI explanation, build process, and unit test setup) into a separate [USAGE.md](USAGE.md).
 
+![scene-multiobject](https://github.com/user-attachments/assets/ef4c8476-bf30-4241-96d0-a354efa0dea1)
 
-> IMAGE image multiobject
 
 *[Sample scene](https://scthe.github.io/nanite-webgpu/?scene_file=manyObjects2&impostors_threshold=4000&softwarerasterizer_threshold=1360&nanite_errorthreshold=1.0) containing 1.7b triangles. Nearly 98% of the triangles are software rasterized, as it's much faster than hardware.*
 
-> IMAGE image Jinx
+![scene-jinx](https://github.com/user-attachments/assets/4eef5e85-03dd-43f3-9a99-afbce59407f0)
 
 *My [primary test scene](https://scthe.github.io/nanite-webgpu/?scene_file=jinxCombined&impostors_threshold=4000&softwarerasterizer_threshold=1360&nanite_errorthreshold=0.1). [Arcane - Jinx](https://sketchfab.com/3d-models/arcane-jinx-b74f25a5ee6e43efbe9766b9fbebc705) 3D model by sketchfab user [Craft Tama](https://sketchfab.com/rizky08). Unfortunately, the best simplification we get is from 44k to 3k triangles. The white triangles are software-rasterized triangles (between hardware-rasterized ones and the impostors in the far back). WebGPU does not support `atomic<u64>`, so I had to compress the data to fit into 32 bits (u16 for depth, 2\*u8 for octahedron-encoded normals). It's a painful limitation, but at least you can see the entire system is working.*
 
@@ -64,7 +64,7 @@ There were 2 primary goals for this project:
 
 ## Usage
 
-You can find details in [USAGE.md](usage.md). Short version:
+You can find details in [USAGE.md](USAGE.md). Short version:
 
 * Use the `[W, S, A, D]` keys to move and `[Z, SPACEBAR]` to fly up or down. `[Shift]` to move faster.
 * If there is something weird, toggle culling options on/off. There are some minor bugs in the implementation.
@@ -141,13 +141,13 @@ It was my first time using meshoptimizer, so you can probably tune it better. In
 
 I have a strong suspicion that the simplification code is where the true strength of UE5's Nanite lies. It's not as flashy as the rest of the features. Yet I have a feeling it should go to the top of the list.
 
-> IMAGE simplification image.
+![simplification](https://github.com/user-attachments/assets/157866eb-88e9-4896-895a-9400915478a4)
 
 *Trying to Nanite-simplify [Modular Mecha Doll Neon Mask](https://sketchfab.com/3d-models/modular-mecha-doll-neon-mask-1e0dcf3e016f4bc897d4b39819220732) (910k tris) 3D model by Sketchfab user [Chambersu1996](https://sketchfab.com/chambersu1996). After the 5th hierarchy level, the simplification stops with 180k triangles left. This would be inefficient to render, but still manageable if we switched to impostors **quickly**. A better solution would be to actually spend X hours investigating the simplification process.*
 
 ### Is per-meshlet backface cone culling worth it?
 
-I've implemented the basics, but the gains are limited. Check the comment in [constants.ts](src/constants.ts#L146) for implementation details.
+I've implemented the basics, but the gains are limited. Check the comment in [constants.ts](https://github.com/Scthe/nanite-webgpu/blob/8c15e85b32d8b890ef573f58f1fbb782544f972c/src/constants.ts#L160) for implementation details.
 
 1. It works best if you have a dense mesh where all triangles in a cluster have similar normals. Dense meshes are something that Nanite was designed for. Yet coarse LOD levels will have normals pointing in different directions. Arseny Kapoulkine had [similar observations](https://zeux.io/2023/04/28/triangle-backface-culling/#estimating-culling-efficiency).
 2. There is some duplication with occlusion culling. Backfaces are behind front faces in the z-buffer.
