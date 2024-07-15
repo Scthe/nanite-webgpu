@@ -241,7 +241,7 @@ async function readObjectBinaryFile(
   );
   assertSameBuffer(jsonData, meshletIndices);*/
 
-  return { verticesAndAttributes, indices, meshletIndices }; // TODO return rest too
+  return { verticesAndAttributes, indices, meshletIndices };
 }
 
 function assertByteSize<T extends Uint32Array | Float32Array>(

@@ -4,6 +4,7 @@ import { deepMerge } from 'deep-merge';
 import { SCENES, SceneName } from '../scene/sceneFiles.ts';
 import { INVALID_SEARCH_PARAMS, applySearchParams } from './searchParams.ts';
 import { CONFIG } from '../constants.ts';
+import { absPathFromRepoRoot } from '../sys_deno/testUtils.ts';
 
 const DEFAULT_SCENE: SceneName = 'TEST_DEFAULT_SCENE' as any;
 
@@ -121,6 +122,33 @@ Deno.test('searchParams()', async (t) => {
   await testSearchParams('?IMPOSTORS_FORCEONLYBILLBOARDS', undefined, {
     impostors: { forceOnlyBillboards: true },
   });
+});
+
+Deno.test('searchParams() from README.md', async (t) => {
+  CONFIG.isTest = true;
+
+  const LINK_REGEX = new RegExp(`${CONFIG.githubDemoLink}.*?\\)`, 'g');
+  const readmeText = Deno.readTextFileSync(absPathFromRepoRoot('README.md'));
+
+  const linkMatches = [...readmeText.matchAll(LINK_REGEX)];
+  assertEquals(linkMatches.length, 11);
+
+  for (let i = 0; i < linkMatches.length; i++) {
+    let link = linkMatches[i][0];
+    link = link.endsWith(')') ? link.substring(0, link.length - 1) : link;
+    const queryParams = link.substring(link.indexOf('?'));
+
+    await t.step(`Readme link '${link}'`, () => {
+      INVALID_SEARCH_PARAMS.splice(0, INVALID_SEARCH_PARAMS.length); // clear
+      globalThis.window.location = { search: queryParams } as any;
+      const modifiedConfig = createMockConfig();
+
+      applySearchParams(modifiedConfig, DEFAULT_SCENE);
+
+      // check there are no typos
+      assertEquals(INVALID_SEARCH_PARAMS.length, 0);
+    });
+  }
 });
 
 function createMockConfig(): typeof CONFIG {

@@ -20,15 +20,27 @@ yarn-error.log*
 build
 static/*.pem
 
+# wasm
+# static/*.wasm
+# src/lib/*.js
+# !src/lib/dummy.js
+src/lib/tmp
+
+# test visualizations
+src/scene/renderImpostors/__test__/test_preview.png
+src/scene/renderImpostors/__test__/test_preview.n.png
+src/passes/rasterizeSw/__test__/*.png
+
+# assets
+static/models/jinx
+static/models/bunny-hires.obj
+static/models/lucy.obj
+static/models/robot.*
+static/models/xyzrgb_dragon.obj
 
 # custom
 *.code-workspace
 _references
 output.png
 makefile
-scenes
-*.obj
-static/*.wasm
-src/lib/meshoptimizer.js
-src/lib/metis.js
-src/lib/metis2.js
+

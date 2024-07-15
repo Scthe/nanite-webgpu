@@ -76,6 +76,7 @@ export const CONFIG = {
   /** If we are not rendering the scene but only exporting the LOD hierarchy */
   isExporting: false,
   githubRepoLink: 'https://github.com/Scthe/nanite-webgpu',
+  githubDemoLink: 'https://scthe.github.io/nanite-webgpu',
   /** This runtime injection prevents loading Deno's libraries like fs, png, etc. */
   loaders: {
     textFileReader: textFileReader_Web,
