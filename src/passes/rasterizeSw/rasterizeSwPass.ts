@@ -11,7 +11,7 @@ import { PassCtx } from '../passCtx.ts';
 import { SHADER_CODE, SHADER_PARAMS } from './rasterizeSwPass.wgsl.ts';
 
 export class RasterizeSwPass {
-  public static NAME: string = RasterizeSwPass.name;
+  public static NAME: string = 'RasterizeSwPass';
 
   private readonly pipeline: GPUComputePipeline;
   private readonly bindingsCache = new BindingsCache();

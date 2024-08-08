@@ -19,7 +19,7 @@ import {
 } from './dbgMeshoptimizerMeshletsPass.wgsl.ts';
 
 export class DbgMeshoptimizerMeshletsPass {
-  public static NAME: string = DbgMeshoptimizerMeshletsPass.name;
+  public static NAME: string = 'DbgMeshoptimizerMeshletsPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly uniformsBindings: GPUBindGroup;

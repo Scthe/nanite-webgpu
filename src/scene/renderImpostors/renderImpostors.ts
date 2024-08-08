@@ -48,7 +48,7 @@ const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
 export const IMPOSTOR_BYTES_PER_PIXEL = BYTES_VEC2;
 
 export class ImpostorRenderer {
-  public static NAME: string = ImpostorRenderer.name;
+  public static NAME: string = 'ImpostorRenderer';
   private static CLEAR_COLOR = [0.0, 0.0, 0.0, 0.0];
 
   private readonly pipeline: GPURenderPipeline;

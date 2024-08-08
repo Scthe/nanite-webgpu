@@ -14,7 +14,7 @@ import { SHADER_CODE, SHADER_PARAMS } from './naniteBillboard.wgsl.ts';
 
 /** Render impostor billboards */
 export class NaniteBillboardPass {
-  public static NAME: string = NaniteBillboardPass.name;
+  public static NAME: string = 'NaniteBillboardPass';
 
   private readonly pipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();

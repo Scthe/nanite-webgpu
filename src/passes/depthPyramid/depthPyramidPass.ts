@@ -34,7 +34,7 @@ export const createDepthPyramidSampler = (device: GPUDevice) => {
 };
 
 export class DepthPyramidPass {
-  public static NAME: string = DepthPyramidPass.name;
+  public static NAME: string = 'DepthPyramidPass';
 
   private readonly pipeline: GPUComputePipeline;
   private resultTexture: GPUTexture | undefined = undefined;

@@ -12,7 +12,7 @@ import { PassCtx } from '../passCtx.ts';
 import { cmdDrawFullscreenTriangle } from '../_shaderSnippets/fullscreenTriangle.wgsl.ts';
 
 export class PresentPass {
-  public static NAME: string = PresentPass.name;
+  public static NAME: string = 'PresentPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();

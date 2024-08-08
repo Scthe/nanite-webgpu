@@ -10,7 +10,7 @@ import { PassCtx } from '../passCtx.ts';
 import { SHADER_PARAMS, SHADER_CODE } from './cullInstancesPass.wgsl.ts';
 
 export class CullInstancesPass {
-  public static NAME: string = CullInstancesPass.name;
+  public static NAME: string = 'CullInstancesPass';
 
   private readonly pipeline: GPUComputePipeline;
   private readonly bindingsCache = new BindingsCache();

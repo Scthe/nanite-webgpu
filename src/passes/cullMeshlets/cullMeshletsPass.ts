@@ -15,7 +15,7 @@ import { CONFIG } from '../../constants.ts';
 
 /** Pass to cull on meshlet level */
 export class CullMeshletsPass {
-  public static NAME: string = CullMeshletsPass.name;
+  public static NAME: string = 'CullMeshletsPass';
 
   // shader variant 1
   private readonly pipeline_SpreadYZ: GPUComputePipeline;

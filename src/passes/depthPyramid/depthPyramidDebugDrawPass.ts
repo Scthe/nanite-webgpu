@@ -69,7 +69,7 @@ fn main_fs(
 `;
 
 export class DepthPyramidDebugDrawPass {
-  public static NAME: string = DepthPyramidDebugDrawPass.name;
+  public static NAME: string = 'DepthPyramidDebugDrawPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();

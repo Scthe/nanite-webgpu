@@ -91,7 +91,7 @@ fn main_fs(fragIn: VertexOutput) -> @location(0) vec4f {
 `;
 
 export class DrawGroundPass {
-  public static NAME: string = DrawGroundPass.name;
+  public static NAME: string = 'DrawGroundPass';
 
   private pipeline: GPURenderPipeline | undefined;
   private readonly bindingsCache = new BindingsCache();

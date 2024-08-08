@@ -1,11 +1,11 @@
 {
-  "name": "gaussian-splatting-webgpu",
-  "description": "WebGPU-based renderer for gaussian splatting",
+  "name": "nanite-webgpu",
+  "description": "UE5's Nanite implementation using WebGPU. Includes the meshlet LOD hierarchy, software rasterizer and billboard impostors. Culling on both per-instance and per-meshlet basis.",
   "version": "1.0.0",
   "license": "MIT",
   "author": "Marcin Matuszczyk <marcin1113C@gmail.com>",
-  "homepage": "https://scthe.github.io/gaussian-splatting-webgpu",
-  "repository": "https://github.com/Scthe/gaussian-splatting-webgpu",
+  "homepage": "https://scthe.github.io/nanite-webgpu",
+  "repository": "https://github.com/Scthe/nanite-webgpu",
   "main": "src/index.web.tsx",
   "packageManager": "yarn@4.2.2",
   "scripts": {

@@ -16,7 +16,7 @@ import { RenderUniformsBuffer } from '../renderUniformsBuffer.ts';
 import { SHADER_CODE } from './dbgMeshoptimizerPass.wgsl.ts';
 
 export class DbgMeshoptimizerPass {
-  public static NAME: string = DbgMeshoptimizerPass.name;
+  public static NAME: string = 'DbgMeshoptimizerPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly uniformsBindings: GPUBindGroup;

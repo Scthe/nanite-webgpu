@@ -14,7 +14,7 @@ import { PassCtx } from '../passCtx.ts';
 import { cmdDrawFullscreenTriangle } from '../_shaderSnippets/fullscreenTriangle.wgsl.ts';
 
 export class RasterizeCombine {
-  public static NAME: string = RasterizeCombine.name;
+  public static NAME: string = 'RasterizeCombine';
 
   private readonly pipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();

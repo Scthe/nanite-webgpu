@@ -23,7 +23,7 @@ import { getDiffuseTexture } from '../../scene/scene.ts';
 import { VERTEX_ATTRIBUTES } from '../../scene/GPUOriginalMesh.ts';
 
 export class DrawNanitesPass {
-  public static NAME: string = DrawNanitesPass.name;
+  public static NAME: string = 'DrawNanitesPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();

@@ -16,7 +16,7 @@ import { getDiffuseTexture } from '../../scene/scene.ts';
 import { assertIsGPUTextureView } from '../../utils/webgpu.ts';
 
 export class RasterizeHwPass {
-  public static NAME: string = RasterizeHwPass.name;
+  public static NAME: string = 'RasterizeHwPass';
 
   private readonly renderPipeline: GPURenderPipeline;
   private readonly bindingsCache = new BindingsCache();
