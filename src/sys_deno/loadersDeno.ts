@@ -28,11 +28,14 @@ export const createTextureFromFile_Deno: TextureReader = async (
   const rawFileData = Deno.readFileSync(path);
   const pngFile = png.decode(rawFileData);
 
-  if (pngFile.colorType !== png.ColorType.RGB) {
+  let data: Uint8Array;
+  if (pngFile.colorType === png.ColorType.RGB) {
+    data = convertRGB_to_RGBA(pngFile.image);
+  } else if (pngFile.colorType === png.ColorType.RGBA) {
+    data = pngFile.image;
+  } else {
     throw new Error(`Invalid texture colorType: ${pngFile.colorType} for file '${path}'`); // prettier-ignore
   }
-
-  const data = convertRGB_to_RGBA(pngFile.image);
 
   const texture = device.createTexture({
     label: path,

@@ -42,5 +42,4 @@ static/models/xyzrgb_dragon.obj
 *.code-workspace
 _references
 output.png
-makefile
 

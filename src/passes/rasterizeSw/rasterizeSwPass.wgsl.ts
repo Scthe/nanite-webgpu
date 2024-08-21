@@ -189,16 +189,20 @@ fn rasterize(
   let CC0 = edgeC(v2, v1);
   let CC1 = edgeC(v0, v2);
   let CC2 = edgeC(v1, v0);
-  var CY0 = boundRectMin.x * CC0.A + boundRectMin.y * CC0.B + CC0.C;
-	var CY1 = boundRectMin.x * CC1.A + boundRectMin.y * CC1.B + CC1.C;
-	var CY2 = boundRectMin.x * CC2.A + boundRectMin.y * CC2.B + CC2.C;
+  // In prod. impl. you should consider reading the full rules of rasterization for your API.
+  // Your goal is to avoid 'holes' between what is software and hardware rasterized.
+  // https://www.sctheblog.com/blog/hair-software-rasterize/#half-of-the-pixel-offset
+  let firstSamplePoint = boundRectMin.xy + vec2f(0.5);
+  var CY0 = firstSamplePoint.x * CC0.A + firstSamplePoint.y * CC0.B + CC0.C;
+  var CY1 = firstSamplePoint.x * CC1.A + firstSamplePoint.y * CC1.B + CC1.C;
+  var CY2 = firstSamplePoint.x * CC2.A + firstSamplePoint.y * CC2.B + CC2.C;
   let triangleArea2 = CY0 + CY1 + CY2; // I wish I had debugger to preview the difference between both..
 
   // iterate row-by-row
   for (var y: f32 = boundRectMin.y; y < boundRectMax.y; y+=1.0) {
     var CX0 = CY0;
-		var CX1 = CY1;
-		var CX2 = CY2;
+    var CX1 = CY1;
+    var CX2 = CY2;
 
     // iterate columns
     for (var x: f32 = boundRectMin.x; x < boundRectMax.x; x+=1.0) {
@@ -223,8 +227,8 @@ fn rasterize(
       }
 
       CX0 += CC0.A;
-			CX1 += CC1.A;
-			CX2 += CC2.A;
+      CX1 += CC1.A;
+      CX2 += CC2.A;
     }
 
     CY0 += CC0.B;
@@ -233,6 +237,7 @@ fn rasterize(
   }
 }
 
+/** https://www.sctheblog.com/blog/hair-software-rasterize/#optimization-or-not */
 struct EdgeC{ A: f32, B: f32, C: f32 }
 fn edgeC(v0: vec2f, v1: vec2f) -> EdgeC{
   // from edgeFunction() formula we extract: A * p.x + B * p.y + C.
@@ -245,6 +250,7 @@ fn edgeC(v0: vec2f, v1: vec2f) -> EdgeC{
   return result;
 }
 
+/** https://www.sctheblog.com/blog/hair-software-rasterize/#edge-function */
 fn edgeFunction(v0: vec2f, v1: vec2f, p: vec2f) -> f32 {
   return (p.x - v0.x) * (v1.y - v0.y) - (p.y - v0.y) * (v1.x - v0.x);
 }

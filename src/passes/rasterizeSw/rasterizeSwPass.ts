@@ -36,7 +36,7 @@ export class RasterizeSwPass {
 
   /** Clears to 0. We cannot select a number */
   clearFramebuffer(ctx: PassCtx) {
-    ctx.cmdBuf.clearBuffer(this.resultBuffer);
+    ctx.cmdBuf.clearBuffer(this.resultBuffer, 0, this.resultBuffer.size);
   }
 
   onViewportResize = (device: GPUDevice, viewportSize: Dimensions) => {

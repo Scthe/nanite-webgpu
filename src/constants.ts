@@ -179,7 +179,7 @@ export const CONFIG = {
   nanite: {
     preprocess: {
       meshletMaxVertices: 64,
-      meshletMaxTriangles: 124,
+      meshletMaxTriangles: 128,
       meshletBackfaceCullingConeWeight: 1.0,
       /** Reduce triangle count per each level. */
       simplificationDecimateFactor: 2,

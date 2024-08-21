@@ -22,13 +22,13 @@ import { ObjectLoadingProgressCb } from './scene/load/types.ts';
 import { Scene } from './scene/scene.ts';
 import { exportToFile } from './scene/import-export/import-export.ts';
 
-const SCENE_FILE: SceneName = 'jinx';
-// const SCENE_FILE: SceneName = 'singleBunny';
+const SCENE_FILE: SceneName = 'jinxCombined';
+// const SCENE_FILE: SceneName = 'manyObjects2';
+// const SCENE_FILE: SceneName = 'bunnySingle';
 
 injectMeshoptimizerWASM();
 injectMetisWASM();
 
-CONFIG.softwareRasterizer.enabled = false;
 CONFIG.loaders.textFileReader = textFileReader_Deno;
 CONFIG.loaders.binaryFileReader = binaryFileReader_Deno;
 CONFIG.loaders.createTextureFromFile = createTextureFromFile_Deno;

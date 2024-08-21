@@ -71,15 +71,17 @@ Or `yarn build` for prod build.
 Node.js does not support WebGPU. Deno does (since [version 1.39](https://deno.com/blog/v1.39), December 14, 2023 - 7 months ago). Internally, it uses Firefox's [wgpu](https://github.com/gfx-rs/wgpu).
 
 1. Download the `.zip` file from [deno/releases](https://github.com/denoland/deno/releases).
-2. Run unit tests:
+2. `"<path-to-unzipped-deno>/deno.exe" cache "src/index.deno.ts"`. Download the dependencies.
+3. Run unit tests:
     1. `"<path-to-unzipped-deno>/deno.exe" task test`.
-3. Render to `./output.png`:
+4. Render to `./output.png`:
     1. `"<path-to-unzipped-deno>/deno.exe" task start`. Render default scene.
     2. `"<path-to-unzipped-deno>/deno.exe" task start <sceneName>` to render selected scene e.g. "bunnyRow".
-4. Export processed Nanite objects into a `.json` and `.bin`:
+5. Export processed Nanite objects into a `.json` and `.bin`:
     1. `"<path-to-unzipped-deno>/deno.exe" task start <sceneName> --export`. E.g. `deno.exe task start lucy --export`.
     2. Afterward, add the `.json` file into `OBJECTS` inside [sceneFiles.ts](src/scene/sceneFiles.ts). Then, a few lines below, define  a scene using the newly created object. Render it with `deno.exe task start <yourNewSceneName>`. Or, to use in the web browser, set the `?scene_file=<yourNewSceneName>` query param.
 
+Personally, I just use the [makefile](makefile). Update paths there and you should be good to go.
 
 ## FAQ - usage
 
