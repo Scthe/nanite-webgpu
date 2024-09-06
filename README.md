@@ -185,6 +185,27 @@ I've implemented the basics, but the gains are limited. Check the comment in [co
 3. Computing the cone is done on a per-meshlet level. For me, this means a WebAssembly call every time. This took 30% of the whole preprocessing step. Preprocessing all models offline would solve this problem. Yet it goes against my goals for this project. I want you to take the simplest possible 3D object format and see that my program works. That's why this app is a webpage and not Rust+Vulkan. No one would have cloned the repo to run the code. But everyone has clicked the demo links above (right?).
 
 
+### Why does the software rasterizer output untextured meshes?
+
+With a hardware rasterizer, the depth test does the following (pseudocode):
+
+```c
+if (fragmentDepth < depthTexture[fragmentPosition.xy]) {
+  depthTexture[fragmentPosition.xy] = fragmentPosition.z;
+  gBufferTexture0[fragmentPosition.xy] = color;
+  gBufferTexture1[fragmentPosition.xy] = normalVector;
+}
+```
+
+The write to each of the textures depends on the comparison. If you do this over many threads, you get a race condition. Hardware can implement this easily. Think something like Java's [synchronized blocks](https://medium.com/@satyendra.jaiswal/thread-synchronization-synchronized-blocks-and-methods-d08040908347).
+
+Software rasterizers cannot do this. You only get atomic operations, which are not enough. With millions of triangles each affecting multiple pixels on each frame (so around 60/144 Hz) it's not a question *if* the race condition happens. The solution is to use [visibility buffer](https://momentsingraphics.de/ToyRenderer3RenderingBasics.html).  For each pixel, the rasterizer outputs `sceneUniqueTriangleId` (combination of `instanceId` + `meshletId` + `triangleId`, 32-bit total) of the closest triangle. Combine it with 32-bit depth into a 64-bit value (`(depth << 32) | sceneUniqueTriangleId`). Notice that comparisons between 2 such values are always decided based on the depth. We can safely use 64-bit atomic operations without worrying about race conditions. In a separate pass, we retrieve the `sceneUniqueTriangleId`, rasterize the triangle again, compute barycentric coordinates, and shade the fragment. Surprisingly [not that expensive](http://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/).
+
+Unfortunately, WebGPU lacks 64-bit atomics. Even if the hardware and the driver support it. We cannot do what I've outlined above. There are other algorithms to achieve this, but they are much slower. And people will want to use my app to reimplement Nanite in other APIs (which have this feature). No point in bogging down my implementation for an API that [barely anyone uses](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status).
+
+With this limitation, my only concern for this app is to show that the software rasterization works. If you see the software rasterized model in the background it will be white and it will have *reasonable* shading. Reprojecting depth and "compressing" normals is enough to get something.. not offending.
+
+
 ## Honourable mentions
 
 * Arseny Kapoulkine. This app is only possible due to [meshoptimizer](https://github.com/zeux/meshoptimizer). I've also watched a few of niagara videos and read its source code. And read his blog.

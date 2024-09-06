@@ -36,6 +36,3 @@ tri:
 
 check:
 	$(DENO) check src
-
-install:
-	$(DENO) install --help

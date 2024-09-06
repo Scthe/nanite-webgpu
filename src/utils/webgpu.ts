@@ -5,7 +5,7 @@ import {
   getClassName,
   getTypeName,
 } from './index.ts';
-import { CONFIG } from '../constants.ts';
+import { CONFIG, IS_WGPU } from '../constants.ts';
 
 export const WEBGPU_MINIMAL_BUFFER_SIZE = 256;
 
@@ -122,6 +122,17 @@ export function writeMatrixToGPUBuffer(
   // deno-lint-ignore no-explicit-any
   const f32Arr: Float32Array = data as any;
   device.queue.writeBuffer(gpuBuffer, offsetBytes, f32Arr.buffer, 0);
+}
+
+/** https://github.com/Scthe/nanite-webgpu/issues/2 */
+export function cmdClearWholeBuffer(cmdBuf: GPUCommandEncoder, buf: GPUBuffer) {
+  if (IS_WGPU) {
+    // wgpu requires "offset, size", even though both are optional
+    // https://www.w3.org/TR/webgpu/#dom-gpucommandencoder-clearbuffer
+    cmdBuf.clearBuffer(buf, 0, buf.size);
+  } else {
+    cmdBuf.clearBuffer(buf);
+  }
 }
 
 export const getItemsPerThread = (items: number, threads: number) =>
