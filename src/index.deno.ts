@@ -4,7 +4,7 @@ import { parseArgs } from 'jsr:@std/cli/parse-args';
 import { Dimensions, replaceFileExt } from './utils/index.ts';
 import { Renderer } from './renderer.ts';
 import { SCENES, SceneName, isValidSceneName } from './scene/sceneFiles.ts';
-import { createGpuDevice } from './utils/webgpu.ts';
+import { createGpuDevice, ensureIntegerDimensions } from './utils/webgpu.ts';
 import { OnObjectLoadedCb, loadScene } from './scene/load/loadScene.ts';
 import { createErrorSystem } from './utils/errors.ts';
 import {
@@ -67,10 +67,11 @@ async function renderSceneToFile(
 
   // create canvas
   console.log('Creating output canvas..');
+  const canvasDimensions = ensureIntegerDimensions(VIEWPORT_SIZE);
   const { texture: windowTexture, outputBuffer } = createCapture(
     device,
-    VIEWPORT_SIZE.width,
-    VIEWPORT_SIZE.height
+    canvasDimensions.width,
+    canvasDimensions.height
   );
   const windowTextureView = windowTexture.createView();
 
@@ -112,7 +113,12 @@ async function renderSceneToFile(
   renderer.cmdRender(cmdBuf, scene, windowTextureView);
 
   // result to buffer
-  cmdCopyTextureToBuffer(cmdBuf, windowTexture, outputBuffer, VIEWPORT_SIZE);
+  cmdCopyTextureToBuffer(
+    cmdBuf,
+    windowTexture,
+    outputBuffer,
+    renderer.viewportSize
+  );
 
   // submit commands
   // profiler.endFrame(cmdBuf);
@@ -126,7 +132,7 @@ async function renderSceneToFile(
   });
 
   // write output
-  await writePngFromGPUBuffer(outputBuffer, VIEWPORT_SIZE, outputPath);
+  await writePngFromGPUBuffer(outputBuffer, renderer.viewportSize, outputPath);
 }
 
 async function exportScene(device: GPUDevice) {

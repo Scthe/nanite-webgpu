@@ -23,7 +23,10 @@ import { CullMeshletsPass } from './passes/cullMeshlets/cullMeshletsPass.ts';
 import { GpuProfiler } from './gpuProfiler.ts';
 import { Scene } from './scene/scene.ts';
 import { Frustum } from './utils/frustum.ts';
-import { assertIsGPUTextureView } from './utils/webgpu.ts';
+import {
+  assertIsGPUTextureView,
+  ensureIntegerDimensions,
+} from './utils/webgpu.ts';
 import { DepthPyramidPass } from './passes/depthPyramid/depthPyramidPass.ts';
 import { DepthPyramidDebugDrawPass } from './passes/depthPyramid/depthPyramidDebugDrawPass.ts';
 import { CullInstancesPass } from './passes/cullInstances/cullInstancesPass.ts';
@@ -39,7 +42,7 @@ export class Renderer {
   private readonly cameraFrustum: Frustum = new Frustum();
   private projectionMat: Mat4;
   private readonly _viewMatrix = mat4.identity(); // cached to prevent allocs.
-  private readonly viewportSize: Dimensions = { width: 0, height: 0 };
+  public readonly viewportSize: Dimensions = { width: 0, height: 0 };
   private frameIdx = 0;
 
   // render target textures
@@ -256,6 +259,7 @@ export class Renderer {
   }
 
   private handleViewportResize = (viewportSize: Dimensions) => {
+    viewportSize = ensureIntegerDimensions(viewportSize);
     console.log(`Viewport resize`, viewportSize);
     CONFIG.nanite.render.hasValidDepthPyramid = false;
 

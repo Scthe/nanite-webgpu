@@ -46,9 +46,11 @@ export const IS_WGPU = IS_DENO;
 export const MODELS_DIR = IS_DENO ? 'static/models' : 'models';
 
 export const DEPTH_FORMAT: GPUTextureFormat = 'depth24plus';
-export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = IS_DENO
-  ? 'rgba16float' // Cause: "Color state [0] is invalid: Format Rgba32Float is not blendable"
-  : 'rgba32float';
+/**
+ * Not 'rgba32float' cause: "Color state [0] is invalid: Format Rgba32Float is not blendable"
+ * - https://github.com/Scthe/nanite-webgpu/issues/5
+ */
+export const HDR_RENDER_TEX_FORMAT: GPUTextureFormat = 'rgba16float';
 
 /** 4 for Vec4, 3 for Vec3. ATM using Vec3  */
 export const CO_PER_VERTEX: number = 3;
