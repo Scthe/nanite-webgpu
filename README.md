@@ -6,7 +6,7 @@ This project contains a [Nanite](https://youtu.be/qC5KtatMcUw?si=IOWaVk0sQNra_R6
 
 First, we will see some screenshots, then there is (not even complete) list of features. Afterward, I will link you to a couple of **demo scenes** you can play with. In the FAQ section, you can read **my thoughts about Nanite**. Since this file got a bit long, I've moved usability-oriented stuff (stats/GUI explanation, build process, and unit test setup) into a separate [USAGE.md](USAGE.md).
 
-> EDIT 16-08-2024: I've rewritten significant parts of this README once I had more time to look through it. And I've written [Frostbitten hair WebGPU](https://github.com/Scthe/frostbitten-hair-webgpu) meantime #self-promo.
+> Be sure to check out my [Frostbitten hair WebGPU](https://github.com/Scthe/frostbitten-hair-webgpu) (hair rendering and physics in a web browser) too.
 
 
 ![scene-multiobject](https://github.com/user-attachments/assets/ef4c8476-bf30-4241-96d0-a354efa0dea1)
@@ -20,28 +20,27 @@ First, we will see some screenshots, then there is (not even complete) list of f
 
 ## Features
 
-* Nanite
+* Implemented parts:
     * **Meshlet LOD hierarchy.**
-        * Mesh preprocessing executes in the browser, using WebAssembly for [meshoptimizer](https://github.com/zeux/meshoptimizer) and [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview). While it might raise eyebrows, this was one of the goals.
+        * Mesh preprocessing executes in the browser, using WebAssembly for [meshoptimizer](https://github.com/zeux/meshoptimizer) and [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview).
         * There is a file exporter too, if you don't like to wait between page refreshes.
     * **Software rasterizer.**
         * WebGPU does not have the `atomic<u64>` needed to implement this feature efficiently. Currently, I'm packing depth (`u16`) and octahedron-encoded normals (`2 * u8`) into 32 bits. It's enough to show that the rasterizer works.
         * With only 32 bits, we are butchering the precision. My only concern here is to show that the rasterization works. If you see the software rasterized bunny model in the background it will be white and it will have *reasonable* shading. Reprojecting depth and "compressing" normals is enough to get something.. not offending.
         * This also affects the depth pyramid used for occlusion culling.
-        * There are other algorithms to do this. PPLL, or something with tiles, or double rasterization (1st pass writes depth, 2nd does compareExchange). But the 32-bit limitation is only in WebGPU, so I choose to stick to UE5's solution instead.
+        * There are other algorithms to do this. PPLL, or something with tiles, or double rasterization (1st pass writes depth, 2nd does `compareExchange()`). However, the 32-bit limitation is only in WebGPU, so I chose to stick to UE5's solution instead.
     * **Billboard impostors.** 12 images around the UP-axis, blended (with dithering) based on the camera position. Does not handle up/down views. Contains both diffuse and normals, so we can do nice shading at a runtime. UE5 [uses](https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf#page=97) a more advanced version integrated with a visibility buffer.
         * [Impostors preview demo scene](https://scthe.github.io/nanite-webgpu/?scene_file=jinxCombined&impostors_threshold=4000&softwarerasterizer_threshold=1360&nanite_errorthreshold=0.1&impostors_forceonlybillboards&impostors_texturesize=512). For this demo, I've increased the impostor texture size. This way you can see more details.
 * Culling:
     * **Per-instance:** frustum and occlusion culling.
     * **Per-meshlet:** frustum and occlusion culling.
     * **Per-triangle:** hardware backface culling and ofc. z-buffer. WebGPU does not have early-z.
-        * I have no idea how early-z works in WebGPU (it does not).
     * I've also tried per-meshlet backface cone culling. It worked fine, but I cut it from the final release. See FAQ below for more details.
-    * Occlusion culling is just a depth pyramid from the previous frame's depth buffer. No reprojection and no two-pass. The current implementation is enough to cull a lot of triangles (**A LOT!**) and to judge the performance impact (big improvement!). I expect someone will want to read the code, and they will be grateful this feature was not added.
+    * Occlusion culling is just a depth pyramid from the previous frame's depth buffer. No reprojection and no two-pass. The current implementation is enough to cull a lot of triangles (**A LOT!**) and to judge the performance impact (big improvement). I expect someone will want to read the code, and they will be grateful this feature was not added.
 * Switch between **GPU-driven rendering** and a **naive CPU implementation**. I have not spent much time optimizing the CPU version. It works, you can step through it with the debugger.
 * Supports **textured models** and **many different objects** at the same time.
 * Controls to **change parameters at runtime**. Debug views. "Freeze culling" allows the camera to move and inspect only what was drawn last frame.
-* A lot of **stats**. Memory, geometry. Total scene meshlets, triangles. Drawn meshlets, triangles (split between hardware and software rasterizer). Impostor count. Dedicated profiler button to get the timings.
+* A lot of **stats**. Memory, geometry. Scene meshlet and triangle count. Drawn meshlets and triangles (split between hardware and software rasterizer). Impostor count. Dedicated profiler button to get the timings.
 * **Custom file format** so you don't have to preprocess the mesh every time. This is optional, you **can also use an OBJ file**.
 * Vertex **position quantization** (vec2u), **octahedron encoded normals** (vec2f).
     * Position quantization is off by default. Toggle `CONFIG.useVertexQuantization` to enable. There are *funny* things happening to the numbers there, but everything *should* be handled correctly.
@@ -83,16 +82,15 @@ You can find details in [USAGE.md](USAGE.md). Short version:
 * Meshlet simplification is.. simplistic.
 * No two-pass occlusion culling.
     * This would not be complicated to add, just tedious to debug. Unfortunately, it also has some interactions with the GUI settings. ATM some parts of the code are riddled with `ifs` for certain user settings. For example, you could press "Freeze culling" to stop updating the list of drawn meshlets. This includes software rasterized meshlets. Move the camera in this mode and all 10+ million 1 px-sized software rasterized triangles might become fullscreen. Adding two-pass occlusion culling might expose more such interactions. It would also make the code harder to read, which goes against my goals.
+* No visibility buffer. It's not possible with the `atomic<u64>` limitation that I have.
+    * BTW. If you write material data into a GBuffer, you can integrate cleanly with the rest of your engine.
+* No built-in shadows/multiview.
 * No work queue in shaders. For meshlet culling and LOD selection, I dispatch thread per-meshlet.
 * No VRAM eviction of unused LODs and streaming.
     * Theoretically, to load new meshlet data, you would write requested `meshletIds` into a separate GPUBuffer. Download it to RAM and load the content. Keep LRU (timestamp per-meshlet, visible from CPU) to manage evictions. In practice, I suspect you might also want to add a priority system.
-* No visibility buffer. It's not possible with the `atomic<u64>` limitation that I have.
-    * BTW if you render material data into a GBuffer, you get Nanite integration with your material system for free.
-* No built-in shadows/multiview.
-* My implementation focuses on using a predictable amount of memory for demo cases. This means it's not scalable if you have many **different** objects (not instances). You would have to know the upper bound of the drawn meshlets to preallocate buffers that hold data between the stages. The naive solutions like `bottomLevelMeshletsCount * instanceCount` easily end up in GBs of VRAM!
+* No compression.
+* My implementation focuses on using a predictable amount of memory for demo cases. This means it's not scalable if you have many **different** objects (not instances). You would have to know the upper bound of the drawn meshlets to preallocate buffers that hold data between the stages.
 * No BVH for instances (or any other hierarchical implementation). I just take all instances and frustum + occlusion cull them.
-* I don't have a GPU profiler on the web/Deno. Or a debugger, or printf for that matter.
-    * ITWouldGenerate_DX_CODE_THATIWOULDHAVE_TO_READ_ANYWAY_SONOiGUESS.
 
 ### Does xxx billions of triangles mean anything?
 
@@ -100,11 +98,13 @@ There was a video on YouTube showing how Nanite handles 120 billion triangles. Y
 
 #### Dense meshes
 
-Having a lot of dense meshes up close could have a negative performance impact. Unless you are so close to them that they cover 50% of the screen. Then, the occlusion culling kicks in. Dense geometry also means that meshlets are small. 128 triangles in a 20,000,000 triangle mesh? They do not take much space on the screen and are easily occlusion/cone culled.
+Having a lot of dense meshes up close could have a negative performance impact. Unless you are so close to them that they cover a lot of the screen. Then, the occlusion culling kicks in. Dense geometry also means that meshlets are small. They do not take much space on the screen and are easily occlusion/cone culled. Remember, this is the case we optimize for.
 
 #### Instance count
 
 What about millions of instances? Each has its own mat4x3 transform matrix. This consumes VRAM. Obligatory link to [swallowing the elephant (part 2)](https://pharr.org/matt/blog/2018/07/09/moana-island-pbrt-2). During the frame, you also need to store a list of things to render. In the worst-case scenario, each instance will render its most dense meshlets. In my implementation, this allocates `instanceCount * bottomLevelMeshletsCount * sizeof(vec2u)` bytes. A 5k triangle bunny might have only 56 fine-level meshlets (out of 159 total), but what if I want to render 100,000 of them? This is not a scalable memory allocation. In Chrome, WebGPU has a 128MB limit for storage buffers (can be raised if needed). You might notice that the demo scenes above were tuned to reflect that.
+
+Based on the presentation, with the GPU task queue, UE5 should be able to handle this efficiently. Especially if the instances are spread evenly over the distance. There are known cases where culling struggles, but I'm not sure how often this actually happens.
 
 #### Scene arrangement
 
@@ -122,17 +122,22 @@ Basically, there are a lot of use cases. If you want a **stable** Nanite impleme
 
 1) The goal of the DAG is not to "use fewer triangles for far objects". The goal is to have a consistent 1 pixel == 1 triangle across the entire screen. A triangle is our "unit of data". The artist imports a sculpture from ZBrush. We need to need a way (through an error metric) to display it no matter if it's 1m or 500m from the camera. This is not possible with discrete LOD meshes (each LOD level is a separate geometry). Sometimes you would want an LOD between 2 levels. You need continuous LODs. This is the reason for the meshlet hierarchy. It allows you to "sample" geometry at any detail level you choose.
 2) You spend more time working on culling and meshlets instead of Nanite itself. You **WILL** reimplement both ["Optimizing the Graphics Pipeline with Compute"](https://ubm-twvideo01.s3.amazonaws.com/o1/vault/gdc2016/Presentations/Wihlidal_Graham_OptimizingTheGraphics.pdf) and ["GPU-Driven Rendering Pipelines"](https://advances.realtimerendering.com/s2015/aaltonenhaar_siggraph2015_combined_final_footer_220dpi.pdf).
-3) Meshlet LOD hierarchy is quite easy to get working. Praise [meshoptimizer](https://github.com/zeux/meshoptimizer) and [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)! But if you want to do it efficiently, [it will be a pain](https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf#page=50). See next question for full story. I just went with the simplest option.
+3) Meshlet LOD hierarchy is quite easy to get working. Praise [meshoptimizer](https://github.com/zeux/meshoptimizer) and [METIS](http://glaros.dtc.umn.edu/gkhome/metis/metis/overview)! But if you want to do it efficiently, [it will be a pain](https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf#page=50). See the next question for the full story. I just went with the simplest option.
 4) If your mesh does not simplify cleanly, you end up with e.g. ~3000 triangles that cover a single pixel (Jinx scene). The efficiency scales with your mesh simplification code. And if you want pixel-sized triangles (the main selling point for most people), you **need** a software rasterizer. The billboard impostors are also a good stability-oriented fallback. As mentioned above, the whole system should work cohesively.
+   1) See linked simplification discussions below for example solutions.
 
 
 ### What about mesh simplification?
+
+There were some recent discussions about building an efficient meshlet hierarchy. I will first introduce the problem and then give you links if you are still interested.
+
+#### Simplification problem
 
 > Remember, we are not doing a simple "take a mesh and return something that has X% of the triangles". We are doing the simplification in the context of meshlets and METIS.
 
 UE5 has its own mesh simplification code. It's the first thing that happens in the asset pipeline. Thus, everything saved here will have avalanche-like benefits for the rest of the system. It was also a problem with the Jinx model. On [slide 95](https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf#page=95) Brian Karis states that **all** their LOD graphs end at a **single** root cluster. So no matter the model you provide, they can simplify it to 128 triangles. It makes you less reliant on the impostors. In my app, I could e.g. increase meshoptimizer's `target_error` parameter. But consider the following story:
 
-1. My first test model was a bunny with 5k triangles. Easy to debug (check for holes, etc.). It simplified into a single 128 tris meshlet. Nice!
+1. My first test model was a bunny with 5k triangles. Easy to debug (check for holes, etc.). It is simplified into a single 128 tris meshlet. Nice!
 2. I've tried to load the Jinx model. At some point, the simplification stopped. You gave it X triangles and received the same X triangles. This crashed my app on an assertion.
 3. OK, so if the model does not simplify beyond some level, I will allow the DAG to have many roots. If you failed to remove at least 6+% of the triangles, stop the algorithm for this part of the mesh.
 4. The Jinx model now works correctly. It stops simplifying beyond 7-9 LOD levels, but this only means there are many hierarchy roots.
@@ -140,17 +145,35 @@ UE5 has its own mesh simplification code. It's the first thing that happens in t
 
 > To reproduce, use `const SCENE_FILE: SceneName = 'singleBunny';` and set `CONFIG.nanite.preprocess.simplificationFactorRequirement: 0.94`. This option requires triangle reduction by at least 6%. We end up with 512 triangles. Then, set `simplificationFactorRequirement: 0.97` (require reducing triangle count by at least 3%, which is much more lenient). You end up with a single root that has 116 tris.
 
-It was my first time using meshoptimizer, so you can probably tune it better. In the offline setting, it's possible to retry simplification with a bigger `target_error`. Or increase `target_error` for more coarse meshlet levels? From my experiments, both of these changes do not matter. You could also allow the hierarchy to have the bottom children on different levels (probably? there are some issues with this approach e.g. non-uniform mesh density). Maybe generate conservative (with a bigger triangle count than usual), discrete LOD levels in an old way and then use them if the algorithm gets stuck? This makes the error metric and the entire hierarchy pointless. Introduce new custom vertices? Merge more meshlets than 4? Smaller meshlets? Replace meshoptimizer? UE5 also has special weights for METIS partitioning. **Most important, can your (METIS-enchanced) simplification, guarantee that splitting 256 triangles into 128 triangles, will ALWAYS result in 128 triangles?** I think that once you have this guarantee, the simplification (while still not trivial), is significantly easier. With it, you no longer have to think about the concept of triangles in your meshlet hierarchy. You can start thinking only about DAG and nodes. This highlights the need for goor bottom-level meshlets.
-
-You may need someone to dedicate their time only to simplification. Personally, I just got it to work and moved on.
-
 ![simplification](https://github.com/user-attachments/assets/157866eb-88e9-4896-895a-9400915478a4)
 
-*Trying to Nanite-simplify [Modular Mecha Doll Neon Mask](https://sketchfab.com/3d-models/modular-mecha-doll-neon-mask-1e0dcf3e016f4bc897d4b39819220732) (910k tris) 3D model by Sketchfab user [Chambersu1996](https://sketchfab.com/chambersu1996). After the 5th hierarchy level, the simplification stops with 180k triangles left. This would be inefficient to render, but still manageable if we switched to impostors **quickly**. A better solution would be to actually spend X hours investigating the simplification process.*
+*Trying to Nanite-simplify [Modular Mecha Doll Neon Mask](https://sketchfab.com/3d-models/modular-mecha-doll-neon-mask-1e0dcf3e016f4bc897d4b39819220732) (910k tris) 3D model by Sketchfab user [Chambersu1996](https://sketchfab.com/chambersu1996). After the 5th hierarchy level, the simplification stops with 180k triangles left.*
+
+#### Simplification discussions
+
+Recent discussions about building efficient meshlet hierarchy:
+
+* ["Meshlet simplification might be a bottleneck in Bevy's Nanite solution"](https://github.com/bevyengine/bevy/discussions/14998) in Bevy.
+* ["Nanite-style DAG clusterizing and simplification"](https://github.com/zeux/meshoptimizer/discussions/750) in meshoptimizer.
+
+Then read README.md for my repo ["Nanite simplification tests"](https://github.com/Scthe/nanite-simplification-tests).
+
 
 ### What about error metric?
 
 Assume you have a mesh that has 20,000,000 triangles. With meshlet hierarchy, you can render it at any triangle count you would have wanted (with a minimum of 128 triangles - 1 meshlet). How do you choose the right meshlets? What does the *right meshlet* mean? At the end of the day, **THIS** is exactly what Nanite is. Everything else (simplification, meshlet DAG, software rasterizer, etc.) is just a prerequisite to actually start working on this problem. I admit, as the author of this repo, it's a bit disheartening.
+
+For more details, refer to ["Multiresolution structures for interactive visualization of very large 3D datasets"](https://vcg.isti.cnr.it/~ponchio/download/ponchio_phd.pdf) by Federico Ponchio, sections 3.6.1, and 4.2.3-4, and bottom of page 75. Excerpt from section 3.6.1 that guided my implementation ([CPU](https://github.com/Scthe/nanite-webgpu/blob/64b5471e39c91604fa81dd098ec296a2debd17fe/src/passes/naniteCpu/calcNaniteMeshletsVisibility.ts#L174), [GPU](https://github.com/Scthe/nanite-webgpu/blob/64b5471e39c91604fa81dd098ec296a2debd17fe/src/passes/_shaderSnippets/nanite.wgsl.ts#L32)):
+
+> "The error function that controls the traversal of the DAG should capture the appearance error
+> (Section 2.1.2) from the current view-point. We use the screen projection error E which is simply
+> the projection of the model space error λ on screen. In order to have a conservative estimate
+> of the error, the closest point in the bounding volume of the patch should be used. Bounding
+> spheres are particularly suited for this error metric, as the computation of the error requires only
+> a few operations (Figure 3.15). This metric provides an upper bound for the number of pixels
+> by which a geometric picture will be displaced in the simplified mesh with respect to the original
+> mesh. A user specified error threshold τ can then be simply expressed in pixels."
+
 
 A few days ago, SIGGRAPH 2024 presentations were published. In ["Seamless rendering on mobile"](https://advances.realtimerendering.com/s2024/content/Cao-NanoMesh/AdavanceRealtimeRendering_NanoMesh0810.pdf), Shun Cao from Tencent Games provided the following metric (slide 12):
 
@@ -167,9 +190,16 @@ threshold = projected_area * device_factor * decay_factor
 I have used projected simplification error (as provided by meshoptimizer). It's not a great metric for Nanite. I think that other vertex attributes have to be part of this function too. You should be able to assign different weights on a per-attribute basis. Normals on Jinx's face were a huge problem. In my app, I could just move the LOD error threshold slider to the left. I can say that this approach has an educational value. You will have to find something better.
 
 
+### What are the limitations for materials?
+
+In UE 5.0, Nanite had severe limitations for materials. E.g. alpha masks, two-sided materials, and vertex animations were not available. Using a lot of materials in a single scene could negatively impact the performance. Keep in mind Unreal Engine uses shader graphs instead of ubershaders.
+
+Since then, most of the limitations have been handled. See the ["Nanite GPU Driven Materials"](https://media.gdcvault.com/gdc2024/Slides/GDC+slide+presentations/Nanite+GPU+Driven+Materials.pdf) presentation by Graham Wihlidal. It's a summary of changes in Nanite since its release. You can also read my notes: ["Notes from 'Nanite GPU Driven Materials'"](https://www.sctheblog.com/blog/nanite-materials-notes/).
+
+
 ### Should you write your own implementation of Nanite?
 
-Depends. The simplest answer is to just use UE5. You will not beat UE5 in its own game. Looking at Steam's front page, most of the games are simple enough to not need it. It's interesting that (at the time of the writing) the 2 most known Nanite titles are Fortnite and Senua's Saga: Hellblade II. Both have opposite objectives and tones. I recommend the Digital Foundry's ["Inside Senua's Saga: Hellblade 2 - An Unreal Engine 5 Masterpiece - The Ninja Theory Breakdown"](https://www.youtube.com/watch?v=u-zmFVzUmPc). E.g. they've mentioned a separate Houdini pipeline to extract transparency from static meshes. And while both games are different, both were developed by excellent engineering and visual teams.
+Depends. The simplest answer is to just use UE5. You will not beat UE5 in its own game. Looking at Steam's front page, most of the games are simple enough to not need it. It's interesting that (at the time of the writing) the 2 most known Nanite titles are Fortnite and Senua's Saga: Hellblade II. Both have opposite objectives and tone. I recommend the Digital Foundry's ["Inside Senua's Saga: Hellblade 2 - An Unreal Engine 5 Masterpiece - The Ninja Theory Breakdown"](https://www.youtube.com/watch?v=u-zmFVzUmPc). E.g. they've mentioned a separate Houdini pipeline to extract transparency from static meshes. And while both games are different, both were developed by excellent engineering and visual teams.
 
 If you want to write your own implementation as a side project, then don't let me stop you. But unless you tackle simplification and error metric problems, you will end up with code similar to mine. You will still learn a lot.
 
@@ -199,7 +229,7 @@ if (fragmentDepth < depthTexture[fragmentPosition.xy]) {
 
 The write to each of the textures depends on the comparison. If you do this over many threads, you get a race condition. Hardware can implement this easily. Think something like Java's [synchronized blocks](https://medium.com/@satyendra.jaiswal/thread-synchronization-synchronized-blocks-and-methods-d08040908347).
 
-Software rasterizers cannot do this. You only get atomic operations, which are not enough. With millions of triangles each affecting multiple pixels on each frame (so around 60/144 Hz) it's not a question *if* the race condition happens. The solution is to use [visibility buffer](https://momentsingraphics.de/ToyRenderer3RenderingBasics.html).  For each pixel, the rasterizer outputs `sceneUniqueTriangleId` (combination of `instanceId` + `meshletId` + `triangleId`, 32-bit total) of the closest triangle. Combine it with 32-bit depth into a 64-bit value (`(depth << 32) | sceneUniqueTriangleId`). Notice that comparisons between 2 such values are always decided based on the depth. We can safely use 64-bit atomic operations without worrying about race conditions. In a separate pass, we retrieve the `sceneUniqueTriangleId`, rasterize the triangle again, compute barycentric coordinates, and shade the fragment. Surprisingly [not that expensive](http://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/).
+Software rasterizers cannot do this. You only get atomic operations, which are not enough. With millions of triangles each affecting multiple pixels on each frame (so around 60/144 Hz) it's not a question *if* the race condition happens. The solution is to use a [visibility buffer](https://momentsingraphics.de/ToyRenderer3RenderingBasics.html).  For each pixel, the rasterizer outputs `sceneUniqueTriangleId` (combination of `instanceId` + `meshletId` + `triangleId`, 32-bit total) of the closest triangle. Combine it with 32-bit depth into a 64-bit value (`(depth << 32) | sceneUniqueTriangleId`). Notice that comparisons between 2 such values are always decided based on the depth. We can safely use 64-bit atomic operations without worrying about race conditions. In a separate pass, we retrieve the `sceneUniqueTriangleId`, rasterize the triangle again, compute barycentric coordinates, and shade the fragment. Surprisingly [not that expensive](http://filmicworlds.com/blog/visibility-buffer-rendering-with-material-graphs/).
 
 Unfortunately, WebGPU lacks 64-bit atomics. Even if the hardware and the driver support it. We cannot do what I've outlined above. There are other algorithms to achieve this, but they are much slower. And people will want to use my app to reimplement Nanite in other APIs (which have this feature). No point in bogging down my implementation for an API that [barely anyone uses](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status).
 

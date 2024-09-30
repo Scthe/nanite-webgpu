@@ -18,6 +18,20 @@ import { metisFreeAllocations, partitionGraph } from './partitionGraph.ts';
 import { calculateTargetIndexCount, simplifyMesh } from './simplifyMesh.ts';
 import { ParsedMesh } from '../scene/objLoader.ts';
 
+/*
+
+See following discussions:
+
+- https://github.com/bevyengine/bevy/discussions/14998
+- https://github.com/zeux/meshoptimizer/discussions/750
+
+And then read README.md for https://github.com/Scthe/nanite-simplification-tests.
+Especially updated version of this file in:
+
+- https://github.com/Scthe/nanite-simplification-tests/blob/master/src/meshPreprocessing/index.ts
+
+*/
+
 const findAdjacentMeshlets = CONFIG.nanite.preprocess.useMapToFindAdjacentEdges
   ? findAdjacentMeshlets_Map
   : findAdjacentMeshlets_Iter;
