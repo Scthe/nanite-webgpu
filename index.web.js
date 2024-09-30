@@ -3379,6 +3379,7 @@ fn main_SpreadYZ(
 }
 
 
+
 ///////////////////////////
 /// SHADER VARIANT 2: iterate inside shader
 ///////////////////////////
@@ -3413,11 +3414,11 @@ fn main_Iter(
   } 
 }
 
-///////////////////////////
-/// SHADER VARIANT 2: iterate inside shader INDIRECT DISPATCH
-///////////////////////////
 
 
+///////////////////////////
+/// SHADER VARIANT 3: iterate inside shader INDIRECT DISPATCH
+///////////////////////////
 
 // cull params
 ${qn(St.drawnInstancesParams,"read")}
