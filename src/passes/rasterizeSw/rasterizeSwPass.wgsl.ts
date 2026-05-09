@@ -309,7 +309,7 @@ fn storeResult(viewportSize: vec2u, posPx: vec2u, value: u32) {
   ) {
     return;
   }
-  let y = viewportSize.y - posPx.y; // invert cause WebGPU coordinates
+  let y = viewportSize.y - posPx.y - 1u; // invert cause WebGPU coordinates
   let idx: u32 = y * viewportSize.x + posPx.x;
   // WebGPU clears to 0. So atomicMin is pointless..
   atomicMax(&_softwareRasterizerResult[idx], value);
