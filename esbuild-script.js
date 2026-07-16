@@ -35,7 +35,7 @@ async function buildProd() {
   config.target = 'chrome100,firefox100,safari15'.split(',');
   await esbuild.build(config);
   console.log(
-    `Build finished sucesfully. The files are in '${config.outdir}' directory.`
+    `Build finished successfully. The files are in '${config.outdir}' directory.`
   );
 }
 
